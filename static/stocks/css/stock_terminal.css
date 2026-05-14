@@ -1,0 +1,308 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ stock.name }} 차트 - BitgakView{% endblock %}
+{% block body_class %}stock-terminal-body{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'stocks/css/stock_terminal.css' %}">
+{% endblock %}
+
+{% block content %}
+<section
+    id="stockTerminal"
+    class="stock-terminal"
+    data-code="{{ stock.code }}"
+    data-name="{{ stock.name }}"
+    data-market="{{ stock.market }}"
+    data-api-url="{% url 'stocks:api_ohlcv' stock.code %}"
+>
+    <header class="terminal-header">
+        <div>
+            <a class="back-link" href="{% url 'stocks:search' %}">← 종목 검색으로</a>
+
+            <div class="symbol-line">
+                <h1 class="symbol-title">{{ stock.name }}</h1>
+                <span class="symbol-code">{{ stock.code }}</span>
+                <span class="symbol-market">{{ stock.market }}</span>
+            </div>
+
+            <div class="price-summary">
+                <div id="headlinePrice" class="headline-price">-</div>
+                <div id="headlineChange" class="headline-change flat">-</div>
+                <div id="dataSourceText" class="data-source-text">데이터 대기중</div>
+            </div>
+        </div>
+
+        <div class="header-actions">
+            <button id="copyCodeBtn" class="action-btn" type="button">코드 복사</button>
+            <a class="action-btn" href="https://finance.naver.com/item/main.naver?code={{ stock.code }}" target="_blank" rel="noopener">네이버금융</a>
+            <button id="openIndicatorBtn" class="action-btn primary" type="button">지표</button>
+        </div>
+    </header>
+
+    <section class="terminal-layout">
+        <aside class="tool-rail">
+            <button class="tool-btn active" type="button" data-tool="cursor" title="커서">＋</button>
+            <button class="tool-btn" type="button" data-tool="trend" title="추세선">╱</button>
+            <button class="tool-btn" type="button" data-tool="extend" title="연장선">━</button>
+            <button class="tool-btn" type="button" data-tool="hline" title="수평선">─</button>
+            <button class="tool-btn" type="button" data-tool="vline" title="수직선">│</button>
+            <button class="tool-btn" type="button" data-tool="fibo" title="피보나치">⌁</button>
+            <button class="tool-btn" type="button" data-tool="undo" title="마지막 삭제">↶</button>
+            <button class="tool-btn" type="button" data-tool="clear" title="전체 삭제">⌂</button>
+        </aside>
+
+        <section class="main-terminal">
+            <div class="terminal-card">
+                <div class="chart-topbar">
+                    <div class="chart-symbol">{{ stock.name }} · {{ stock.code }}</div>
+
+                    <div class="chart-type-tabs">
+                        <button class="chart-type-btn active" type="button" data-chart-type="candle">
+                            <span class="chart-type-icon candle-icon">
+                                <i></i><i></i><i></i>
+                            </span>
+                            <span>캔들</span>
+                        </button>
+
+                        <button class="chart-type-btn" type="button" data-chart-type="line">
+                            <span class="chart-type-icon line-icon">
+                                <svg viewBox="0 0 24 24" aria-hidden="true">
+                                    <path d="M3 17L8 11L13 14L21 6"></path>
+                                </svg>
+                            </span>
+                            <span>라인</span>
+                        </button>
+
+                        <button class="chart-type-btn" type="button" data-chart-type="area">
+                            <span class="chart-type-icon area-icon">
+                                <svg viewBox="0 0 24 24" aria-hidden="true">
+                                    <path d="M3 17L8 11L13 14L21 6"></path>
+                                    <path d="M3 21L3 17L8 11L13 14L21 6L21 21Z"></path>
+                                </svg>
+                            </span>
+                            <span>영역</span>
+                        </button>
+                    </div>
+
+                    <div class="interval-dropdown" id="intervalDropdown">
+                        <button id="intervalDropdownBtn" class="interval-dropdown-btn" type="button">
+                            <span class="interval-main-icon">⏱</span>
+                            <span id="currentIntervalText">일</span>
+                            <span class="interval-caret">▾</span>
+                        </button>
+
+                        <div class="interval-menu" id="intervalMenu">
+                            <div class="interval-menu-section">
+                                <div class="interval-menu-title">분</div>
+                                <button type="button" class="interval-menu-item disabled" data-disabled-message="pykrx는 분봉 데이터를 지원하지 않습니다.">
+                                    <span>1분</span><em>준비중</em>
+                                </button>
+                                <button type="button" class="interval-menu-item disabled" data-disabled-message="pykrx는 분봉 데이터를 지원하지 않습니다.">
+                                    <span>3분</span><em>준비중</em>
+                                </button>
+                                <button type="button" class="interval-menu-item disabled" data-disabled-message="pykrx는 분봉 데이터를 지원하지 않습니다.">
+                                    <span>5분</span><em>준비중</em>
+                                </button>
+                                <button type="button" class="interval-menu-item disabled" data-disabled-message="pykrx는 분봉 데이터를 지원하지 않습니다.">
+                                    <span>15분</span><em>준비중</em>
+                                </button>
+                                <button type="button" class="interval-menu-item disabled" data-disabled-message="pykrx는 분봉 데이터를 지원하지 않습니다.">
+                                    <span>30분</span><em>준비중</em>
+                                </button>
+                            </div>
+
+                            <div class="interval-menu-section">
+                                <div class="interval-menu-title">시간</div>
+                                <button type="button" class="interval-menu-item disabled" data-disabled-message="pykrx는 시간봉 데이터를 지원하지 않습니다.">
+                                    <span>1시간</span><em>준비중</em>
+                                </button>
+                                <button type="button" class="interval-menu-item disabled" data-disabled-message="pykrx는 시간봉 데이터를 지원하지 않습니다.">
+                                    <span>2시간</span><em>준비중</em>
+                                </button>
+                                <button type="button" class="interval-menu-item disabled" data-disabled-message="pykrx는 시간봉 데이터를 지원하지 않습니다.">
+                                    <span>4시간</span><em>준비중</em>
+                                </button>
+                            </div>
+
+                            <div class="interval-menu-section">
+                                <div class="interval-menu-title">장기</div>
+                                <button type="button" class="interval-menu-item active" data-interval="1d" data-label="일">
+                                    <span>일</span><em>Daily</em>
+                                </button>
+                                <button type="button" class="interval-menu-item" data-interval="1w" data-label="주">
+                                    <span>주</span><em>Weekly</em>
+                                </button>
+                                <button type="button" class="interval-menu-item" data-interval="1mo" data-label="월">
+                                    <span>월</span><em>Monthly</em>
+                                </button>
+                                <button type="button" class="interval-menu-item" data-interval="1y" data-label="년">
+                                    <span>년</span><em>Yearly</em>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="topbar-right">
+                        <button id="openIndicatorBtn2" class="mini-action" type="button">지표 검색</button>
+                    </div>
+                </div>
+
+                <div class="top-rangebar">
+                    <div class="range-buttons">
+                        <button class="range-btn" type="button" data-range="1m">1M</button>
+                        <button class="range-btn active" type="button" data-range="6m">6M</button>
+                        <button class="range-btn" type="button" data-range="1y">1Y</button>
+                        <button class="range-btn" type="button" data-range="3y">3Y</button>
+                        <button class="range-btn" type="button" data-range="5y">5Y</button>
+                        <button class="range-btn" type="button" data-range="10y">10Y</button>
+                        <button class="range-btn" type="button" data-range="all">ALL</button>
+                    </div>
+
+                    <div id="topRangeText" class="top-range-text">표시 기간: -</div>
+                </div>
+
+                <div class="indicator-strip" id="activeIndicatorStrip">
+                    <button class="indicator-pill active" type="button" data-default-indicator="volume">Volume</button>
+                    <button class="indicator-pill active" type="button" data-default-indicator="ma20">MA 20</button>
+                    <button class="indicator-pill active" type="button" data-default-indicator="ma60">MA 60</button>
+                    <button class="indicator-pill active" type="button" data-default-indicator="ma120">MA 120</button>
+                </div>
+
+                <div class="ohlc-bar">
+                    <div><span class="label">날짜</span><span id="ohlcDate">-</span></div>
+                    <div><span class="label">시가</span><span id="ohlcOpen">-</span></div>
+                    <div><span class="label">고가</span><span id="ohlcHigh">-</span></div>
+                    <div><span class="label">저가</span><span id="ohlcLow">-</span></div>
+                    <div><span class="label">종가</span><span id="ohlcClose">-</span></div>
+                    <div><span class="label">거래량</span><span id="ohlcVol">-</span></div>
+                    <div id="drawHint" class="draw-hint">커서 모드</div>
+                </div>
+
+                <div id="chartWrap" class="chart-wrap">
+                    <div id="topTimeAxis" class="top-time-axis"></div>
+                    <div id="customStockChart"></div>
+                    <svg id="drawLayer"></svg>
+                    <div id="chartLoading" class="chart-loading">차트 데이터를 불러오는 중입니다...</div>
+                    <div id="chartError" class="chart-error">차트 데이터를 불러오지 못했습니다.</div>
+                </div>
+            </div>
+        </section>
+
+        <aside class="side-terminal">
+            <div class="side-card">
+                <div class="side-head">
+                    <span>워치리스트</span>
+                    <span class="badge">KR</span>
+                </div>
+
+                <div class="side-body">
+                    <a class="watch-item" href="{% url 'stocks:detail' '005930' %}">
+                        <div>
+                            <div class="watch-name">삼성전자</div>
+                            <div class="watch-code">005930</div>
+                        </div>
+                        <div class="watch-value">대표주</div>
+                    </a>
+
+                    <a class="watch-item" href="{% url 'stocks:detail' '000660' %}">
+                        <div>
+                            <div class="watch-name">SK하이닉스</div>
+                            <div class="watch-code">000660</div>
+                        </div>
+                        <div class="watch-value">반도체</div>
+                    </a>
+
+                    <a class="watch-item" href="{% url 'stocks:detail' '373220' %}">
+                        <div>
+                            <div class="watch-name">LG에너지솔루션</div>
+                            <div class="watch-code">373220</div>
+                        </div>
+                        <div class="watch-value">2차전지</div>
+                    </a>
+
+                    <a class="watch-item" href="{% url 'stocks:detail' '035420' %}">
+                        <div>
+                            <div class="watch-name">NAVER</div>
+                            <div class="watch-code">035420</div>
+                        </div>
+                        <div class="watch-value">플랫폼</div>
+                    </a>
+
+                    <a class="watch-item" href="{% url 'stocks:detail' '035720' %}">
+                        <div>
+                            <div class="watch-name">카카오</div>
+                            <div class="watch-code">035720</div>
+                        </div>
+                        <div class="watch-value">플랫폼</div>
+                    </a>
+                </div>
+            </div>
+
+            <div class="side-card">
+                <div class="side-head">
+                    <span>종목 정보</span>
+                    <span class="badge">{{ stock.market }}</span>
+                </div>
+
+                <div class="side-body">
+                    <div class="info-grid">
+                        <div class="info-row">
+                            <div class="info-label">종목명</div>
+                            <div class="info-value">{{ stock.name }}</div>
+                        </div>
+                        <div class="info-row">
+                            <div class="info-label">종목코드</div>
+                            <div class="info-value">{{ stock.code }}</div>
+                        </div>
+                        <div class="info-row">
+                            <div class="info-label">시장</div>
+                            <div class="info-value">{{ stock.market }}</div>
+                        </div>
+                        <div class="info-row">
+                            <div class="info-label">데이터</div>
+                            <div class="info-value">pykrx</div>
+                        </div>
+                    </div>
+
+                    <div class="memo-box">
+                        추세선, 연장선, 피보나치는 첫 번째 클릭으로 시작하고 두 번째 클릭으로 확정됩니다.
+                        ESC를 누르면 그리기를 취소합니다.
+                    </div>
+                </div>
+            </div>
+        </aside>
+    </section>
+</section>
+
+<div id="indicatorModal" class="indicator-modal" aria-hidden="true">
+    <div class="indicator-backdrop" data-close-indicator></div>
+
+    <div class="indicator-panel">
+        <div class="indicator-panel-head">
+            <div>
+                <h2>지표 검색</h2>
+                <p>이동평균, EMA, 볼린저밴드, 거래량을 검색해서 추가할 수 있습니다.</p>
+            </div>
+            <button class="modal-close" type="button" data-close-indicator>×</button>
+        </div>
+
+        <input id="indicatorSearchInput" class="indicator-search-input" type="text" placeholder="예: MA, EMA, Bollinger, Volume">
+
+        <div id="indicatorCatalog" class="indicator-catalog"></div>
+
+        <div class="indicator-settings-head">
+            <h3>활성 지표 설정</h3>
+            <button id="applyIndicatorSettings" class="mini-action primary" type="button">설정 적용</button>
+        </div>
+
+        <div id="activeIndicatorList" class="active-indicator-list"></div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://unpkg.com/lightweight-charts@4.2.3/dist/lightweight-charts.standalone.production.js"></script>
+<script src="{% static 'stocks/js/stock_terminal.js' %}"></script>
+{% endblock %}

@@ -1,0 +1,167 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <title>BitgakView - {{ stock_name }}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <link rel="stylesheet" href="{% static 'stocks/css/bitgak_chart.css' %}" />
+</head>
+
+<body>
+<div
+  class="bv-app"
+  data-code="{{ stock_code }}"
+  data-api-url="{% url 'stocks:api_chart_data' %}"
+>
+  <header class="bv-header">
+    <div class="bv-logo-area">
+      <div class="bv-logo">B</div>
+      <div class="bv-brand">BitgakView</div>
+    </div>
+
+    <div class="bv-search">
+      <input
+        id="stockSearchInput"
+        type="text"
+        placeholder="종목명 또는 코드 검색"
+        autocomplete="off"
+      />
+      <button id="stockSearchBtn" type="button">⌕</button>
+    </div>
+
+    <div class="bv-header-actions">
+      <button id="copyCodeBtn" type="button">코드 복사</button>
+      <button type="button">비교</button>
+    </div>
+  </header>
+
+  <main class="bv-layout">
+    <aside class="bv-left-tools" aria-label="차트 도구">
+      <button class="tool-btn active" data-tool="cursor" title="커서">＋</button>
+      <button class="tool-btn" data-tool="trend" title="추세선">╱</button>
+      <button class="tool-btn" data-tool="extend" title="연장선">━</button>
+      <button class="tool-btn" data-tool="hline" title="수평선">─</button>
+      <button class="tool-btn" data-tool="vline" title="수직선">│</button>
+      <button class="tool-btn" data-tool="fibo" title="피보나치 채널">⌁</button>
+      <button class="tool-btn" data-tool="undo" title="마지막 삭제">↶</button>
+      <button class="tool-btn" data-tool="clear" title="전체 삭제">⌂</button>
+    </aside>
+
+    <section class="bv-main">
+      <div class="bv-price-bar">
+        <div>
+          <div id="stockNameText" class="bv-stock-name">{{ stock_name }} · {{ stock_code }}</div>
+          <div class="bv-price-line">
+            <span id="currentPriceText" class="bv-price">-</span>
+            <span id="changeText" class="bv-change">-</span>
+          </div>
+        </div>
+      </div>
+
+      <section class="chart-card">
+        <div class="chart-card-top">
+          <div class="chart-title">
+            <strong id="chartTitle">{{ stock_name }} · {{ stock_code }}</strong>
+          </div>
+
+          <div class="interval-tabs">
+            <button type="button" class="active" data-interval="1d">1D</button>
+            <button type="button" data-interval="1w">1W</button>
+            <button type="button" data-interval="1m">1M</button>
+          </div>
+
+          <div class="chart-mode-text">차트 · 지표 · 비교</div>
+        </div>
+
+        <div class="indicator-tabs">
+          <button type="button" class="active" data-indicator="ma20">MA20</button>
+          <button type="button" class="active" data-indicator="ma60">MA60</button>
+          <button type="button" class="active" data-indicator="ma120">MA120</button>
+          <button type="button" class="active" data-indicator="volume">거래량</button>
+        </div>
+
+        <div id="ohlcInfo" class="ohlc-info">
+          날짜 -　시가 -　고가 -　저가 -　종가 -　거래량 -
+        </div>
+
+        <div id="chartWrap" class="chart-wrap">
+          <div id="tvChart" class="tv-chart"></div>
+          <svg id="drawingLayer" class="drawing-layer"></svg>
+          <div id="chartLoading" class="chart-loading">차트 데이터 불러오는 중...</div>
+        </div>
+
+        <div class="range-tabs">
+          <button type="button" class="active" data-range="6m">6M</button>
+          <button type="button" data-range="1y">1Y</button>
+          <button type="button" data-range="3y">3Y</button>
+          <button type="button" data-range="all">ALL</button>
+        </div>
+
+        <div class="chart-source">
+          데이터: Naver Finance · 차트: BitgakView
+        </div>
+      </section>
+    </section>
+
+    <aside class="bv-right-panel">
+      <section class="side-card">
+        <h3>워치리스트</h3>
+
+        <a href="/stocks/005930/" class="watch-item">
+          <strong>삼성전자</strong>
+          <span>005930</span>
+        </a>
+
+        <a href="/stocks/000660/" class="watch-item">
+          <strong>SK하이닉스</strong>
+          <span>000660</span>
+        </a>
+
+        <a href="/stocks/035420/" class="watch-item">
+          <strong>NAVER</strong>
+          <span>035420</span>
+        </a>
+
+        <a href="/stocks/035720/" class="watch-item">
+          <strong>카카오</strong>
+          <span>035720</span>
+        </a>
+
+        <a href="/stocks/005380/" class="watch-item">
+          <strong>현대차</strong>
+          <span>005380</span>
+        </a>
+      </section>
+
+      <section class="side-card">
+        <h3>종목 정보</h3>
+
+        <dl class="info-list">
+          <dt>종목명</dt>
+          <dd id="infoName">{{ stock_name }}</dd>
+
+          <dt>종목코드</dt>
+          <dd id="infoCode">{{ stock_code }}</dd>
+
+          <dt>시장</dt>
+          <dd>KRX</dd>
+
+          <dt>데이터</dt>
+          <dd>Naver Finance</dd>
+        </dl>
+
+        <p class="side-note">
+          현재는 BitgakView 자체 차트 엔진입니다.
+          다음 단계에서 관심종목, 알림 기능을 붙이면 됩니다.
+        </p>
+      </section>
+    </aside>
+  </main>
+</div>
+
+<script src="https://unpkg.com/lightweight-charts@4.2.3/dist/lightweight-charts.standalone.production.js"></script>
+<script src="{% static 'stocks/js/bitgak_chart.js' %}"></script>
+</body>
+</html>

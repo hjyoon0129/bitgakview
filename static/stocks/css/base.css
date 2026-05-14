@@ -1,0 +1,14 @@
+.bitgak-chart-body .site-main {
+  max-width: none !important;
+  width: 100% !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+.bitgak-chart-body .site-header {
+  display: none !important;
+}
+
+.bitgak-chart-body {
+  overflow: hidden;
+}

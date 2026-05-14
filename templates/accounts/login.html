@@ -1,0 +1,241 @@
+{% extends "base.html" %}
+{% load socialaccount %}
+
+{% block title %}로그인 - BitgakView{% endblock %}
+
+{% block extra_css %}
+<style>
+    .login-wrap {
+        min-height: calc(100vh - 160px);
+        display: grid;
+        place-items: center;
+    }
+
+    .login-card {
+        width: 100%;
+        max-width: 460px;
+        background: rgba(15, 23, 42, 0.9);
+        border: 1px solid rgba(148, 163, 184, 0.16);
+        border-radius: 28px;
+        padding: 28px;
+        box-shadow: 0 24px 90px rgba(0, 0, 0, 0.3);
+    }
+
+    .login-logo {
+        width: 46px;
+        height: 46px;
+        border-radius: 16px;
+        display: grid;
+        place-items: center;
+        background: linear-gradient(135deg, #38bdf8, #22c55e);
+        color: #020617;
+        font-weight: 950;
+        margin-bottom: 18px;
+    }
+
+    .login-card h1 {
+        margin: 0;
+        font-size: 30px;
+        letter-spacing: -0.055em;
+    }
+
+    .login-card p {
+        margin: 10px 0 22px;
+        color: #94a3b8;
+        line-height: 1.6;
+        font-size: 14px;
+    }
+
+    .social-list {
+        display: grid;
+        gap: 10px;
+        margin-bottom: 20px;
+    }
+
+    .social-btn {
+        height: 50px;
+        border-radius: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        font-weight: 950;
+        border: 1px solid rgba(148, 163, 184, 0.18);
+        background: #111827;
+    }
+
+    .social-btn:hover {
+        transform: translateY(-1px);
+        border-color: rgba(56, 189, 248, 0.45);
+    }
+
+    .social-btn.google {
+        background: #ffffff;
+        color: #111827;
+    }
+
+    .social-btn.naver {
+        background: #03c75a;
+        color: #ffffff;
+    }
+
+    .social-btn.kakao {
+        background: #fee500;
+        color: #181600;
+    }
+
+    .divider {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin: 20px 0;
+        color: #64748b;
+        font-size: 12px;
+        font-weight: 800;
+    }
+
+    .divider::before,
+    .divider::after {
+        content: "";
+        flex: 1;
+        height: 1px;
+        background: rgba(148, 163, 184, 0.16);
+    }
+
+    .login-form {
+        display: grid;
+        gap: 12px;
+    }
+
+    .form-field label {
+        display: block;
+        margin-bottom: 7px;
+        color: #cbd5e1;
+        font-size: 13px;
+        font-weight: 850;
+    }
+
+    .form-field input {
+        width: 100%;
+        height: 48px;
+        border-radius: 15px;
+        border: 1px solid #334155;
+        background: #020617;
+        color: #e5e7eb;
+        padding: 0 13px;
+        outline: none;
+    }
+
+    .form-field input:focus {
+        border-color: #38bdf8;
+        box-shadow: 0 0 0 4px rgba(56, 189, 248, 0.12);
+    }
+
+    .submit-btn {
+        height: 50px;
+        border: none;
+        border-radius: 16px;
+        background: linear-gradient(135deg, #38bdf8, #22c55e);
+        color: #020617;
+        font-weight: 950;
+        cursor: pointer;
+        margin-top: 4px;
+    }
+
+    .error-list {
+        margin: 0 0 14px;
+        padding: 12px 14px;
+        border-radius: 14px;
+        background: rgba(239, 68, 68, 0.1);
+        border: 1px solid rgba(239, 68, 68, 0.22);
+        color: #fecaca;
+        font-size: 13px;
+    }
+
+    .login-bottom {
+        margin-top: 18px;
+        color: #94a3b8;
+        text-align: center;
+        font-size: 13px;
+    }
+
+    .login-bottom a {
+        color: #38bdf8;
+        font-weight: 900;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<section class="login-wrap">
+    <div class="login-card">
+        <div class="login-logo">B</div>
+
+        <h1>BitgakView 로그인</h1>
+        <p>
+            관심종목, 투자 메모, 조건검색 기능을 사용하려면 로그인하세요.
+        </p>
+
+        <div class="social-list">
+            <a class="social-btn google" href="{% provider_login_url 'google' process='login' %}">
+                Google로 계속하기
+            </a>
+
+            <a class="social-btn naver" href="{% provider_login_url 'naver' process='login' %}">
+                Naver로 계속하기
+            </a>
+
+            <a class="social-btn kakao" href="{% provider_login_url 'kakao' process='login' %}">
+                Kakao로 계속하기
+            </a>
+        </div>
+
+        <div class="divider">또는 이메일 로그인</div>
+
+        {% if form.errors %}
+            <div class="error-list">
+                이메일 또는 비밀번호를 다시 확인해주세요.
+            </div>
+        {% endif %}
+
+        <form class="login-form" method="post" action="{% url 'account_login' %}">
+            {% csrf_token %}
+
+            {% if redirect_field_value %}
+                <input type="hidden" name="{{ redirect_field_name }}" value="{{ redirect_field_value }}">
+            {% endif %}
+
+            <div class="form-field">
+                <label for="id_login">이메일</label>
+                <input
+                    type="email"
+                    name="login"
+                    id="id_login"
+                    placeholder="email@example.com"
+                    autocomplete="email"
+                    required
+                >
+            </div>
+
+            <div class="form-field">
+                <label for="id_password">비밀번호</label>
+                <input
+                    type="password"
+                    name="password"
+                    id="id_password"
+                    placeholder="비밀번호"
+                    autocomplete="current-password"
+                    required
+                >
+            </div>
+
+            <button class="submit-btn" type="submit">로그인</button>
+        </form>
+
+        <div class="login-bottom">
+            아직 계정이 없나요?
+            <a href="{% url 'account_signup' %}">회원가입</a>
+        </div>
+    </div>
+</section>
+{% endblock %}

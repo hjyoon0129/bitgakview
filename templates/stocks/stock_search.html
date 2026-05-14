@@ -1,0 +1,1547 @@
+{% extends "base.html" %}
+
+{% block title %}종목 검색 - BitgakView{% endblock %}
+{% block body_class %}stock-search-body{% endblock %}
+
+{% block extra_css %}
+<style>
+  .stock-search-body {
+    background:
+      radial-gradient(circle at top left, rgba(45, 212, 191, 0.12), transparent 27%),
+      radial-gradient(circle at top right, rgba(59, 130, 246, 0.12), transparent 27%),
+      linear-gradient(180deg, #07101d 0%, #07101d 42%, #091322 100%) !important;
+    color: #eaf2ff;
+  }
+
+  .search-page {
+    width: min(1500px, calc(100vw - 40px));
+    margin: 0 auto;
+    padding: 26px 0 48px;
+  }
+
+  .hero,
+  .content-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 320px;
+    gap: 18px;
+    align-items: start;
+  }
+
+  .hero {
+    align-items: stretch;
+    margin-bottom: 18px;
+  }
+
+  .hero-main,
+  .market-side,
+  .market-dashboard,
+  .quick-section {
+    background: linear-gradient(180deg, rgba(13, 22, 39, 0.92), rgba(10, 18, 32, 0.96));
+    border: 1px solid rgba(148, 163, 184, 0.14);
+    border-radius: 26px;
+    box-shadow: 0 24px 80px rgba(0, 0, 0, 0.28);
+  }
+
+  .hero-main {
+    min-height: 318px;
+    padding: 36px;
+    position: relative;
+    overflow: visible;
+  }
+
+  .hero-main::before {
+    content: "";
+    position: absolute;
+    top: -90px;
+    right: -70px;
+    width: 330px;
+    height: 330px;
+    border-radius: 999px;
+    background: radial-gradient(circle, rgba(56, 189, 248, 0.22), rgba(56, 189, 248, 0.04) 58%, transparent 72%);
+    filter: blur(2px);
+    pointer-events: none;
+  }
+
+  .eyebrow {
+    position: relative;
+    z-index: 2;
+    display: inline-flex;
+    align-items: center;
+    padding: 8px 12px;
+    border-radius: 999px;
+    background: rgba(56, 189, 248, 0.09);
+    color: #bae6fd;
+    border: 1px solid rgba(56, 189, 248, 0.24);
+    font-size: 12px;
+    font-weight: 1000;
+    margin-bottom: 18px;
+  }
+
+  .hero h1 {
+    position: relative;
+    z-index: 2;
+    margin: 0;
+    color: #ffffff;
+    font-size: clamp(40px, 4.2vw, 68px);
+    line-height: 1.03;
+    letter-spacing: -0.07em;
+    font-weight: 1000;
+  }
+
+  .hero h1 span {
+    color: #38bdf8;
+    text-shadow: 0 0 22px rgba(56, 189, 248, 0.18);
+  }
+
+  .hero-desc {
+    position: relative;
+    z-index: 2;
+    margin: 16px 0 0;
+    max-width: 780px;
+    color: #b8c7dd;
+    font-size: 15px;
+    line-height: 1.75;
+    font-weight: 740;
+  }
+
+  .search-panel {
+    position: relative;
+    z-index: 50;
+    margin-top: 28px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 96px;
+    gap: 10px;
+    align-items: start;
+  }
+
+  .search-live-box {
+    position: relative;
+  }
+
+  .search-panel input {
+    width: 100%;
+    height: 58px;
+    border-radius: 18px;
+    border: 1px solid rgba(148, 163, 184, 0.22);
+    background: rgba(2, 6, 23, 0.84);
+    color: #ffffff;
+    padding: 0 18px;
+    font-size: 16px;
+    font-weight: 900;
+    outline: none;
+  }
+
+  .search-panel input::placeholder {
+    color: #77859b;
+  }
+
+  .search-panel input:focus {
+    border-color: #38bdf8;
+    box-shadow: 0 0 0 4px rgba(56, 189, 248, 0.13);
+  }
+
+  .search-panel button {
+    height: 58px;
+    border: 0;
+    border-radius: 18px;
+    background: linear-gradient(135deg, #38bdf8, #2dd4bf);
+    color: #03111d;
+    font-size: 15px;
+    font-weight: 1000;
+    cursor: pointer;
+    transition: 0.16s ease;
+  }
+
+  .search-panel button:hover {
+    filter: brightness(1.07);
+    transform: translateY(-1px);
+  }
+
+  .live-suggest-panel {
+    position: absolute;
+    top: 66px;
+    left: 0;
+    right: 0;
+    max-height: 430px;
+    overflow-y: auto;
+    padding: 8px;
+    border-radius: 18px;
+    border: 1px solid rgba(56, 189, 248, 0.24);
+    background: rgba(7, 14, 28, 0.99);
+    box-shadow: 0 24px 70px rgba(0, 0, 0, 0.46);
+    display: none;
+    z-index: 999;
+  }
+
+  .live-suggest-panel.show {
+    display: block;
+  }
+
+  .live-suggest-item {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 12px;
+    padding: 13px 14px;
+    border-radius: 14px;
+    color: #eaf2ff;
+    transition: 0.14s ease;
+    text-decoration: none;
+  }
+
+  .live-suggest-item:hover,
+  .live-suggest-item.active {
+    background: rgba(56, 189, 248, 0.10);
+  }
+
+  .live-suggest-name {
+    color: #ffffff;
+    font-size: 15px;
+    font-weight: 1000;
+  }
+
+  .live-suggest-code {
+    margin-top: 4px;
+    color: #60a5fa;
+    font-size: 13px;
+    font-weight: 900;
+  }
+
+  .live-suggest-market,
+  .badge,
+  .market-pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 999px;
+    background: rgba(45, 212, 191, 0.10);
+    color: #67e8f9;
+    border: 1px solid rgba(45, 212, 191, 0.16);
+    font-weight: 1000;
+    white-space: nowrap;
+  }
+
+  .live-suggest-market {
+    padding: 6px 10px;
+    font-size: 11px;
+  }
+
+  .live-suggest-empty {
+    padding: 18px 14px;
+    color: #94a3b8;
+    font-size: 14px;
+    font-weight: 850;
+  }
+
+  .market-side {
+    padding: 22px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 14px;
+  }
+
+  .side-title,
+  .section-title,
+  .dashboard-title {
+    margin: 0;
+    color: #ffffff;
+    font-weight: 1000;
+    letter-spacing: -0.05em;
+  }
+
+  .side-title {
+    font-size: 18px;
+  }
+
+  .muted,
+  .section-sub,
+  .dashboard-sub {
+    margin: 7px 0 0;
+    color: #94a3b8;
+    font-size: 13px;
+    line-height: 1.6;
+    font-weight: 740;
+  }
+
+  .metric-grid {
+    display: grid;
+    gap: 12px;
+  }
+
+  .metric {
+    padding: 16px;
+    border-radius: 18px;
+    background: rgba(2, 6, 23, 0.48);
+    border: 1px solid rgba(148, 163, 184, 0.10);
+  }
+
+  .metric-label {
+    color: #93b4d7;
+    font-size: 12px;
+    font-weight: 900;
+  }
+
+  .metric-value {
+    margin-top: 7px;
+    color: #ffffff;
+    font-size: 26px;
+    font-weight: 1000;
+    line-height: 1.12;
+    letter-spacing: -0.04em;
+  }
+
+  .section-head {
+    padding: 18px 20px;
+    border-bottom: 1px solid rgba(148, 163, 184, 0.10);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .section-title {
+    font-size: 20px;
+  }
+
+  .badge {
+    min-width: 46px;
+    height: 24px;
+    padding: 0 9px;
+    background: rgba(56, 189, 248, 0.12);
+    color: #67e8f9;
+    border-color: rgba(56, 189, 248, 0.18);
+    font-size: 11px;
+  }
+
+  .market-dashboard {
+    padding: 22px;
+    overflow: hidden;
+    position: relative;
+  }
+
+  .dashboard-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 18px;
+  }
+
+  .dashboard-title {
+    font-size: 23px;
+  }
+
+  .dashboard-sub {
+    font-size: 14px;
+  }
+
+  .dashboard-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 8px 12px;
+    border-radius: 999px;
+    background: rgba(45, 212, 191, 0.10);
+    color: #67e8f9;
+    border: 1px solid rgba(45, 212, 191, 0.16);
+    font-size: 12px;
+    font-weight: 1000;
+    white-space: nowrap;
+  }
+
+  .dashboard-status::before {
+    content: "";
+    width: 7px;
+    height: 7px;
+    border-radius: 999px;
+    background: #2dd4bf;
+    box-shadow: 0 0 10px rgba(45, 212, 191, 0.7);
+  }
+
+  .market-main-grid {
+    display: grid;
+    grid-template-columns: 410px minmax(0, 1fr);
+    gap: 16px;
+  }
+
+  .main-gauge-card,
+  .sub-gauge-card,
+  .signal-card {
+    background: linear-gradient(180deg, rgba(7, 14, 28, 0.94), rgba(5, 10, 22, 0.96));
+    border: 1px solid rgba(148, 163, 184, 0.11);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.035);
+  }
+
+  .main-gauge-card {
+    border-radius: 24px;
+    padding: 20px 20px 18px;
+  }
+
+  .gauge-card-top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 14px;
+    margin-bottom: 8px;
+  }
+
+  .gauge-label {
+    color: #ffffff;
+    font-size: 18px;
+    font-weight: 1000;
+    letter-spacing: -0.04em;
+  }
+
+  .gauge-desc {
+    margin-top: 6px;
+    color: #94a3b8;
+    font-size: 12px;
+    line-height: 1.6;
+    font-weight: 760;
+  }
+
+  .source-badge {
+    display: none !important;
+  }
+
+  .premium-gauge {
+    position: relative;
+    width: 100%;
+    margin-top: 14px;
+  }
+
+  .premium-gauge svg {
+    width: 100%;
+    height: auto;
+    display: block;
+    overflow: visible;
+  }
+
+  .gauge-arc-shadow {
+    fill: none;
+    stroke: rgba(15, 23, 42, 0.96);
+    stroke-width: 31;
+    stroke-linecap: round;
+    filter: drop-shadow(0 12px 26px rgba(0, 0, 0, 0.35));
+  }
+
+  .gauge-arc-color {
+    fill: none;
+    stroke-width: 24;
+    stroke-linecap: round;
+  }
+
+  .gauge-tick {
+    stroke: rgba(226, 232, 240, 0.18);
+    stroke-width: 2;
+    stroke-linecap: round;
+  }
+
+  .gauge-tick.major {
+    stroke: rgba(226, 232, 240, 0.34);
+    stroke-width: 3;
+  }
+
+  .gauge-needle {
+    transform-origin: 150px 150px;
+    transform: rotate(0deg);
+    transition: transform 0.7s cubic-bezier(.2,.8,.2,1);
+  }
+
+  .gauge-needle-line {
+    stroke: #ffffff;
+    stroke-width: 4;
+    stroke-linecap: round;
+    filter: drop-shadow(0 0 9px rgba(255, 255, 255, 0.34));
+  }
+
+  .gauge-needle-base {
+    fill: #ffffff;
+    filter: drop-shadow(0 0 14px rgba(56, 189, 248, 0.35));
+  }
+
+  .gauge-center-readout {
+    text-align: center;
+    margin-top: -18px;
+  }
+
+  .gauge-score {
+    display: inline-flex;
+    align-items: flex-end;
+    justify-content: center;
+    gap: 5px;
+    color: #ffffff;
+    line-height: 1;
+    white-space: nowrap;
+  }
+
+  .score-number {
+    font-size: 50px;
+    font-weight: 1000;
+    letter-spacing: -0.06em;
+  }
+
+  .score-unit {
+    margin-bottom: 5px;
+    color: #6ee7f9;
+    font-size: 17px;
+    font-weight: 1000;
+    letter-spacing: -0.02em;
+  }
+
+  .gauge-state {
+    display: inline-flex;
+    margin-top: 10px;
+    padding: 8px 12px;
+    border-radius: 999px;
+    background: rgba(56, 189, 248, 0.10);
+    border: 1px solid rgba(56, 189, 248, 0.17);
+    color: #bae6fd;
+    font-size: 13px;
+    font-weight: 1000;
+  }
+
+  .sub-gauge-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+
+  .sub-gauge-card {
+    border-radius: 22px;
+    padding: 17px;
+  }
+
+  .mini-meter {
+    margin-top: 16px;
+  }
+
+  .mini-track {
+    position: relative;
+    height: 10px;
+    border-radius: 999px;
+    background: linear-gradient(90deg, #38bdf8 0%, #22c55e 35%, #f59e0b 66%, #ef4444 100%);
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,0.12);
+  }
+
+  .mini-thumb {
+    position: absolute;
+    top: 50%;
+    left: calc(var(--score, 50) * 1%);
+    width: 18px;
+    height: 18px;
+    border-radius: 999px;
+    background: #ffffff;
+    border: 4px solid #0b1220;
+    box-shadow: 0 0 18px rgba(56, 189, 248, 0.45);
+    transform: translate(-50%, -50%);
+    transition: left 0.7s cubic-bezier(.2,.8,.2,1);
+  }
+
+  .mini-value-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 10px;
+    margin-top: 14px;
+  }
+
+  .mini-value {
+    color: #ffffff;
+    font-size: 28px;
+    font-weight: 1000;
+    letter-spacing: -0.04em;
+  }
+
+  .mini-tag {
+    color: #8ecbff;
+    font-size: 12px;
+    font-weight: 1000;
+    text-align: right;
+  }
+
+  /* 핵심 수정 영역: KOSPI ~ 판단 카드가 박스 안에 안정적으로 들어가도록 3열 2줄로 정리 */
+  .signal-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+    margin-top: 16px;
+  }
+
+  .signal-card {
+    box-sizing: border-box;
+    padding: 15px 15px 14px;
+    border-radius: 18px;
+    min-width: 0;
+    min-height: 118px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+
+  .signal-card dt {
+    color: #94a3b8;
+    font-size: 12px;
+    font-weight: 900;
+    line-height: 1.2;
+    white-space: nowrap;
+  }
+
+  .signal-card dd {
+    margin: 8px 0 0;
+    color: #ffffff;
+    font-size: clamp(18px, 1.35vw, 23px);
+    font-weight: 1000;
+    letter-spacing: -0.045em;
+    line-height: 1.12;
+    word-break: keep-all;
+    overflow-wrap: break-word;
+  }
+
+  .signal-card span {
+    display: block;
+    margin-top: 7px;
+    color: #60a5fa;
+    font-size: 12px;
+    font-weight: 850;
+    line-height: 1.45;
+    word-break: keep-all;
+    overflow-wrap: break-word;
+  }
+
+  .signal-card.index-card {
+    padding: 15px 15px 14px;
+  }
+
+  .signal-card .index-main {
+    margin-top: 8px;
+    font-size: clamp(23px, 1.65vw, 29px);
+    line-height: 1.05;
+    letter-spacing: -0.065em;
+    white-space: nowrap;
+  }
+
+  .signal-card .index-sub {
+    margin-top: 8px;
+    color: #94a3b8;
+    font-size: 12px;
+    font-weight: 950;
+    line-height: 1.45;
+    white-space: nowrap;
+  }
+
+  .signal-card .index-sub b {
+    font-size: 12px;
+    font-weight: 1000;
+  }
+
+  .decision-card dd {
+    font-size: clamp(17px, 1.25vw, 22px);
+    line-height: 1.15;
+  }
+
+  .decision-card span {
+    font-size: 11.5px;
+    line-height: 1.45;
+  }
+
+  .change-up {
+    color: #ef4444 !important;
+  }
+
+  .change-down {
+    color: #38bdf8 !important;
+  }
+
+  .change-flat {
+    color: #94a3b8 !important;
+  }
+
+  .quick-section {
+    position: sticky;
+    top: 84px;
+    overflow: hidden;
+  }
+
+  .quick-list {
+    display: grid;
+    padding: 14px;
+    gap: 10px;
+  }
+
+  .quick-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 13px;
+    padding: 14px;
+    border-radius: 16px;
+    background: rgba(2, 6, 23, 0.46);
+    border: 1px solid rgba(148, 163, 184, 0.10);
+    transition: 0.14s ease;
+    text-decoration: none;
+  }
+
+  .quick-item:hover {
+    border-color: rgba(56, 189, 248, 0.34);
+    background: rgba(56, 189, 248, 0.05);
+    transform: translateY(-1px);
+  }
+
+  .quick-name {
+    color: #ffffff;
+    font-size: 15px;
+    font-weight: 1000;
+  }
+
+  .quick-code {
+    margin-top: 4px;
+    color: #60a5fa;
+    font-size: 13px;
+    font-weight: 900;
+  }
+
+  @media (max-width: 1280px) {
+    .market-main-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .signal-grid {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
+
+  @media (max-width: 1180px) {
+    .search-page {
+      width: min(100%, calc(100vw - 28px));
+      padding-top: 18px;
+    }
+
+    .hero,
+    .content-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .quick-section {
+      position: static;
+    }
+  }
+
+  @media (max-width: 900px) {
+    .signal-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  @media (max-width: 720px) {
+    .hero-main {
+      padding: 26px 18px;
+      min-height: auto;
+    }
+
+    .hero h1 {
+      font-size: 38px;
+    }
+
+    .search-panel {
+      grid-template-columns: 1fr;
+    }
+
+    .search-panel button {
+      height: 52px;
+    }
+
+    .market-side {
+      display: none;
+    }
+
+    .sub-gauge-grid,
+    .signal-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .dashboard-head {
+      flex-direction: column;
+    }
+
+    .score-number {
+      font-size: 42px;
+    }
+
+    .signal-card {
+      min-height: 104px;
+    }
+
+    .signal-card .index-main {
+      font-size: 27px;
+    }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="search-page">
+  <section class="hero">
+    <div class="hero-main">
+      <div class="eyebrow">KRX 종목 검색 · BitgakView</div>
+
+      <h1>
+        한국 주식을<br>
+        <span>빠르게 검색하고 차트로 확인</span>
+      </h1>
+
+      <p class="hero-desc">
+        종목명, 종목코드, 초성, 별칭으로 검색할 수 있습니다.
+        엔터를 누르면 가장 관련도 높은 종목 차트로 바로 이동합니다.
+      </p>
+
+      <form id="stockLiveSearchForm" class="search-panel" method="get" action="{% url 'stocks:search' %}">
+        <div class="search-live-box">
+          <input
+            id="mainStockSearchInput"
+            type="text"
+            name="q"
+            value="{{ q|default:'' }}"
+            placeholder="삼성전자, 삼전, LG, NAVER, 005930"
+            autocomplete="off"
+            spellcheck="false"
+          >
+          <div id="liveSuggestPanel" class="live-suggest-panel"></div>
+        </div>
+
+        <button type="submit">검색</button>
+      </form>
+    </div>
+
+    <aside class="market-side">
+      <div>
+        <h2 class="side-title">Market Database</h2>
+        <p class="muted">DB 종목 마스터와 대표 종목 백업 데이터를 함께 사용합니다.</p>
+      </div>
+
+      <div class="metric-grid">
+        <div class="metric">
+          <div class="metric-label">검색 가능 종목</div>
+          <div class="metric-value">{{ total_stock_count|default:0 }}</div>
+        </div>
+
+        <div class="metric">
+          <div class="metric-label">지원 시장</div>
+          <div class="metric-value">KOSPI<br>KOSDAQ</div>
+        </div>
+      </div>
+    </aside>
+  </section>
+
+  <section class="content-grid">
+    <article>
+      <section id="marketDashboard" class="market-dashboard">
+        <div class="dashboard-head">
+          <div>
+            <h2 class="dashboard-title">시장지표</h2>
+            <p class="dashboard-sub">KOSPI, KOSDAQ, 52주 위치, 단기 이격도, 최근 변동성을 조합해 시장 분위기를 계산합니다.</p>
+          </div>
+          <div id="marketStatus" class="dashboard-status">데이터 연결중</div>
+        </div>
+
+        <div class="market-main-grid">
+          <div class="main-gauge-card">
+            <div class="gauge-card-top">
+              <div>
+                <div class="gauge-label">투자 타이밍</div>
+                <div class="gauge-desc">0은 위험 관리 우선, 100은 분할 진입이 상대적으로 편한 구간입니다.</div>
+              </div>
+            </div>
+
+            <div class="premium-gauge">
+              <svg viewBox="0 0 300 190" aria-label="투자 타이밍 게이지">
+                <defs>
+                  <linearGradient id="premiumGaugeGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                    <stop offset="0%" stop-color="#ef4444"/>
+                    <stop offset="27%" stop-color="#f97316"/>
+                    <stop offset="50%" stop-color="#f59e0b"/>
+                    <stop offset="72%" stop-color="#22c55e"/>
+                    <stop offset="100%" stop-color="#38bdf8"/>
+                  </linearGradient>
+                </defs>
+
+                <path class="gauge-arc-shadow" d="M 35 150 A 115 115 0 0 1 265 150"></path>
+                <path class="gauge-arc-color" d="M 35 150 A 115 115 0 0 1 265 150" stroke="url(#premiumGaugeGradient)"></path>
+
+                <line class="gauge-tick major" x1="35" y1="150" x2="49" y2="150"></line>
+                <line class="gauge-tick" x1="61" y1="85" x2="72" y2="93"></line>
+                <line class="gauge-tick major" x1="150" y1="35" x2="150" y2="52"></line>
+                <line class="gauge-tick" x1="239" y1="85" x2="228" y2="93"></line>
+                <line class="gauge-tick major" x1="265" y1="150" x2="251" y2="150"></line>
+
+                <g class="gauge-needle" id="timingNeedle">
+                  <line class="gauge-needle-line" x1="150" y1="150" x2="150" y2="55"></line>
+                  <circle class="gauge-needle-base" cx="150" cy="150" r="8"></circle>
+                </g>
+              </svg>
+
+              <div class="gauge-center-readout">
+                <div class="gauge-score">
+                  <span id="timingScore" class="score-number">52</span><span class="score-unit">/100</span>
+                </div>
+                <div id="timingLabel" class="gauge-state">중립</div>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <div class="sub-gauge-grid">
+              <div class="sub-gauge-card">
+                <div class="gauge-label">Fear & Greed</div>
+                <div class="gauge-desc">지수 모멘텀과 변동성으로 추정한 시장 심리입니다.</div>
+
+                <div id="fearMeter" class="mini-meter" style="--score: 55;">
+                  <div class="mini-track">
+                    <div class="mini-thumb"></div>
+                  </div>
+                </div>
+
+                <div class="mini-value-row">
+                  <div id="fearScore" class="mini-value">55</div>
+                  <div id="fearLabel" class="mini-tag">Neutral</div>
+                </div>
+              </div>
+
+              <div class="sub-gauge-card">
+                <div class="gauge-label">시장 과열도</div>
+                <div class="gauge-desc">52주 고점 위치, 단기 상승률, 이격도를 반영합니다.</div>
+
+                <div id="overheatMeter" class="mini-meter" style="--score: 64;">
+                  <div class="mini-track">
+                    <div class="mini-thumb"></div>
+                  </div>
+                </div>
+
+                <div class="mini-value-row">
+                  <div id="overheatScore" class="mini-value">64</div>
+                  <div id="overheatLabel" class="mini-tag">약간 과열</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="signal-grid">
+              <dl class="signal-card index-card">
+                <dt>KOSPI</dt>
+                <dd id="kospiPrice" class="index-main">현재 지수</dd>
+                <span class="index-sub">전일대비 <b id="kospiChange">-</b></span>
+              </dl>
+
+              <dl class="signal-card index-card">
+                <dt>KOSDAQ</dt>
+                <dd id="kosdaqPrice" class="index-main">현재 지수</dd>
+                <span class="index-sub">전일대비 <b id="kosdaqChange">-</b></span>
+              </dl>
+
+              <dl class="signal-card">
+                <dt>52주 위치</dt>
+                <dd id="kospiPosition">-</dd>
+                <span>낮을수록 저점권</span>
+              </dl>
+
+              <dl class="signal-card">
+                <dt>20일 이격</dt>
+                <dd id="distance20">-</dd>
+                <span>단기 과열 확인</span>
+              </dl>
+
+              <dl class="signal-card">
+                <dt>KRX 변동성</dt>
+                <dd id="vixValue">-</dd>
+                <span id="vixSub">20거래일 기준</span>
+              </dl>
+
+              <dl class="signal-card decision-card">
+                <dt>판단</dt>
+                <dd id="marketDecision">관망</dd>
+                <span id="decisionSub">매수/대기 참고</span>
+              </dl>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {{ all_stocks_payload|json_script:"allStocksData" }}
+    </article>
+
+    <aside class="quick-section">
+      <div class="section-head">
+        <div>
+          <h2 class="section-title">빠른 이동</h2>
+          <div class="section-sub">대표 종목 바로가기</div>
+        </div>
+      </div>
+
+      <div class="quick-list">
+        <a class="quick-item" href="{% url 'stocks:detail' '005930' %}">
+          <div>
+            <div class="quick-name">삼성전자</div>
+            <div class="quick-code">005930</div>
+          </div>
+          <span class="badge">KOSPI</span>
+        </a>
+
+        <a class="quick-item" href="{% url 'stocks:detail' '000660' %}">
+          <div>
+            <div class="quick-name">SK하이닉스</div>
+            <div class="quick-code">000660</div>
+          </div>
+          <span class="badge">KOSPI</span>
+        </a>
+
+        <a class="quick-item" href="{% url 'stocks:detail' '035420' %}">
+          <div>
+            <div class="quick-name">NAVER</div>
+            <div class="quick-code">035420</div>
+          </div>
+          <span class="badge">KOSPI</span>
+        </a>
+
+        <a class="quick-item" href="{% url 'stocks:detail' '035720' %}">
+          <div>
+            <div class="quick-name">카카오</div>
+            <div class="quick-code">035720</div>
+          </div>
+          <span class="badge">KOSPI</span>
+        </a>
+      </div>
+    </aside>
+  </section>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+  const input = document.getElementById("mainStockSearchInput");
+  const form = document.getElementById("stockLiveSearchForm");
+  const panel = document.getElementById("liveSuggestPanel");
+  const jsonNode = document.getElementById("allStocksData");
+
+  if (!input || !form || !panel || !jsonNode) {
+    return;
+  }
+
+  const fallbackStocks = [
+    { name: "삼성전자", code: "005930", market: "KOSPI", aliases: ["삼성", "삼전", "samsung", "samsung electronics"], search_rank: 1000 },
+    { name: "삼성전자우", code: "005935", market: "KOSPI", aliases: ["삼전우", "삼성우"], search_rank: 930 },
+    { name: "삼성바이오로직스", code: "207940", market: "KOSPI", aliases: ["삼바", "삼성바이오"], search_rank: 880 },
+    { name: "삼성SDI", code: "006400", market: "KOSPI", aliases: ["삼성에스디아이", "sdi"], search_rank: 850 },
+    { name: "삼성전기", code: "009150", market: "KOSPI", aliases: ["삼전기"], search_rank: 830 },
+    { name: "삼성물산", code: "028260", market: "KOSPI", aliases: ["물산"], search_rank: 810 },
+    { name: "삼성중공업", code: "010140", market: "KOSPI", aliases: ["삼성중공"], search_rank: 790 },
+    { name: "SK하이닉스", code: "000660", market: "KOSPI", aliases: ["하이닉스", "하닉", "hynix"], search_rank: 980 },
+    { name: "NAVER", code: "035420", market: "KOSPI", aliases: ["네이버", "naver"], search_rank: 940 },
+    { name: "카카오", code: "035720", market: "KOSPI", aliases: ["kakao"], search_rank: 900 },
+    { name: "현대차", code: "005380", market: "KOSPI", aliases: ["현대자동차", "hyundai"], search_rank: 920 },
+    { name: "기아", code: "000270", market: "KOSPI", aliases: ["kia"], search_rank: 900 },
+    { name: "LG에너지솔루션", code: "373220", market: "KOSPI", aliases: ["엘지에너지솔루션", "lg엔솔", "엔솔"], search_rank: 890 },
+    { name: "LG전자", code: "066570", market: "KOSPI", aliases: ["엘지전자"], search_rank: 840 },
+    { name: "LG화학", code: "051910", market: "KOSPI", aliases: ["엘지화학"], search_rank: 850 },
+    { name: "LG", code: "003550", market: "KOSPI", aliases: ["엘지"], search_rank: 800 },
+    { name: "셀트리온", code: "068270", market: "KOSPI", aliases: ["celltrion"], search_rank: 820 },
+    { name: "KB금융", code: "105560", market: "KOSPI", aliases: ["kb", "국민은행"], search_rank: 790 },
+    { name: "신한지주", code: "055550", market: "KOSPI", aliases: ["신한"], search_rank: 770 },
+    { name: "우리금융지주", code: "316140", market: "KOSPI", aliases: ["우리금융"], search_rank: 760 },
+    { name: "POSCO홀딩스", code: "005490", market: "KOSPI", aliases: ["포스코", "posco"], search_rank: 760 },
+    { name: "HLB", code: "028300", market: "KOSDAQ", aliases: ["에이치엘비"], search_rank: 720 },
+    { name: "에코프로비엠", code: "247540", market: "KOSDAQ", aliases: ["에코비엠"], search_rank: 720 },
+    { name: "에코프로", code: "086520", market: "KOSDAQ", aliases: ["ecopro"], search_rank: 700 },
+    { name: "알테오젠", code: "196170", market: "KOSDAQ", aliases: ["alteogen"], search_rank: 700 },
+    { name: "레인보우로보틱스", code: "277810", market: "KOSDAQ", aliases: ["레인보우", "로보틱스"], search_rank: 660 }
+  ];
+
+  const derivativeKeywords = ["ETF", "ETN", "ETNH", "레버리지", "인버스", "선물", "합성", "TR", "채권", "국채", "CD금리", "커버드콜"];
+
+  let rawItems = [];
+
+  try {
+    const parsed = JSON.parse(jsonNode.textContent || "[]");
+    rawItems = Array.isArray(parsed) ? parsed : [];
+  } catch (error) {
+    rawItems = [];
+  }
+
+  function normalize(value) {
+    return String(value || "")
+      .toLowerCase()
+      .replace(/\s+/g, "")
+      .replace(/[(){}\[\].,·ㆍ_\-]/g, "")
+      .trim();
+  }
+
+  function isDerivativeName(name) {
+    const text = String(name || "").toUpperCase().replace(/\s+/g, "");
+    return derivativeKeywords.some(function (keyword) {
+      return text.includes(String(keyword).toUpperCase().replace(/\s+/g, ""));
+    });
+  }
+
+  function normalizeCode(value) {
+    const digits = String(value || "").replace(/\D/g, "");
+    if (!digits) return "";
+    return digits.length <= 6 ? digits.padStart(6, "0") : digits.slice(-6);
+  }
+
+  function normalizeItem(item) {
+    const code = normalizeCode(item.code || item.ticker || item.symbol || "");
+    const name = String(item.name || item.stock_name || item.ticker_name || "").trim();
+
+    return {
+      name: name,
+      code: code,
+      market: String(item.market || item.market_name || "KRX").trim(),
+      aliases: Array.isArray(item.aliases) ? item.aliases : [],
+      href: String(item.href || item.url || "").trim(),
+      isDerivative: Boolean(item.is_derivative || item.isDerivative || isDerivativeName(name)),
+      searchRank: Number(item.search_rank || item.searchRank || 0) || 0
+    };
+  }
+
+  function buildItems() {
+    const map = new Map();
+
+    rawItems.concat(fallbackStocks).forEach(function (raw) {
+      const item = normalizeItem(raw);
+
+      if (!item.name || !item.code || item.code === "000000") {
+        return;
+      }
+
+      const prev = map.get(item.code);
+
+      if (!prev) {
+        map.set(item.code, item);
+        return;
+      }
+
+      map.set(item.code, {
+        name: prev.name || item.name,
+        code: item.code,
+        market: prev.market || item.market,
+        aliases: Array.from(new Set((prev.aliases || []).concat(item.aliases || []))),
+        href: prev.href || item.href,
+        isDerivative: Boolean(prev.isDerivative || item.isDerivative),
+        searchRank: Math.max(Number(prev.searchRank || 0), Number(item.searchRank || 0))
+      });
+    });
+
+    return Array.from(map.values()).map(function (item) {
+      item.href = item.href || "/stocks/" + item.code + "/";
+      return item;
+    });
+  }
+
+  const items = buildItems();
+
+  const chosungList = [
+    "ㄱ", "ㄲ", "ㄴ", "ㄷ", "ㄸ", "ㄹ", "ㅁ", "ㅂ", "ㅃ", "ㅅ",
+    "ㅆ", "ㅇ", "ㅈ", "ㅉ", "ㅊ", "ㅋ", "ㅌ", "ㅍ", "ㅎ"
+  ];
+
+  function getChosung(value) {
+    return String(value || "").split("").map(function (char) {
+      const code = char.charCodeAt(0) - 44032;
+
+      if (code >= 0 && code <= 11171) {
+        return chosungList[Math.floor(code / 588)];
+      }
+
+      return char.toLowerCase();
+    }).join("");
+  }
+
+  function escapeHtml(value) {
+    return String(value || "")
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#039;");
+  }
+
+  function sequentialMatch(text, query) {
+    let index = 0;
+
+    for (const char of text) {
+      if (char === query[index]) {
+        index += 1;
+      }
+
+      if (index >= query.length) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  function scoreItem(item, rawQuery) {
+    const query = normalize(rawQuery);
+
+    if (!query) {
+      return 0;
+    }
+
+    const name = normalize(item.name);
+    const code = normalize(item.code);
+    const market = normalize(item.market);
+    const alias = normalize((item.aliases || []).join(" "));
+    const chosungName = getChosung(item.name);
+    const chosungAlias = getChosung((item.aliases || []).join(" "));
+    const chosungQuery = getChosung(rawQuery);
+
+    let score = 0;
+
+    if (code === query) score = 5000;
+    else if (name === query) score = 4800;
+    else if (alias === query) score = 4700;
+    else if (code.startsWith(query)) score = 4300;
+    else if (name.startsWith(query)) score = 3900;
+    else if (alias.includes(query)) score = 3700;
+    else if (name.includes(query)) score = 3100;
+    else if (code.includes(query)) score = 2800;
+    else if (chosungQuery && chosungName.startsWith(chosungQuery)) score = 2300;
+    else if (chosungQuery && chosungName.includes(chosungQuery)) score = 2100;
+    else if (chosungQuery && chosungAlias.includes(chosungQuery)) score = 2000;
+    else if (query.length >= 2 && sequentialMatch(name, query)) score = 1100;
+    else if (market.includes(query)) score = 300;
+
+    if (!score) {
+      return 0;
+    }
+
+    score += Math.min(Number(item.searchRank || 0), 1200);
+
+    if (item.isDerivative) {
+      score -= 250;
+    }
+
+    return score;
+  }
+
+  function getMatches(query) {
+    const q = normalize(query);
+
+    if (!q) {
+      return [];
+    }
+
+    return items
+      .map(function (item) {
+        return Object.assign({}, item, { score: scoreItem(item, query) });
+      })
+      .filter(function (item) {
+        return item.score > 0;
+      })
+      .sort(function (a, b) {
+        if (b.score !== a.score) return b.score - a.score;
+        if (Number(b.searchRank || 0) !== Number(a.searchRank || 0)) return Number(b.searchRank || 0) - Number(a.searchRank || 0);
+        if (a.isDerivative !== b.isDerivative) return a.isDerivative ? 1 : -1;
+        return String(a.name).localeCompare(String(b.name), "ko");
+      })
+      .slice(0, 80);
+  }
+
+  function createSuggestItem(item, index) {
+    return ''
+      + '<a class="live-suggest-item" data-index="' + index + '" href="' + escapeHtml(item.href) + '">'
+      + '  <div>'
+      + '    <div class="live-suggest-name">' + escapeHtml(item.name) + '</div>'
+      + '    <div class="live-suggest-code">' + escapeHtml(item.code) + '</div>'
+      + '  </div>'
+      + '  <div class="live-suggest-market">' + escapeHtml(item.market) + '</div>'
+      + '</a>';
+  }
+
+  let lastMatches = [];
+  let activeIndex = -1;
+
+  function paintActiveSuggest() {
+    panel.querySelectorAll(".live-suggest-item").forEach(function (node) {
+      const index = Number(node.getAttribute("data-index"));
+      node.classList.toggle("active", index === activeIndex);
+    });
+  }
+
+  function renderSuggest(query) {
+    const q = query.trim();
+    const matches = getMatches(q);
+
+    lastMatches = matches;
+    activeIndex = -1;
+    panel.innerHTML = "";
+
+    if (!q) {
+      panel.classList.remove("show");
+      return;
+    }
+
+    panel.classList.add("show");
+
+    if (!matches.length) {
+      panel.innerHTML = '<div class="live-suggest-empty">검색 결과가 없습니다. 예: 삼성전자, 삼전, LG, NAVER, 005930</div>';
+      return;
+    }
+
+    panel.innerHTML = matches.slice(0, 60).map(createSuggestItem).join("");
+  }
+
+  function goFirstMatch() {
+    const matches = lastMatches.length ? lastMatches : getMatches(input.value);
+    const target = activeIndex >= 0 ? matches[activeIndex] : matches[0];
+
+    if (target) {
+      window.location.href = target.href;
+      return true;
+    }
+
+    return false;
+  }
+
+  input.addEventListener("input", function () {
+    renderSuggest(this.value);
+  });
+
+  input.addEventListener("focus", function () {
+    if (this.value.trim()) {
+      renderSuggest(this.value);
+    }
+  });
+
+  input.addEventListener("keydown", function (event) {
+    const suggestCount = Math.min(lastMatches.length, 60);
+
+    if (event.key === "ArrowDown" && suggestCount) {
+      event.preventDefault();
+      activeIndex = activeIndex < suggestCount - 1 ? activeIndex + 1 : 0;
+      paintActiveSuggest();
+      return;
+    }
+
+    if (event.key === "ArrowUp" && suggestCount) {
+      event.preventDefault();
+      activeIndex = activeIndex > 0 ? activeIndex - 1 : suggestCount - 1;
+      paintActiveSuggest();
+      return;
+    }
+
+    if (event.key === "Enter") {
+      if (goFirstMatch()) {
+        event.preventDefault();
+      }
+    }
+
+    if (event.key === "Escape") {
+      panel.classList.remove("show");
+      activeIndex = -1;
+    }
+  });
+
+  form.addEventListener("submit", function (event) {
+    if (goFirstMatch()) {
+      event.preventDefault();
+    }
+  });
+
+  document.addEventListener("click", function (event) {
+    if (!event.target.closest(".search-live-box")) {
+      panel.classList.remove("show");
+    }
+  });
+
+  if (input.value.trim()) {
+    renderSuggest(input.value);
+  }
+})();
+</script>
+
+<script>
+(function () {
+  const statusEl = document.getElementById("marketStatus");
+  const sourceBadge = document.getElementById("marketSourceBadge");
+  const timingNeedle = document.getElementById("timingNeedle");
+  const timingScoreEl = document.getElementById("timingScore");
+  const timingLabelEl = document.getElementById("timingLabel");
+  const fearMeter = document.getElementById("fearMeter");
+  const overheatMeter = document.getElementById("overheatMeter");
+  const fearScoreEl = document.getElementById("fearScore");
+  const fearLabelEl = document.getElementById("fearLabel");
+  const overheatScoreEl = document.getElementById("overheatScore");
+  const overheatLabelEl = document.getElementById("overheatLabel");
+  const vixValueEl = document.getElementById("vixValue");
+  const kospiPositionEl = document.getElementById("kospiPosition");
+  const kospiChangeEl = document.getElementById("kospiChange");
+  const kospiPriceEl = document.getElementById("kospiPrice");
+  const kosdaqChangeEl = document.getElementById("kosdaqChange");
+  const kosdaqPriceEl = document.getElementById("kosdaqPrice");
+  const distance20El = document.getElementById("distance20");
+  const marketDecisionEl = document.getElementById("marketDecision");
+  const decisionSubEl = document.getElementById("decisionSub");
+
+  function clamp(value, min, max) {
+    const n = Number(value);
+
+    if (!Number.isFinite(n)) {
+      return min;
+    }
+
+    return Math.max(min, Math.min(max, n));
+  }
+
+  function getTimingLabel(score) {
+    const s = clamp(score, 0, 100);
+
+    if (s >= 78) return "분할매수 유리";
+    if (s >= 62) return "관심 구간";
+    if (s >= 46) return "중립";
+    if (s >= 30) return "보수적 관망";
+    return "위험 관리";
+  }
+
+  function getFearLabel(score) {
+    const s = clamp(score, 0, 100);
+
+    if (s >= 80) return "Extreme Greed";
+    if (s >= 62) return "Greed";
+    if (s >= 43) return "Neutral";
+    if (s >= 25) return "Fear";
+    return "Extreme Fear";
+  }
+
+  function getOverheatLabel(score) {
+    const s = clamp(score, 0, 100);
+
+    if (s >= 82) return "강한 과열";
+    if (s >= 68) return "과열 주의";
+    if (s >= 48) return "중립";
+    if (s >= 30) return "안정";
+    return "저온";
+  }
+
+  function setChangeText(el, value) {
+    if (!el) return;
+
+    const text = String(value || "-").trim();
+    el.textContent = text;
+    el.classList.remove("change-up", "change-down", "change-flat");
+
+    if (text.startsWith("+")) {
+      el.classList.add("change-up");
+    } else if (text.startsWith("-")) {
+      el.classList.add("change-down");
+    } else {
+      el.classList.add("change-flat");
+    }
+  }
+
+  function setIndexPrice(el, label, value) {
+    if (!el) return;
+    el.textContent = value ? String(value) : "현재 지수";
+    el.setAttribute("aria-label", label + " 현재 지수");
+  }
+
+  function updateGauge(data) {
+    const timing = clamp(data.timing, 0, 100);
+    const fear = clamp(data.fear, 0, 100);
+    const overheat = clamp(data.overheat, 0, 100);
+    const angle = -90 + timing * 1.8;
+
+    if (timingNeedle) {
+      timingNeedle.style.transform = "rotate(" + angle + "deg)";
+    }
+
+    if (timingScoreEl) timingScoreEl.textContent = String(Math.round(timing));
+    if (timingLabelEl) timingLabelEl.textContent = data.timingLabel || getTimingLabel(timing);
+
+    if (fearMeter) fearMeter.style.setProperty("--score", String(fear));
+    if (overheatMeter) overheatMeter.style.setProperty("--score", String(overheat));
+
+    if (fearScoreEl) fearScoreEl.textContent = String(Math.round(fear));
+    if (fearLabelEl) fearLabelEl.textContent = data.fearLabel || getFearLabel(fear);
+
+    if (overheatScoreEl) overheatScoreEl.textContent = String(Math.round(overheat));
+    if (overheatLabelEl) overheatLabelEl.textContent = data.overheatLabel || getOverheatLabel(overheat);
+
+    if (vixValueEl) vixValueEl.textContent = data.vix || "-";
+    if (kospiPositionEl) kospiPositionEl.textContent = data.kospiPosition || "-";
+    setIndexPrice(kospiPriceEl, "KOSPI", data.kospiPrice);
+    setChangeText(kospiChangeEl, data.kospiChange);
+    setIndexPrice(kosdaqPriceEl, "KOSDAQ", data.kosdaqPrice);
+    setChangeText(kosdaqChangeEl, data.kosdaqChange);
+    if (distance20El) distance20El.textContent = data.distance20 || "-";
+    if (marketDecisionEl) marketDecisionEl.textContent = data.decision || getTimingLabel(timing);
+    if (decisionSubEl) decisionSubEl.textContent = data.decisionSub || "시장 지표 계산값";
+  }
+
+  function setStatus(text, source) {
+    if (statusEl) statusEl.textContent = text;
+    if (sourceBadge) sourceBadge.textContent = source;
+  }
+
+  async function loadMarketTemperature() {
+    try {
+      const res = await fetch("/stocks/api/market-temperature/", {
+        headers: { "Accept": "application/json" },
+        cache: "no-store"
+      });
+
+      if (!res.ok) {
+        throw new Error("market api failed");
+      }
+
+      const data = await res.json();
+
+      updateGauge({
+        timing: data.market_timing_score || data.timing || 52,
+        fear: data.fear_greed_score || data.fear || 55,
+        overheat: data.overheat_score || data.overheat || 64,
+        timingLabel: data.timing_label,
+        fearLabel: data.fear_label,
+        overheatLabel: data.overheat_label,
+        vix: data.vix_value,
+        kospiPosition: data.kospi_position,
+        kospiChange: data.kospi_change,
+        kospiPrice: data.kospi_price,
+        kosdaqChange: data.kosdaq_change,
+        kosdaqPrice: data.kosdaq_price,
+        distance20: data.distance_20,
+        decision: data.decision,
+        decisionSub: data.decision_sub
+      });
+
+      if (data.ok) {
+        setStatus(data.base_date ? data.base_date + " 기준" : "시장 데이터 반영", "PYKRX");
+      } else {
+        setStatus("기본 지표 표시중", "BASIC");
+      }
+    } catch (error) {
+      updateGauge({
+        timing: 52,
+        fear: 55,
+        overheat: 64,
+        vix: "-",
+        kospiPosition: "-",
+        kospiChange: "-",
+        kospiPrice: "현재 지수",
+        kosdaqChange: "-",
+        kosdaqPrice: "현재 지수",
+        distance20: "-",
+        decision: "관망",
+        decisionSub: "서버 API 연결 전 기본값"
+      });
+
+      setStatus("기본 지표 표시중", "BASIC");
+    }
+  }
+
+  loadMarketTemperature();
+})();
+</script>
+{% endblock %}
