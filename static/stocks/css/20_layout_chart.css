@@ -1,52 +1,712 @@
-@import url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css");
-
-@import url("./00_base.css");
-@import url("./10_header_search.css");
-@import url("./20_layout_chart.css");
-@import url("./30_right_panel.css");
-@import url("./40_indicators.css");
-@import url("./50_modals.css");
-@import url("./90_responsive.css");
-
-/* =========================================================
-   BitgakView V5 chart layer
-   - 전역 override 금지
-   - 차트 캔버스/라벨/로딩 레이어만 담당
-   ========================================================= */
-
-.chart-wrap-v5,
-.chart-wrap {
-  position: relative;
-  width: 100%;
+/* 전체 차트 레이아웃 */
+.bv-layout,
+.bv-layout-full {
+  grid-row: 2 / 3;
+  height: 100%;
   min-height: 0;
+  display: grid;
+  grid-template-columns: 450px minmax(520px, 1fr) 320px;
+  gap: 0;
+  padding: 0;
   overflow: hidden;
-  background: #ffffff;
 }
 
-.tv-chart-v5,
+/* 왼쪽 영역: 평단가 계산기 전용 */
+.bv-left-panel {
+  min-width: 0;
+  height: 100%;
+  padding: 14px 14px;
+  overflow: hidden;
+  background: rgba(5, 10, 20, 0.50);
+  border-right: 1px solid rgba(148, 163, 184, 0.10);
+  display: flex;
+  flex-direction: column;
+}
+
+/* 차트 상단 그리기 도구 */
+.bv-drawing-toolbar {
+  flex: 0 0 auto;
+  height: 34px;
+  margin-left: 16px;
+  padding: 3px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border-radius: 13px;
+  background: rgba(15, 23, 42, 0.055);
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  white-space: nowrap;
+}
+
+.tool-btn {
+  flex: 0 0 auto;
+  width: 28px;
+  height: 28px;
+  border-radius: 9px;
+  border: 0;
+  background: transparent;
+  color: #475569;
+  font-size: 15px;
+  font-weight: 1000;
+  display: grid;
+  place-items: center;
+  transition: 0.14s ease;
+}
+
+.tool-btn:hover,
+.tool-btn.active {
+  background: #17243c;
+  color: #ffffff;
+}
+
+.bv-drawing-toolbar .tool-btn[data-tool="undo"],
+.bv-drawing-toolbar .tool-btn[data-tool="clear"] {
+  color: #64748b;
+}
+
+.bv-drawing-toolbar .tool-btn[data-tool="undo"]:hover,
+.bv-drawing-toolbar .tool-btn[data-tool="clear"]:hover {
+  color: #ffffff;
+}
+
+/* 평단가 계산기 */
+.avg-calc-card {
+  width: 100%;
+  align-self: stretch;
+  margin: 0;
+  padding: 16px 14px;
+  border-radius: 18px;
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0.96), rgba(8, 15, 28, 0.98));
+  border: 1px solid rgba(96, 165, 250, 0.22);
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255,255,255,0.04);
+  color: #eaf2ff;
+  overflow: hidden;
+}
+
+.avg-calc-headline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.avg-calc-headline strong {
+  color: #ffffff;
+  font-size: 15px;
+  font-weight: 1000;
+  letter-spacing: -0.04em;
+  white-space: nowrap;
+}
+
+.avg-calc-head-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.avg-mini-btn {
+  height: 30px;
+  padding: 0 11px;
+  border-radius: 10px;
+  border: 1px solid rgba(96, 165, 250, 0.28);
+  background: rgba(15, 23, 42, 0.68);
+  color: #bfdbfe;
+  font-size: 11px;
+  font-weight: 1000;
+}
+
+.avg-mini-btn:hover {
+  border-color: rgba(56, 189, 248, 0.52);
+  background: rgba(56, 189, 248, 0.12);
+  color: #ffffff;
+}
+
+.avg-mini-btn.primary {
+  background: linear-gradient(135deg, #2563eb, #0ea5e9);
+  border-color: rgba(37, 99, 235, 0.95);
+  color: #ffffff;
+}
+
+.avg-auto-save-status {
+  min-width: 70px;
+  height: 28px;
+  padding: 0 9px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(45, 212, 191, 0.10);
+  border: 1px solid rgba(45, 212, 191, 0.18);
+  color: #67e8f9;
+  font-size: 10px;
+  font-weight: 1000;
+  white-space: nowrap;
+}
+
+.avg-auto-save-status.saving {
+  background: rgba(96, 165, 250, 0.10);
+  border-color: rgba(96, 165, 250, 0.18);
+  color: #bfdbfe;
+}
+
+.avg-calc-rows {
+  display: grid;
+  gap: 8px;
+}
+
+.avg-calc-row {
+  display: grid;
+  grid-template-columns: 42px minmax(112px, 1fr) 72px 96px 52px;
+  gap: 7px;
+  align-items: center;
+}
+
+.avg-calc-row-head {
+  margin-bottom: 8px;
+  color: #8aa3c3;
+  font-size: 10px;
+  font-weight: 900;
+}
+
+.avg-calc-row select,
+.avg-calc-row input {
+  width: 100%;
+  height: 36px;
+  min-width: 0;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: 11px;
+  background: rgba(2, 6, 23, 0.72);
+  color: #ffffff;
+  padding: 0 8px;
+  font-size: 12px;
+  font-weight: 850;
+  outline: none;
+}
+
+.avg-calc-row select {
+  color: #dbeafe;
+  appearance: none;
+  background-image: linear-gradient(45deg, transparent 50%, #8ecbff 50%), linear-gradient(135deg, #8ecbff 50%, transparent 50%);
+  background-position: calc(100% - 12px) 14px, calc(100% - 8px) 14px;
+  background-size: 4px 4px, 4px 4px;
+  background-repeat: no-repeat;
+}
+
+.avg-calc-row input::placeholder {
+  color: #61738e;
+}
+
+.avg-calc-row select:focus,
+.avg-calc-row input:focus {
+  border-color: #38bdf8;
+  box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.12);
+}
+
+.avg-calc-row output {
+  color: #cbd5e1;
+  font-size: 11px;
+  font-weight: 900;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.avg-row-actions {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+  min-width: 0;
+}
+
+.avg-row-style,
+.avg-row-delete {
+  width: 22px;
+  height: 26px;
+  border: 0;
+  border-radius: 9px;
+  font-size: 13px;
+  font-weight: 1000;
+  display: grid;
+  place-items: center;
+}
+
+.avg-row-style {
+  background: rgba(56, 189, 248, 0.10);
+  color: #93c5fd;
+}
+
+.avg-row-style:hover,
+.avg-row-style.active {
+  background: rgba(56, 189, 248, 0.20);
+  color: #ffffff;
+}
+
+.avg-row-delete {
+  background: rgba(239, 68, 68, 0.10);
+  color: #fecaca;
+}
+
+.avg-row-delete:hover {
+  background: rgba(239, 68, 68, 0.18);
+  color: #ffffff;
+}
+
+
+.avg-line-style-panel {
+  display: none;
+  grid-template-columns: 74px minmax(0, 1fr) 70px 72px;
+  gap: 7px;
+  align-items: center;
+  margin: -2px 0 2px;
+  padding: 8px 8px 8px 10px;
+  border-radius: 12px;
+  background: rgba(2, 6, 23, 0.42);
+  border: 1px solid rgba(96, 165, 250, 0.14);
+}
+
+.avg-line-style-panel.open {
+  display: grid;
+}
+
+.avg-line-style-panel span {
+  color: #8aa3c3;
+  font-size: 10px;
+  font-weight: 1000;
+  white-space: nowrap;
+}
+
+.avg-line-color-wrap {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  gap: 6px;
+  align-items: center;
+}
+
+.avg-line-color-wrap input[type="color"] {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  overflow: hidden;
+}
+
+.avg-line-color-wrap b {
+  color: #cbd5e1;
+  font-size: 10px;
+  font-weight: 900;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.avg-line-style-panel select {
+  width: 100%;
+  height: 30px;
+  min-width: 0;
+  border: 1px solid rgba(148, 163, 184, 0.20);
+  border-radius: 10px;
+  background: rgba(15, 23, 42, 0.82);
+  color: #ffffff;
+  padding: 0 8px;
+  font-size: 11px;
+  font-weight: 900;
+  outline: none;
+}
+
+
+.avg-add-row-btn {
+  width: 100%;
+  height: 34px;
+  margin-top: 10px;
+  border: 1px dashed rgba(96, 165, 250, 0.36);
+  border-radius: 12px;
+  background: rgba(37, 99, 235, 0.10);
+  color: #93c5fd;
+  font-size: 12px;
+  font-weight: 1000;
+}
+
+.avg-add-row-btn:hover {
+  background: rgba(37, 99, 235, 0.18);
+  border-color: rgba(96, 165, 250, 0.52);
+  color: #ffffff;
+}
+
+.avg-calc-result {
+  display: grid;
+  gap: 8px;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(148, 163, 184, 0.14);
+}
+
+.avg-calc-result > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.avg-calc-result span {
+  color: #8aa3c3;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.avg-calc-result strong {
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 1000;
+  text-align: right;
+}
+
+.avg-calc-average strong,
+.avg-calc-return strong {
+  color: #67e8f9;
+  font-size: 17px;
+}
+
+.avg-calc-return.negative strong,
+.avg-calc-result .negative {
+  color: #fb7185 !important;
+}
+
+.avg-calc-return.positive strong,
+.avg-calc-result .positive {
+  color: #2dd4bf !important;
+}
+
+.avg-calc-reset {
+  width: 100%;
+  height: 36px;
+  margin-top: 14px;
+  border: 1px solid rgba(96, 165, 250, 0.25);
+  border-radius: 12px;
+  background: rgba(37, 99, 235, 0.14);
+  color: #bfdbfe;
+  font-size: 12px;
+  font-weight: 1000;
+  cursor: pointer;
+}
+
+.avg-calc-reset:hover {
+  background: rgba(37, 99, 235, 0.22);
+  border-color: rgba(96, 165, 250, 0.42);
+}
+
+/* 투자노트 차트 배지 */
+.invest-chart-badge {
+  position: absolute;
+  left: 12px;
+  top: 12px;
+  right: auto;
+  bottom: auto;
+  z-index: 31;
+  min-width: 198px;
+  max-width: 255px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: rgba(15, 23, 42, 0.82);
+  border: 1px solid rgba(96, 165, 250, 0.30);
+  color: #eaf2ff;
+  font-size: 11px;
+  font-weight: 900;
+  pointer-events: none;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.20);
+  backdrop-filter: blur(8px);
+}
+
+.invest-chart-badge strong {
+  display: block;
+  margin-bottom: 5px;
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 1000;
+}
+
+.invest-chart-badge span {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  line-height: 1.55;
+  color: #c7d2fe;
+}
+
+.invest-chart-badge b {
+  color: #67e8f9;
+  font-weight: 1000;
+}
+
+.invest-chart-badge.negative b {
+  color: #fb7185;
+}
+
+
+.bv-main {
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  padding: 14px 8px 14px 0;
+  overflow: hidden;
+}
+
+.chart-card,
+.chart-card-full {
+  position: relative;
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: #ffffff;
+  border-radius: 12px;
+  overflow: hidden;
+  color: #0f172a;
+  border: 1px solid rgba(226, 232, 240, 0.95);
+  box-shadow: 0 18px 46px rgba(0, 0, 0, 0.28);
+}
+
+.chart-card-top {
+  flex: 0 0 48px;
+  min-height: 48px;
+  padding: 0 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-bottom: 1px solid #e5e7eb;
+  background: #ffffff;
+  position: relative;
+  z-index: 60;
+  overflow: visible;
+}
+
+.chart-title {
+  font-size: 15px;
+  color: #0f172a;
+  min-width: 150px;
+  font-weight: 1000;
+  letter-spacing: -0.03em;
+  white-space: nowrap;
+}
+
+.chart-top-spacer { flex: 1 1 auto; }
+
+.chart-top-btn {
+  height: 34px;
+  padding: 0 14px;
+  border-radius: 11px;
+  border: 1px solid #cfe1ff;
+  background: #f7fbff;
+  color: #0b5cff;
+  font-size: 14px;
+  font-weight: 1000;
+  transition: 0.14s ease;
+}
+
+.chart-top-btn:hover {
+  background: #eaf4ff;
+  border-color: #93c5fd;
+  color: #0b5cff;
+}
+
+.chart-top-btn.primary {
+  border-color: rgba(37, 99, 235, 0.95);
+  background: linear-gradient(135deg, #2563eb, #0ea5e9);
+  color: #ffffff;
+}
+
+.chart-mode-text {
+  margin-left: auto;
+  color: #0f172a;
+  font-size: 11px;
+  font-weight: 1000;
+}
+
+.tv-interval-dropdown {
+  position: relative;
+  flex: 0 0 auto;
+  z-index: 200;
+}
+
+.tv-interval-btn {
+  height: 34px;
+  min-width: 84px;
+  padding: 0 12px;
+  border: 1px solid rgba(96, 165, 250, 0.28);
+  border-radius: 12px;
+  background: linear-gradient(180deg, #17243c, #101a2b);
+  color: #eaf2ff;
+  font-size: 13px;
+  font-weight: 1000;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  white-space: nowrap;
+  transition: 0.14s ease;
+}
+
+.tv-interval-btn:hover,
+.tv-interval-dropdown.open .tv-interval-btn {
+  border-color: rgba(56, 189, 248, 0.72);
+  background: linear-gradient(180deg, #1d3356, #122744);
+  color: #ffffff;
+  box-shadow: 0 0 0 4px rgba(56, 189, 248, 0.10);
+}
+
+.tv-interval-icon { font-size: 14px; line-height: 1; opacity: 0.95; }
+.tv-interval-arrow { font-size: 10px; opacity: 0.76; transform: translateY(1px); }
+
+.tv-interval-menu {
+  position: absolute;
+  top: 43px;
+  left: 0;
+  width: 160px;
+  max-height: min(360px, calc(100vh - 150px));
+  overflow-y: auto;
+  padding: 8px;
+  border-radius: 18px;
+  border: 1px solid rgba(96, 165, 250, 0.24);
+  background: rgba(8, 17, 31, 0.98);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.42);
+  backdrop-filter: blur(16px);
+  display: none;
+  z-index: 9999;
+}
+
+.tv-interval-dropdown.open .tv-interval-menu { display: grid; gap: 4px; }
+
+.tv-interval-custom,
+.tv-interval-item {
+  width: 100%;
+  min-height: 36px;
+  padding: 0 11px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: #e8f1ff;
+  font-size: 13px;
+  font-weight: 900;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  text-align: left;
+  transition: 0.14s ease;
+}
+
+.tv-interval-custom { justify-content: flex-start; color: #b8c7de; }
+.tv-interval-custom strong { font-weight: 900; }
+
+.tv-interval-custom:hover,
+.tv-interval-item:hover {
+  background: rgba(56, 189, 248, 0.16);
+  color: #ffffff;
+}
+
+.tv-interval-item.active,
+.tv-interval-item.active:hover {
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.95), rgba(14, 165, 233, 0.82));
+  color: #ffffff;
+  font-weight: 1000;
+}
+
+.tv-interval-section {
+  padding: 8px 9px 5px;
+  color: #7fa0c4;
+  font-size: 11px;
+  font-weight: 1000;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.tv-interval-section.border {
+  margin-top: 5px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(148, 163, 184, 0.13);
+}
+
+.tv-interval-section span { color: #7fa0c4; }
+.tv-interval-section em { display: none; }
+.tv-interval-sub { color: #8aa5c7; font-size: 11px; font-weight: 800; }
+.tv-interval-item:hover .tv-interval-sub,
+.tv-interval-item.active .tv-interval-sub { color: rgba(255, 255, 255, 0.78); }
+
+.tv-interval-menu::-webkit-scrollbar { width: 7px; }
+.tv-interval-menu::-webkit-scrollbar-thumb { background: rgba(96, 165, 250, 0.34); border-radius: 999px; }
+
+.ohlc-info {
+  flex: 0 0 34px;
+  height: 34px;
+  padding: 9px 12px 0;
+  color: #0f172a;
+  font-size: 14px;
+  font-weight: 1000;
+  white-space: nowrap;
+  overflow-x: auto;
+  background: #ffffff;
+  border-bottom: 1px solid #eef2f7;
+}
+
+.chart-wrap {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  background: #ffffff;
+  overflow: hidden;
+}
+
 .tv-chart {
   position: absolute;
   inset: 0;
+  z-index: 1;
   width: 100%;
   height: 100%;
-  min-width: 0;
-  min-height: 0;
-  background: #ffffff;
 }
 
 .drawing-layer {
   position: absolute;
   inset: 0;
-  z-index: 24;
+  z-index: 5;
   width: 100%;
   height: 100%;
   pointer-events: none;
 }
 
-.chart-wrap.drawing-mode .drawing-layer {
-  pointer-events: all;
-  cursor: crosshair;
+.chart-wrap.drawing-mode .drawing-layer { pointer-events: all; cursor: crosshair; }
+
+.chart-loading {
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  z-index: 10;
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.88);
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 900;
+  display: none;
 }
+.chart-loading.show { display: block; }
+
+.chart-credit {
+  flex: 0 0 24px;
+  height: 24px;
+  padding: 4px 8px;
+  color: #0f172a;
+  background: #ffffff;
+  border-top: 1px solid #eef2f7;
+  font-size: 11px;
+  font-weight: 800;
+}
+.chart-credit a { color: #0b5cff; font-weight: 1000; }
 
 .chart-indicator-overlay {
   position: absolute;
@@ -56,301 +716,185 @@
   pointer-events: none;
 }
 
-.bv-v5-main-label,
-.bv-v5-pane-label {
+/* JS가 생성하는 차트/보조지표 스택 구조 */
+.chart-wrap.bitgak-chart-wrap-stack-ready .bv-chart-stack {
   position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) 0;
+  width: 100%;
+  height: 100%;
+  background: #ffffff;
+}
+
+.chart-wrap.bitgak-chart-wrap-stack-ready.bitgak-has-subpanes .bv-chart-stack {
+  grid-template-rows: minmax(0, 68%) minmax(112px, 32%);
+}
+
+.bv-main-chart-pane {
+  position: relative;
+  min-height: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #ffffff;
+}
+
+.chart-wrap.bitgak-chart-wrap-stack-ready.bitgak-has-subpanes .bv-main-chart-pane {
+  border-bottom: 1px solid #dbe5f1;
+}
+
+.bv-main-chart-canvas {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  background: #ffffff;
+}
+
+.bv-subpane-area {
+  display: none;
+  min-height: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #ffffff;
+}
+
+.chart-wrap.bitgak-chart-wrap-stack-ready.bitgak-has-subpanes .bv-subpane-area {
+  display: grid;
+  grid-auto-rows: minmax(92px, 1fr);
+}
+
+.bv-indicator-pane {
+  position: relative;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+  background: #ffffff;
+  border-top: 1px solid #dbe5f1;
+}
+
+.bv-indicator-pane:first-child { border-top: 0; }
+
+.bv-indicator-pane-chart {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  background: #ffffff;
+}
+
+.bv-indicator-pane-label {
+  position: absolute;
+  top: 7px;
   left: 10px;
-  z-index: 28;
-  min-width: 88px;
+  z-index: 4;
+  min-width: 46px;
   height: 22px;
-  padding: 0 10px 0 8px;
+  padding: 0 9px;
   display: inline-flex;
   align-items: center;
-  justify-content: flex-start;
-  gap: 7px;
+  justify-content: center;
   border-radius: 999px;
   background: rgba(15, 23, 42, 0.78);
   color: #ffffff;
   font-size: 11px;
   font-weight: 1000;
-  line-height: 1;
   pointer-events: none;
   box-shadow: 0 8px 18px rgba(15, 23, 42, 0.18);
-  backdrop-filter: blur(8px);
 }
 
-.bv-v5-main-label::before,
-.bv-v5-pane-label::before {
-  content: "";
-  width: 7px;
-  height: 7px;
-  flex: 0 0 7px;
-  border-radius: 999px;
-  background: var(--label-color, #2563eb);
-  box-shadow: 0 0 10px var(--label-color, #2563eb);
+/* Lightweight Charts v5 pane separator */
+.tv-chart table tr:not(:first-child) td,
+.tv-chart-v5 table tr:not(:first-child) td {
+  border-top: 1px solid #dbe5f1;
 }
 
-.bv-v5-pane-label-rsi { --label-color: #db2777; }
-.bv-v5-pane-label-macd { --label-color: #2563eb; }
-.bv-v5-pane-label-volume { --label-color: #64748b; }
-
-.chart-loading {
-  position: absolute;
-  inset: 0;
-  z-index: 40;
-  display: none;
-  align-items: center;
-  justify-content: center;
-  background: rgba(255, 255, 255, 0.72);
-  color: #0f172a;
-  font-size: 13px;
-  font-weight: 900;
-}
-
-.chart-loading.show {
-  display: flex;
-}
-
-/* TradingView lightweight logo/link 숨김 */
 .tv-chart a,
 .tv-chart a[href*="tradingview"],
 .tv-chart a[href*="tradingview.com"],
+.tv-chart .tv-lightweight-charts a,
 .tv-lightweight-charts a {
-  display: none !important;
-  opacity: 0 !important;
-  visibility: hidden !important;
-  pointer-events: none !important;
-}
-
-
-/* =========================================================
-   Investment note modal
-   ========================================================= */
-.my-stock-modal {
-  position: fixed;
-  inset: 0;
-  z-index: 10000;
   display: none;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+
+/* 헤더 액션 정리: 로고가 홈 역할, 로그인은 오른쪽 끝 */
+.bv-header-actions {
+  margin-left: auto;
+  display: inline-flex;
   align-items: center;
-  justify-content: center;
-  padding: 24px;
-  background: rgba(2, 6, 23, 0.66);
-  backdrop-filter: blur(10px);
-}
-
-.my-stock-modal.open,
-.my-stock-modal.is-open {
-  display: flex;
-}
-
-.my-stock-panel {
-  width: min(780px, calc(100vw - 32px));
-  max-height: min(820px, calc(100vh - 42px));
-  overflow: hidden;
-  border-radius: 24px;
-  border: 1px solid rgba(96, 165, 250, 0.24);
-  background:
-    radial-gradient(circle at top right, rgba(56, 189, 248, 0.12), transparent 36%),
-    linear-gradient(180deg, #0f172a, #07101d);
-  box-shadow: var(--shadow-modal);
-  display: flex;
-  flex-direction: column;
-  color: #ffffff;
-}
-
-.my-stock-head {
+  gap: 8px;
   flex: 0 0 auto;
-  padding: 18px 20px;
-  border-bottom: 1px solid rgba(148, 163, 184, 0.14);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 14px;
 }
 
-.my-stock-head h2 {
-  margin: 0;
+.bv-header-actions .bv-login-link {
+  border-color: rgba(37, 99, 235, 0.92);
+  background: linear-gradient(135deg, #2563eb, #0ea5e9);
   color: #ffffff;
-  font-size: 22px;
-  font-weight: 1000;
-  letter-spacing: -0.05em;
 }
 
-.my-stock-head p {
-  margin: 6px 0 0;
-  color: #9fb0c8;
-  font-size: 13px;
-  font-weight: 800;
+.avg-calc-card {
+  max-width: none;
 }
 
-.my-stock-summary-grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 10px;
-  padding: 16px 20px 0;
+.avg-calc-row-head span,
+.avg-calc-row select,
+.avg-calc-row input,
+.avg-calc-row output {
+  white-space: nowrap;
 }
 
-.my-stock-summary-card {
-  min-width: 0;
-  padding: 14px;
-  border-radius: 16px;
-  background: rgba(2, 6, 23, 0.48);
-  border: 1px solid rgba(148, 163, 184, 0.14);
+.avg-calc-row output {
+  font-size: 12px;
 }
 
-.my-stock-summary-card span {
+.avg-calc-result strong {
+  white-space: nowrap;
+}
+
+
+.invest-badge-trades {
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid rgba(148, 163, 184, 0.18);
+}
+
+.invest-badge-trades small {
   display: block;
-  color: #8aa3c3;
-  font-size: 11px;
+  color: #cbd5e1;
+  font-size: 10px;
   font-weight: 900;
-}
-
-.my-stock-summary-card strong {
-  display: block;
-  margin-top: 7px;
-  color: #ffffff;
-  font-size: 18px;
-  font-weight: 1000;
+  line-height: 1.55;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.my-stock-table-wrap {
-  margin: 16px 20px 0;
-  border-radius: 16px;
-  border: 1px solid rgba(148, 163, 184, 0.14);
-  overflow: auto;
-  max-height: 260px;
-  background: rgba(2, 6, 23, 0.36);
-}
 
-.my-stock-table {
-  width: 100%;
-  border-collapse: collapse;
-  min-width: 520px;
-}
-
-.my-stock-table th,
-.my-stock-table td {
-  padding: 11px 12px;
-  border-bottom: 1px solid rgba(148, 163, 184, 0.10);
-  color: #dbeafe;
-  font-size: 13px;
-  font-weight: 850;
-  text-align: right;
-  white-space: nowrap;
-}
-
-.my-stock-table th:first-child,
-.my-stock-table td:first-child {
-  text-align: left;
-}
-
-.my-stock-table th {
-  color: #8aa3c3;
-  background: rgba(15, 23, 42, 0.48);
-  font-size: 12px;
-  font-weight: 1000;
-}
-
-.my-stock-table tr:last-child td {
-  border-bottom: 0;
-}
-
-.my-stock-memo {
-  display: grid;
-  gap: 8px;
-  margin: 16px 20px 0;
-}
-
-.my-stock-memo span {
-  color: #9fb0c8;
-  font-size: 12px;
-  font-weight: 1000;
-}
-
-.my-stock-memo textarea {
-  width: 100%;
-  min-height: 94px;
-  resize: vertical;
-  border-radius: 16px;
-  border: 1px solid rgba(96, 165, 250, 0.24);
-  background: rgba(2, 6, 23, 0.56);
-  color: #ffffff;
-  padding: 12px;
-  outline: none;
-  font-size: 13px;
-  font-weight: 850;
-  line-height: 1.55;
-}
-
-.my-stock-memo textarea:focus {
-  border-color: rgba(56, 189, 248, 0.70);
-  box-shadow: 0 0 0 4px rgba(56, 189, 248, 0.10);
-}
-
-.my-stock-actions {
-  flex: 0 0 auto;
-  display: flex;
-  justify-content: flex-end;
-  gap: 9px;
-  padding: 16px 20px 20px;
-}
-
-.my-stock-actions button {
-  height: 40px;
-  padding: 0 15px;
-  border: 0;
-  border-radius: 13px;
-  color: #ffffff;
-  font-size: 13px;
-  font-weight: 1000;
-}
-
-.my-stock-save {
-  background: linear-gradient(135deg, #2563eb, #0ea5e9);
-}
-
-.my-stock-delete {
-  background: rgba(239, 68, 68, 0.16);
-  color: #fecaca !important;
-}
-
-
-/* =========================================================
-   Recover v2 safety layout
-   - 20_layout_chart.css가 캐시되어도 최종 레이아웃을 보호
-   ========================================================= */
-.bitgak-chart-body .bv-layout,
-.bitgak-chart-body .bv-layout-full {
-  grid-template-columns: 520px minmax(430px, 1fr) 320px;
-}
-
-.bitgak-chart-body .bv-left-panel {
-  width: auto;
+/* Recover v2: 계산기 폭/행 깨짐 방지 */
+.avg-calc-card {
   min-width: 0;
-  padding: 14px 18px;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
 }
 
-.bitgak-chart-body .avg-calc-card {
-  width: 100%;
+.avg-calc-row select,
+.avg-calc-row input {
   min-width: 0;
-  overflow: hidden;
 }
 
-.bitgak-chart-body .avg-calc-row {
-  grid-template-columns: 62px 88px 66px minmax(128px, 1fr) 58px;
+.avg-calc-row .avg-price-input {
+  max-width: 88px;
 }
 
-.bitgak-chart-body .avg-calc-row output {
-  text-align: left;
+.avg-calc-row .avg-qty-input {
+  max-width: 66px;
 }
 
-.bitgak-chart-body .avg-row-actions {
+.avg-row-actions {
   width: 56px;
   min-width: 56px;
   display: inline-flex;
@@ -358,186 +902,186 @@
   gap: 4px;
 }
 
-.bitgak-chart-body .invest-chart-badge {
-  right: 12px;
-  bottom: 42px;
-  left: auto;
-  top: auto;
+.bv-left-panel .avg-calc-card {
+  width: 100%;
 }
 
-@media (max-width: 1700px) {
-  .bitgak-chart-body .bv-layout,
-  .bitgak-chart-body .bv-layout-full {
-    grid-template-columns: 500px minmax(420px, 1fr) 300px;
-  }
-
-  .bitgak-chart-body .avg-calc-row {
-    grid-template-columns: 58px 84px 60px minmax(118px, 1fr) 54px;
-  }
-}
-
-@media (max-width: 1450px) {
-  .bitgak-chart-body .bv-layout,
-  .bitgak-chart-body .bv-layout-full {
-    grid-template-columns: 480px minmax(0, 1fr);
-  }
-
-  .bitgak-chart-body .bv-symbol-panel {
-    display: none;
-  }
-}
-
-@media (max-width: 1120px) {
-  .bitgak-chart-body .bv-layout,
-  .bitgak-chart-body .bv-layout-full {
-    grid-template-columns: 1fr;
-  }
-
-  .bitgak-chart-body .bv-left-panel {
-    display: none;
-  }
+.bv-main {
+  min-width: 0;
 }
 
 
-/* =========================================================
-   Compact calc + palette safety layout
-   ========================================================= */
-.bitgak-chart-body .bv-layout,
-.bitgak-chart-body .bv-layout-full {
-  grid-template-columns: 470px minmax(500px, 1fr) 320px;
-}
-
-.bitgak-chart-body .bv-left-panel {
-  padding: 14px;
-}
-
-.bitgak-chart-body .avg-calc-card {
-  padding: 16px 14px;
-}
-
-.bitgak-chart-body .avg-calc-row {
-  grid-template-columns: 60px 84px 64px 104px 52px;
-}
-
-.bitgak-chart-body .avg-calc-row output {
-  text-align: left;
-}
-
-.bitgak-chart-body .avg-row-actions {
-  width: 52px;
-  min-width: 52px;
-}
-
-@media (max-width: 1700px) {
-  .bitgak-chart-body .bv-layout,
-  .bitgak-chart-body .bv-layout-full {
-    grid-template-columns: 455px minmax(460px, 1fr) 300px;
-  }
-
-  .bitgak-chart-body .avg-calc-row {
-    grid-template-columns: 58px 80px 60px 100px 50px;
-  }
-}
-
-@media (max-width: 1450px) {
-  .bitgak-chart-body .bv-layout,
-  .bitgak-chart-body .bv-layout-full {
-    grid-template-columns: 450px minmax(0, 1fr);
-  }
-}
-
-
-/* =========================================================
-   Auto-save + compact amount + top-left note final safety
-   ========================================================= */
-.bitgak-chart-body .bv-layout,
-.bitgak-chart-body .bv-layout-full {
-  grid-template-columns: 450px minmax(520px, 1fr) 320px;
-}
-
-.bitgak-chart-body .avg-calc-row {
-  grid-template-columns: 58px 102px 62px 76px 52px;
-}
-
-.bitgak-chart-body .avg-calc-row output {
-  text-align: left;
-}
-
-.bitgak-chart-body .avg-calc-row .avg-price-input {
+/* Compact calculator + TradingView-like color palette */
+.avg-calc-row .avg-price-input {
   max-width: 102px;
 }
 
-.bitgak-chart-body .avg-calc-row .avg-amount-output {
-  max-width: 76px;
+.avg-calc-row .avg-qty-input {
+  max-width: 62px;
 }
 
-.bitgak-chart-body .avg-line-color-button {
-  border-color: rgba(255, 255, 255, 0.16);
+.avg-calc-row .avg-amount-output {
+  max-width: 76px;
+  min-width: 0;
+}
+
+.avg-row-actions {
+  width: 52px;
+  min-width: 52px;
+  display: inline-flex;
+  justify-content: flex-end;
+  gap: 4px;
+}
+
+.avg-line-color-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.avg-line-color-button {
+  width: 30px;
+  height: 30px;
+  flex: 0 0 auto;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: var(--line-color, #60a5fa);
   box-shadow: inset 0 0 0 2px rgba(2, 6, 23, 0.60);
 }
 
-.bitgak-chart-body .avg-line-color-button:hover,
-.bitgak-chart-body .avg-line-color-button.active {
+.avg-line-color-button:hover,
+.avg-line-color-button.active {
   border-color: rgba(255, 255, 255, 0.32);
   box-shadow:
     inset 0 0 0 2px rgba(2, 6, 23, 0.58),
     0 0 0 3px rgba(255, 255, 255, 0.08);
 }
 
-.bitgak-chart-body .avg-color-dot:hover,
-.bitgak-chart-body .avg-color-dot.active {
-  outline: none;
+.avg-line-color-label {
+  color: #cbd5e1;
+  font-size: 10px;
+  font-weight: 900;
+  white-space: nowrap;
 }
 
-.bitgak-chart-body .avg-color-dot.active {
+.avg-color-popover {
+  position: fixed;
+  z-index: 100001;
+  width: 348px;
+  max-width: calc(100vw - 24px);
+  padding: 18px;
+  border-radius: 22px;
+  background:
+    radial-gradient(circle at top right, rgba(56, 189, 248, 0.11), transparent 38%),
+    rgba(8, 17, 31, 0.985);
+  border: 1px solid rgba(96, 165, 250, 0.28);
+  box-shadow: 0 26px 80px rgba(0, 0, 0, 0.50);
+  backdrop-filter: blur(16px);
+  display: none;
+}
+
+.avg-color-popover.open {
+  display: block;
+}
+
+.avg-color-popover-title {
+  margin: 0 0 14px;
+  color: #ffffff;
+  font-size: 17px;
+  font-weight: 1000;
+  letter-spacing: -0.04em;
+}
+
+.avg-color-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 42px);
+  gap: 11px 12px;
+}
+
+.avg-color-dot {
+  width: 42px;
+  height: 42px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--dot-color);
+  box-shadow:
+    inset 0 0 0 1px rgba(255,255,255,0.16),
+    0 0 0 1px rgba(15, 23, 42, 0.50);
+}
+
+.avg-color-dot:hover,
+.avg-color-dot.active {
   box-shadow:
     inset 0 0 0 3px rgba(2, 6, 23, 0.68),
     0 0 0 2px rgba(255, 255, 255, 0.58),
     0 10px 18px rgba(0, 0, 0, 0.24);
 }
 
-.bitgak-chart-body .invest-chart-badge {
-  left: 12px;
-  top: 12px;
-  right: auto;
-  bottom: auto;
+.avg-color-dot.active {
+  box-shadow:
+    inset 0 0 0 3px rgba(2, 6, 23, 0.72),
+    0 0 0 3px rgba(56, 189, 248, 0.70);
 }
 
-.bitgak-chart-body .bv-v5-pane-label {
+.avg-color-dot[data-color="#ffffff"] {
+  box-shadow:
+    inset 0 0 0 1px rgba(15, 23, 42, 0.35),
+    0 0 0 1px rgba(148, 163, 184, 0.24);
+}
+
+
+.avg-line-color-wrap input[type="color"] {
+  display: none;
+}
+
+
+/* Pane label anti overlap */
+.bv-v5-pane-label {
   height: 24px;
   min-width: 96px;
+  padding: 0 10px 0 8px;
   border: 1px solid rgba(148, 163, 184, 0.18);
   background: rgba(15, 23, 42, 0.84);
+  box-shadow: 0 10px 20px rgba(15, 23, 42, 0.20);
 }
 
-@media (max-width: 1700px) {
-  .bitgak-chart-body .bv-layout,
-  .bitgak-chart-body .bv-layout-full {
-    grid-template-columns: 440px minmax(500px, 1fr) 300px;
-  }
-
-  .bitgak-chart-body .avg-calc-row {
-    grid-template-columns: 56px 96px 58px 72px 50px;
-  }
-}
-
-@media (max-width: 1450px) {
-  .bitgak-chart-body .bv-layout,
-  .bitgak-chart-body .bv-layout-full {
-    grid-template-columns: 430px minmax(0, 1fr);
-  }
+.bv-v5-pane-label + .bv-v5-pane-label {
+  margin-top: 6px;
 }
 
 
-/* =========================================================
-   Pane/calc/search fix final safety
-   ========================================================= */
+/* Calc row revised: 매수/매도는 톱니바퀴 속성창에서 선택 */
+.avg-step-label {
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 1000;
+  white-space: nowrap;
+}
+
+.avg-line-type-select {
+  width: 100%;
+  height: 30px;
+  min-width: 0;
+  border: 1px solid rgba(148, 163, 184, 0.20);
+  border-radius: 10px;
+  background: rgba(15, 23, 42, 0.82);
+  color: #ffffff;
+  padding: 0 8px;
+  font-size: 11px;
+  font-weight: 900;
+  outline: none;
+}
+
+
+/* Pane/calc/search fix final safety */
 .bitgak-chart-body .avg-calc-row {
   grid-template-columns: 42px minmax(112px, 1fr) 72px 96px 52px;
 }
 
 .bitgak-chart-body .avg-line-style-panel {
-  grid-template-columns: 46px 74px minmax(0, 1fr) 70px 72px;
+  grid-template-columns: 74px minmax(0, 1fr) 70px 72px;
 }
 
 .bitgak-chart-body .avg-calc-row .avg-price-input {
@@ -587,93 +1131,109 @@
   box-shadow: 0 10px 22px rgba(15, 23, 42, 0.22);
 }
 
-.bitgak-chart-body .invest-chart-badge {
-  left: 12px;
-  top: 12px;
-  right: auto;
-  bottom: auto;
-}
 
-
-/* =========================================================
-   Final UI note / pane / search safety
-   ========================================================= */
-.bitgak-chart-body .avg-line-style-panel {
-  grid-template-columns: 74px minmax(0, 1fr) 70px 72px;
-}
-
-.bitgak-chart-body .avg-line-style-panel > span {
+/* Property panel cleanup */
+.avg-line-style-panel > span {
   display: none;
 }
 
-.bitgak-chart-body .avg-line-color-button,
-.bitgak-chart-body .avg-line-color-button:hover,
-.bitgak-chart-body .avg-line-color-button.active {
+.avg-line-style-panel {
+  grid-template-columns: 74px minmax(0, 1fr) 70px 72px;
+}
+
+.avg-line-color-button {
+  border: 0;
+  box-shadow: none;
+  background: var(--line-color, #60a5fa);
+}
+
+.avg-line-color-button:hover,
+.avg-line-color-button.active {
   border: 0;
   box-shadow: none;
 }
 
-.bitgak-chart-body .avg-color-dot,
-.bitgak-chart-body .avg-color-dot:hover,
-.bitgak-chart-body .avg-color-dot.active {
+.avg-color-dot:hover,
+.avg-color-dot.active {
   outline: none;
   box-shadow: none;
   transform: none;
 }
 
-.bitgak-chart-body .invest-chart-badge {
+.avg-color-dot {
+  box-shadow: none;
+}
+
+.avg-color-dot[data-color="#ffffff"] {
+  box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.25);
+}
+
+/* Note badge color customization */
+.invest-chart-badge {
   background: var(--note-bg, rgba(15, 23, 42, 0.82));
+  color: var(--note-text, #eaf2ff);
+  border-color: color-mix(in srgb, var(--note-accent, #67e8f9) 42%, transparent);
+}
+
+.invest-chart-badge strong,
+.invest-chart-badge em,
+.invest-chart-badge small {
   color: var(--note-text, #eaf2ff);
 }
 
-.bitgak-chart-body .invest-chart-badge b {
+.invest-chart-badge b {
   color: var(--note-accent, #67e8f9);
 }
 
-.bitgak-chart-body .bv-search {
-  width: min(430px, 34vw);
-  min-width: 280px;
-  height: 40px;
-  position: relative;
-  display: flex;
+.my-stock-style-box {
+  margin: 16px 20px 0;
+  padding: 14px;
+  border-radius: 16px;
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  background: rgba(2, 6, 23, 0.36);
+  display: grid;
+  gap: 12px;
+}
+
+.my-stock-style-row {
+  display: grid;
+  grid-template-columns: 82px minmax(0, 1fr);
   align-items: center;
+  gap: 12px;
+}
+
+.my-stock-style-row > span {
+  color: #9fb0c8;
+  font-size: 12px;
+  font-weight: 1000;
+}
+
+.note-color-palette {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.note-color-palette button {
+  width: 26px;
+  height: 26px;
   border-radius: 999px;
-  border: 1px solid rgba(96, 165, 250, 0.26);
-  background: rgba(15, 23, 42, 0.96);
-}
-
-.bitgak-chart-body .bv-search input {
-  flex: 1 1 auto;
-  width: auto;
-  height: 100%;
   border: 0;
-  outline: 0;
-  background: transparent;
-  color: #eaf2ff;
-  padding: 0 14px 0 18px;
-  font-size: 14px;
-  font-weight: 850;
+  background: var(--dot-color);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.08);
 }
 
-.bitgak-chart-body .bv-search button {
-  flex: 0 0 36px;
-  width: 36px;
-  height: 100%;
-  border: 0;
-  border-left: 1px solid rgba(148, 163, 184, 0.12);
-  border-radius: 0 999px 999px 0;
-  background: transparent;
-  color: #a8c7f7;
+.note-color-palette button.active {
+  box-shadow:
+    inset 0 0 0 3px rgba(2, 6, 23, 0.58),
+    0 0 0 2px rgba(255,255,255,0.42);
 }
 
-.bitgak-chart-body .bv-v5-pane-label {
+/* Pane labels should not eat each other */
+.bv-v5-pane-label {
   min-width: 64px;
   height: 24px;
   z-index: 40;
-}
-
-.bitgak-chart-body .bv-header-actions button#copyCodeBtn {
-  display: none;
 }
 
 
@@ -836,7 +1396,7 @@
   flex: 0 0 auto;
 }
 
-.bitgak-chart-body .avg-line-color-wrap input[type='color'] { display: none; }
+.avg-line-color-wrap input[type='color'] { display: none; }
 
 
 /* =========================================================

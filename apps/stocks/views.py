@@ -3,6 +3,7 @@ from types import SimpleNamespace
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 import ast
+import re
 
 import pandas as pd
 from django.core.cache import cache
@@ -239,44 +240,128 @@ def stock_detail(request, code):
     )
 
 
+
 def _normalize_interval(value):
-    value = str(value or "1d").lower().strip()
+    """
+    프론트에서 선택한 interval을 그대로 살린다.
+    기존 코드처럼 1m/5m/1h를 1d로 바꾸면 분봉/시간봉 버튼을 눌러도
+    서버가 계속 일봉만 내려주게 된다.
+    """
+    value = str(value or "1d").strip()
+    lower = value.lower()
 
     mapping = {
+        "1": "1m",
+        "2": "2m",
+        "3": "3m",
+        "5": "5m",
+        "10": "10m",
+        "15": "15m",
+        "30": "30m",
+        "45": "45m",
+        "60": "60m",
+
+        "1m": "1m",
+        "2m": "2m",
+        "3m": "3m",
+        "5m": "5m",
+        "10m": "10m",
+        "15m": "15m",
+        "30m": "30m",
+        "45m": "45m",
+        "60m": "60m",
+
+        "1h": "1h",
+        "2h": "2h",
+        "3h": "3h",
+        "4h": "4h",
+        "1시간": "1h",
+        "2시간": "2h",
+        "3시간": "3h",
+        "4시간": "4h",
+
         "1d": "1d",
         "d": "1d",
         "day": "1d",
-        "1m": "1d",     # 분봉은 pykrx에서 안정적으로 제공하지 않아 일봉으로 표시
-        "3m": "1d",
-        "5m": "1d",
-        "15m": "1d",
-        "30m": "1d",
-        "1h": "1d",
-        "2h": "1d",
-        "4h": "1d",
+        "일": "1d",
+
         "1w": "1w",
         "w": "1w",
         "week": "1w",
+        "주": "1w",
+
         "1mo": "1mo",
+        "1mth": "1mo",
         "mo": "1mo",
         "month": "1mo",
+        "월": "1mo",
+
+        "3mo": "3mo",
+        "6mo": "6mo",
+        "12mo": "12mo",
+        "3mth": "3mo",
+        "6mth": "6mo",
+        "12mth": "12mo",
+        "3개월": "3mo",
+        "6개월": "6mo",
+        "12개월": "12mo",
+        "3달": "3mo",
+        "6달": "6mo",
+        "12달": "12mo",
+
         "1y": "1y",
         "y": "1y",
         "year": "1y",
     }
 
-    return mapping.get(value, "1d")
+    return mapping.get(lower, mapping.get(value, "1d"))
+
 
 
 def _normalize_range(value):
     value = str(value or "all").lower().strip()
 
-    if value in ["1d", "5d", "1m", "3m", "6m", "1y", "3y", "5y", "10y", "all"]:
-        return value
+    mapping = {
+        "1": "1d",
+        "5": "5d",
+        "30": "30d",
+        "60": "60d",
+        "90": "90d",
+        "120": "120d",
+        "180": "6m",
+        "365": "1y",
+        "1d": "1d",
+        "5d": "5d",
+        "30d": "30d",
+        "60d": "60d",
+        "90d": "90d",
+        "120d": "120d",
+        "1m": "1m",
+        "3m": "3m",
+        "6m": "6m",
+        "1y": "1y",
+        "3y": "3y",
+        "5y": "5y",
+        "10y": "10y",
+        "all": "all",
+    }
+
+    if value in mapping:
+        return mapping[value]
 
     if value.isdigit():
         n = int(value)
 
+        if n <= 1:
+            return "1d"
+        if n <= 5:
+            return "5d"
+        if n <= 30:
+            return "30d"
+        if n <= 60:
+            return "60d"
+        if n <= 90:
+            return "90d"
         if n <= 130:
             return "6m"
         if n <= 260:
@@ -288,13 +373,22 @@ def _normalize_range(value):
     return "all"
 
 
+
 def _range_start_date(range_key):
     today = datetime.today().date()
 
     if range_key == "1d":
-        return today - timedelta(days=40)
+        return today - timedelta(days=7)
     if range_key == "5d":
-        return today - timedelta(days=60)
+        return today - timedelta(days=14)
+    if range_key == "30d":
+        return today - timedelta(days=45)
+    if range_key == "60d":
+        return today - timedelta(days=80)
+    if range_key == "90d":
+        return today - timedelta(days=120)
+    if range_key == "120d":
+        return today - timedelta(days=160)
     if range_key == "1m":
         return today - timedelta(days=120)
     if range_key == "3m":
@@ -313,13 +407,22 @@ def _range_start_date(range_key):
     return datetime(2000, 1, 1).date()
 
 
+
 def _visible_start_date(range_key, last_date):
     if range_key == "all":
         return None
     if range_key == "1d":
-        return last_date - pd.DateOffset(days=3)
+        return last_date - pd.DateOffset(days=1)
     if range_key == "5d":
-        return last_date - pd.DateOffset(days=10)
+        return last_date - pd.DateOffset(days=5)
+    if range_key == "30d":
+        return last_date - pd.DateOffset(days=30)
+    if range_key == "60d":
+        return last_date - pd.DateOffset(days=60)
+    if range_key == "90d":
+        return last_date - pd.DateOffset(days=90)
+    if range_key == "120d":
+        return last_date - pd.DateOffset(days=120)
     if range_key == "1m":
         return last_date - pd.DateOffset(months=1)
     if range_key == "3m":
@@ -427,6 +530,204 @@ def _naver_sise_json(symbol, fromdate, todate):
     return result
 
 
+def _is_intraday_interval(interval):
+    interval = _normalize_interval(interval)
+    return interval.endswith("m") or interval.endswith("h") or interval == "60m"
+
+
+def _interval_minutes(interval):
+    interval = _normalize_interval(interval)
+
+    if interval.endswith("m"):
+        try:
+            return int(interval[:-1])
+        except ValueError:
+            return 1
+
+    if interval.endswith("h"):
+        try:
+            return int(interval[:-1]) * 60
+        except ValueError:
+            return 60
+
+    if interval == "60m":
+        return 60
+
+    return 0
+
+
+def _intraday_count_for_range(range_key, interval):
+    """
+    Naver fchart는 원본 1분봉 count 기준으로 내려온다.
+    기존처럼 시간봉에서 count를 줄이면 2시간/4시간 차트가 몇 봉만 나오므로,
+    선택한 시간봉과 무관하게 충분한 원본 minute 데이터를 받아 서버에서 재집계한다.
+    """
+    range_key = _normalize_range(range_key)
+
+    if range_key == "1d":
+        return 900
+    if range_key == "5d":
+        return 3200
+    if range_key in ["30d", "1m"]:
+        return 9000
+    if range_key == "60d":
+        return 16000
+    if range_key in ["90d", "3m"]:
+        return 24000
+    if range_key in ["120d", "6m"]:
+        return 30000
+
+    return 30000
+
+def _naver_fchart_ohlcv(symbol, timeframe="day", count=2000):
+    """
+    Naver fchart endpoint.
+    minute가 지원되지 않는 종목/상황이면 빈 DataFrame을 반환하고 일봉 fallback으로 넘어간다.
+    """
+    symbol = str(symbol or "").strip().upper()
+
+    if not symbol:
+        return _empty_ohlcv()
+
+    params = urlencode(
+        {
+            "symbol": symbol,
+            "timeframe": timeframe,
+            "count": int(count),
+            "requestType": "0",
+        }
+    )
+
+    url = f"https://fchart.stock.naver.com/sise.nhn?{params}"
+
+    request = Request(
+        url,
+        headers={
+            "User-Agent": "Mozilla/5.0",
+            "Referer": "https://finance.naver.com/",
+        },
+    )
+
+    try:
+        with urlopen(request, timeout=7) as response:
+            raw = response.read().decode("utf-8", errors="ignore")
+    except Exception:
+        return _empty_ohlcv()
+
+    rows = []
+
+    # 예: <item data="20240516153000|78000|78500|77500|78200|1234567" />
+    for data_text in re.findall(r'data="([^"]+)"', raw):
+        parts = data_text.split("|")
+
+        if len(parts) < 6:
+            continue
+
+        date_raw = parts[0].strip()
+
+        if len(date_raw) >= 12:
+            date_value = pd.to_datetime(date_raw[:14], format="%Y%m%d%H%M%S", errors="coerce")
+        else:
+            date_value = pd.to_datetime(date_raw[:8], format="%Y%m%d", errors="coerce")
+
+        open_value = _to_float(parts[1])
+        high_value = _to_float(parts[2])
+        low_value = _to_float(parts[3])
+        close_value = _to_float(parts[4])
+        volume_value = _to_float(parts[5]) or 0
+
+        if pd.isna(date_value) or close_value is None or close_value <= 0:
+            continue
+
+        rows.append(
+            {
+                "date": date_value,
+                "open": open_value or close_value,
+                "high": high_value or close_value,
+                "low": low_value or close_value,
+                "close": close_value,
+                "volume": volume_value,
+            }
+        )
+
+    if not rows:
+        return _empty_ohlcv()
+
+    result = pd.DataFrame(rows)
+    result = result.sort_values("date").drop_duplicates(subset=["date"]).reset_index(drop=True)
+
+    return result
+
+
+def _fetch_naver_intraday(code, range_key, interval):
+    code = _clean_code(code)
+
+    if not code:
+        return _empty_ohlcv()
+
+    count = _intraday_count_for_range(range_key, interval)
+
+    # 1차: fchart minute
+    df = _naver_fchart_ohlcv(code, timeframe="minute", count=count)
+
+    if not df.empty:
+        return df
+
+    # 2차: 일부 환경에서 min으로 응답하는 경우 대비
+    df = _naver_fchart_ohlcv(code, timeframe="min", count=count)
+
+    if not df.empty:
+        return df
+
+    return _empty_ohlcv()
+
+
+def _aggregate_intraday_interval(df, interval):
+    if df.empty:
+        return df
+
+    minutes = _interval_minutes(interval)
+
+    if minutes <= 1:
+        return df.sort_values("date").reset_index(drop=True)
+
+    df = df.copy().sort_values("date")
+    df = df.set_index("date")
+
+    if minutes < 60:
+        rule = f"{minutes}min"
+    else:
+        rule = f"{minutes}min"
+
+    grouped = df.resample(rule, origin="start_day", label="left", closed="left").agg(
+        {
+            "open": "first",
+            "high": "max",
+            "low": "min",
+            "close": "last",
+            "volume": "sum",
+        }
+    )
+
+    grouped = grouped.dropna(subset=["open", "high", "low", "close"])
+    grouped = grouped.reset_index().sort_values("date").reset_index(drop=True)
+
+    return grouped
+
+
+def _daily_interval_from_display_interval(interval):
+    interval = _normalize_interval(interval)
+
+    if interval == "1w":
+        return "1w"
+    if interval in ["1mo", "3mo", "6mo", "12mo"]:
+        return interval
+    if interval == "1y":
+        return "1y"
+
+    return "1d"
+
+
 def _standardize_krx_df(df):
     if df is None or df.empty:
         return _empty_ohlcv()
@@ -497,10 +798,12 @@ def _fetch_pykrx_daily(code, range_key):
     return _empty_ohlcv()
 
 
+
 def _aggregate_interval(df, interval):
     if df.empty:
         return df
 
+    interval = _normalize_interval(interval)
     df = df.copy().sort_values("date")
 
     if interval == "1d":
@@ -512,6 +815,12 @@ def _aggregate_interval(df, interval):
         rule = "W-FRI"
     elif interval == "1mo":
         rule = "ME"
+    elif interval == "3mo":
+        rule = "3ME"
+    elif interval == "6mo":
+        rule = "6ME"
+    elif interval == "12mo":
+        rule = "12ME"
     elif interval == "1y":
         rule = "YE"
     else:
@@ -528,12 +837,14 @@ def _aggregate_interval(df, interval):
             }
         )
     except ValueError:
-        if interval == "1mo":
-            fallback_rule = "M"
-        elif interval == "1y":
-            fallback_rule = "Y"
-        else:
-            fallback_rule = "W-FRI"
+        fallback_map = {
+            "1mo": "M",
+            "3mo": "3M",
+            "6mo": "6M",
+            "12mo": "12M",
+            "1y": "Y",
+        }
+        fallback_rule = fallback_map.get(interval, "W-FRI")
 
         grouped = df.resample(fallback_rule).agg(
             {
@@ -546,7 +857,7 @@ def _aggregate_interval(df, interval):
         )
 
     grouped = grouped.dropna(subset=["open", "high", "low", "close"])
-    grouped = grouped.reset_index()
+    grouped = grouped.reset_index().sort_values("date").reset_index(drop=True)
 
     return grouped
 
@@ -582,37 +893,49 @@ def _calc_ma(rows, period):
     return result
 
 
+
 def _make_payload(code, range_key, interval):
     code = _clean_code(code)
+    interval = _normalize_interval(interval)
+    range_key = _normalize_range(range_key)
     stock = _get_stock(code)
-    daily_df = _fetch_pykrx_daily(code, range_key)
 
-    if daily_df.empty:
-        return {
-            "ok": False,
-            "message": "차트 데이터를 가져오지 못했습니다. pykrx와 Naver Finance fallback 모두 실패했습니다.",
-            "code": code,
-            "name": stock.name,
-            "market": getattr(stock, "market", "KRX"),
-            "results": [],
-            "rows": [],
-            "ohlc": [],
-            "volume": [],
-            "ma20": [],
-            "ma60": [],
-            "ma120": [],
-        }
+    intraday_requested = _is_intraday_interval(interval)
+    intraday_source_used = False
+    source = "pykrx/naver"
 
-    chart_df = _aggregate_interval(daily_df, interval)
-    chart_df = _apply_visible_range(chart_df, range_key)
+    if intraday_requested:
+        base_df = _fetch_naver_intraday(code, range_key, interval)
+
+        if not base_df.empty:
+            chart_df = _aggregate_intraday_interval(base_df, interval)
+            chart_df = _apply_visible_range(chart_df, range_key)
+            intraday_source_used = True
+            source = "naver-minute"
+        else:
+            # 분봉을 못 받으면 일봉으로 조용히 변환하지 말고 fallback임을 payload에 명시한다.
+            daily_df = _fetch_pykrx_daily(code, "6m" if range_key in ["1d", "5d", "30d", "60d", "90d"] else range_key)
+            chart_df = _aggregate_interval(daily_df, "1d")
+            chart_df = _apply_visible_range(chart_df, "6m" if range_key in ["1d", "5d", "30d", "60d", "90d"] else range_key)
+            source = "pykrx/naver-daily-fallback"
+    else:
+        daily_df = _fetch_pykrx_daily(code, range_key)
+        daily_interval = _daily_interval_from_display_interval(interval)
+        chart_df = _aggregate_interval(daily_df, daily_interval)
+        chart_df = _apply_visible_range(chart_df, range_key)
 
     if chart_df.empty:
         return {
             "ok": False,
-            "message": "표시할 차트 데이터가 없습니다.",
+            "message": "표시할 차트 데이터가 없습니다. 분봉/시간봉은 Naver minute 데이터가 제한될 수 있습니다.",
             "code": code,
             "name": stock.name,
             "market": getattr(stock, "market", "KRX"),
+            "range": range_key,
+            "interval": interval,
+            "requested_interval": interval,
+            "intraday": False,
+            "intraday_requested": intraday_requested,
             "results": [],
             "rows": [],
             "ohlc": [],
@@ -627,7 +950,13 @@ def _make_payload(code, range_key, interval):
     volume = []
 
     for _, row in chart_df.iterrows():
-        time_value = pd.to_datetime(row["date"]).strftime("%Y-%m-%d")
+        date_value = pd.to_datetime(row["date"])
+
+        if intraday_source_used:
+            time_value = date_value.strftime("%Y-%m-%d %H:%M")
+        else:
+            time_value = date_value.strftime("%Y-%m-%d")
+
         open_price = int(float(row["open"]))
         high_price = int(float(row["high"]))
         low_price = int(float(row["low"]))
@@ -659,15 +988,22 @@ def _make_payload(code, range_key, interval):
     change = int(last["close"] - prev["close"])
     change_rate = round((change / prev["close"]) * 100, 2) if prev["close"] else 0
 
+    message = ""
+    if intraday_requested and not intraday_source_used:
+        message = "분봉/시간봉 원본 데이터를 가져오지 못해 일봉 데이터로 fallback되었습니다. Naver minute 응답을 확인하세요."
+
     return {
         "ok": True,
-        "source": "pykrx/naver",
+        "source": source,
+        "message": message,
         "code": code,
         "name": stock.name,
         "market": getattr(stock, "market", "KRX"),
         "range": range_key,
         "interval": interval,
-        "intraday": False,
+        "requested_interval": interval,
+        "intraday": intraday_source_used,
+        "intraday_requested": intraday_requested,
         "current": {"price": int(last["close"]), "change": change, "change_rate": change_rate},
         "results": results,
         "rows": results,
@@ -681,7 +1017,8 @@ def _make_payload(code, range_key, interval):
 
 @require_GET
 def api_ohlcv(request, code):
-    interval = _normalize_interval(request.GET.get("interval", "1d"))
+    display_interval = request.GET.get("display_interval")
+    interval = _normalize_interval(display_interval or request.GET.get("interval", "1d"))
     range_value = request.GET.get("range")
     pages_value = request.GET.get("pages")
 
@@ -695,6 +1032,16 @@ def api_ohlcv(request, code):
     payload = _make_payload(code, range_key, interval)
 
     return JsonResponse(payload, status=200, json_dumps_params={"ensure_ascii": False})
+
+
+@require_GET
+def api_chart(request):
+    """
+    bitgak_chart_core.js의 apiUrl이 /stocks/api/chart/로 잡혀 있어도 동작하게 하는 호환 엔드포인트.
+    code는 ?code=005930 또는 ?symbol=005930로 받는다.
+    """
+    code = request.GET.get("code") or request.GET.get("symbol") or request.GET.get("ticker") or "005930"
+    return api_ohlcv(request, code)
 
 
 def _clamp(value, min_value=0, max_value=100):

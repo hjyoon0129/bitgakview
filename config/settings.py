@@ -85,6 +85,7 @@ INSTALLED_APPS = [
 
     # BitgakView apps
     "apps.stocks",
+
 ]
 
 
@@ -119,6 +120,7 @@ TEMPLATES = [
 
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
+                "apps.stocks.context_processors.stock_search_payload",
             ],
         },
     },

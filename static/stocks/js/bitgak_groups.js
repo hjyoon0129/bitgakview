@@ -15,6 +15,7 @@
   const SELECTED_KEY = "bitgak_selected_group_v2";
 
   const groupSelect = document.getElementById("groupSelect");
+  let groupCustomSelect = null;
   const selectedGroupName = document.getElementById("selectedGroupName");
   const selectedGroupCount = document.getElementById("selectedGroupCount");
   const selectedSymbolList = document.getElementById("selectedSymbolList");
@@ -123,6 +124,66 @@
     return group;
   }
 
+  function ensureGroupCustomSelect() {
+    if (!groupSelect || groupCustomSelect) return;
+
+    groupSelect.classList.add("bv-select-native-hidden");
+
+    groupCustomSelect = document.createElement("div");
+    groupCustomSelect.id = "groupSelectCustom";
+    groupCustomSelect.className = "bv-select group-custom-select";
+    groupSelect.insertAdjacentElement("afterend", groupCustomSelect);
+
+    groupCustomSelect.addEventListener("click", function (event) {
+      const btn = event.target.closest("[data-bv-select-btn]");
+      if (btn) {
+        event.preventDefault();
+        event.stopPropagation();
+        const wasOpen = groupCustomSelect.classList.contains("open");
+        closeGroupCustomSelect();
+        if (!wasOpen) groupCustomSelect.classList.add("open");
+        return;
+      }
+
+      const option = event.target.closest("[data-group-select-option]");
+      if (!option) return;
+
+      event.preventDefault();
+      event.stopPropagation();
+
+      setSelectedGroupId(option.dataset.groupId);
+      renderSelectedGroup();
+      renderGroupSelect();
+      closeGroupCustomSelect();
+    });
+  }
+
+  function closeGroupCustomSelect() {
+    if (groupCustomSelect) groupCustomSelect.classList.remove("open");
+  }
+
+  function renderGroupCustomSelect() {
+    ensureGroupCustomSelect();
+    if (!groupCustomSelect) return;
+
+    const selected = getSelectedGroup();
+
+    groupCustomSelect.innerHTML = `
+      <button type="button" class="bv-select-btn" data-bv-select-btn aria-haspopup="listbox" aria-expanded="false">
+        <span class="bv-select-label">${escapeHtml(selected.name)} (${selected.items.length})</span>
+      </button>
+      <div class="bv-select-menu" role="listbox">
+        ${groups.map(function (group) {
+          return `
+            <button type="button" class="bv-select-option ${group.id === selectedGroupId ? "active" : ""}" data-group-select-option data-group-id="${escapeHtml(group.id)}">
+              <span>${escapeHtml(group.name)} (${group.items.length})</span>
+            </button>
+          `;
+        }).join("")}
+      </div>
+    `;
+  }
+
   function renderGroupSelect() {
     ensureGroup();
 
@@ -139,6 +200,8 @@
 
       groupSelect.appendChild(option);
     });
+
+    renderGroupCustomSelect();
   }
 
   function renderSelectedGroup() {
@@ -346,6 +409,10 @@
   });
 
   document.addEventListener("click", function (event) {
+    if (groupCustomSelect && !event.target.closest("#groupSelectCustom")) {
+      closeGroupCustomSelect();
+    }
+
     if (
       groupModal &&
       groupModal.classList.contains("open") &&

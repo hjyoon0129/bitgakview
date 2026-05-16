@@ -5,1028 +5,7 @@
 {% block body_class %}bitgak-chart-body{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'stocks/css/bitgak_chart.css' %}">
-
-<style>
-  .bv-home-link {
-    display: inline-flex !important;
-    align-items: center !important;
-    gap: 10px !important;
-    color: inherit !important;
-    text-decoration: none !important;
-    white-space: nowrap !important;
-    line-height: 1 !important;
-  }
-
-  .bv-home-link .bv-logo {
-    flex: 0 0 auto !important;
-  }
-
-  .bv-home-link .bv-brand {
-    display: block !important;
-    line-height: 1 !important;
-    white-space: nowrap !important;
-  }
-
-  .bv-logo-area {
-    display: flex !important;
-    align-items: center !important;
-    min-width: 145px !important;
-  }
-
-  .chart-indicator-overlay {
-    display: none !important;
-  }
-
-  .chart-card-top {
-    gap: 10px;
-    position: relative;
-    z-index: 20;
-    overflow: visible !important;
-  }
-
-  .chart-top-spacer {
-    flex: 1 1 auto;
-  }
-
-  /* ==============================
-     TradingView 스타일 시간봉 드롭다운
-     ============================== */
-
-  .tv-interval-dropdown {
-    position: relative;
-    flex: 0 0 auto;
-    z-index: 80;
-  }
-
-  .tv-interval-btn {
-    height: 34px;
-    min-width: 78px;
-    padding: 0 11px;
-    border: 1px solid rgba(96, 165, 250, 0.28);
-    border-radius: 10px;
-    background: rgba(15, 23, 42, 0.92);
-    color: #eaf2ff;
-    font-size: 13px;
-    font-weight: 1000;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 7px;
-    cursor: pointer;
-    white-space: nowrap;
-    transition: 0.14s ease;
-  }
-
-  .tv-interval-btn:hover,
-  .tv-interval-dropdown.open .tv-interval-btn {
-    border-color: rgba(56, 189, 248, 0.62);
-    background: rgba(56, 189, 248, 0.12);
-    color: #ffffff;
-  }
-
-  .tv-interval-icon {
-    font-size: 14px;
-    line-height: 1;
-    opacity: 0.95;
-  }
-
-  .tv-interval-arrow {
-    font-size: 10px;
-    opacity: 0.72;
-    transform: translateY(1px);
-  }
-
-  .tv-interval-menu {
-    position: absolute;
-    top: 41px;
-    left: 0;
-    width: 176px;
-    max-height: 640px;
-    overflow-y: auto;
-    padding: 8px 0;
-    border-radius: 12px;
-    border: 1px solid rgba(148, 163, 184, 0.24);
-    background: rgba(255, 255, 255, 0.98);
-    box-shadow:
-      0 24px 70px rgba(0, 0, 0, 0.32),
-      0 0 0 1px rgba(15, 23, 42, 0.04);
-    display: none;
-    z-index: 9999;
-  }
-
-  .tv-interval-dropdown.open .tv-interval-menu {
-    display: block;
-  }
-
-  .tv-interval-menu::-webkit-scrollbar {
-    width: 7px;
-  }
-
-  .tv-interval-menu::-webkit-scrollbar-thumb {
-    background: rgba(100, 116, 139, 0.28);
-    border-radius: 999px;
-  }
-
-  .tv-interval-custom {
-    width: 100%;
-    height: 34px;
-    padding: 0 10px;
-    border: 0;
-    background: transparent;
-    color: #111827;
-    font-size: 13px;
-    font-weight: 700;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    cursor: pointer;
-    text-align: left;
-  }
-
-  .tv-interval-custom:hover {
-    background: #f1f5f9;
-  }
-
-  .tv-interval-section {
-    padding: 8px 10px 5px;
-    color: #64748b;
-    font-size: 11px;
-    font-weight: 800;
-    line-height: 1;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-  }
-
-  .tv-interval-section.border {
-    margin-top: 5px;
-    padding-top: 11px;
-    border-top: 1px solid #e5e7eb;
-  }
-
-  .tv-interval-section span {
-    color: #64748b;
-  }
-
-  .tv-interval-section em {
-    width: 10px;
-    height: 10px;
-    border-right: 1.5px solid #94a3b8;
-    border-bottom: 1.5px solid #94a3b8;
-    transform: rotate(-135deg);
-    opacity: 0.75;
-  }
-
-  .tv-interval-item {
-    width: 100%;
-    height: 34px;
-    padding: 0 12px;
-    border: 0;
-    background: transparent;
-    color: #111827;
-    font-size: 13px;
-    font-weight: 760;
-    text-align: left;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
-    cursor: pointer;
-  }
-
-  .tv-interval-item:hover {
-    background: #f1f5f9;
-  }
-
-  .tv-interval-item.active {
-    background: #2f2f2f;
-    color: #ffffff;
-    font-weight: 900;
-  }
-
-  .tv-interval-item.active .tv-interval-sub {
-    color: rgba(255, 255, 255, 0.72);
-  }
-
-  .tv-interval-sub {
-    color: #94a3b8;
-    font-size: 11px;
-    font-weight: 700;
-  }
-
-  /* ==============================
-     오른쪽 패널: 위 관심종목 / 아래 지표
-     ============================== */
-
-  .bv-symbol-panel {
-    height: calc(100vh - 98px);
-    min-height: 720px;
-    display: grid !important;
-    grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
-    gap: 14px;
-    overflow: hidden !important;
-    padding: 14px !important;
-    background:
-      linear-gradient(180deg, rgba(8, 17, 31, 0.98), rgba(5, 13, 24, 0.98)) !important;
-  }
-
-  .right-dock-section {
-    min-height: 0;
-    display: flex;
-    flex-direction: column;
-    border-radius: 18px;
-    border: 1px solid rgba(96, 165, 250, 0.18);
-    background:
-      radial-gradient(circle at top right, rgba(56, 189, 248, 0.09), transparent 38%),
-      rgba(13, 23, 40, 0.72);
-    overflow: hidden;
-  }
-
-  .right-dock-head {
-    flex: 0 0 auto;
-    min-height: 54px;
-    padding: 13px 14px 11px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 10px;
-    border-bottom: 1px solid rgba(148, 163, 184, 0.12);
-  }
-
-  .right-dock-title {
-    min-width: 0;
-  }
-
-  .right-dock-title strong {
-    display: block;
-    color: #ffffff;
-    font-size: 17px;
-    font-weight: 1000;
-    letter-spacing: -0.04em;
-    line-height: 1.2;
-  }
-
-  .right-dock-title span {
-    display: block;
-    margin-top: 4px;
-    color: #8aa5c7;
-    font-size: 12px;
-    font-weight: 800;
-    line-height: 1.35;
-  }
-
-  .symbol-panel-actions,
-  .indicator-panel-actions {
-    flex: 0 0 auto;
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-  }
-
-  .symbol-mini-btn,
-  .indicator-mini-btn {
-    height: 32px !important;
-    padding: 0 11px !important;
-    border-radius: 10px !important;
-    border: 1px solid rgba(96, 165, 250, 0.30) !important;
-    background: rgba(15, 23, 42, 0.88) !important;
-    color: #dbeafe !important;
-    font-size: 13px !important;
-    font-weight: 1000 !important;
-    cursor: pointer !important;
-    white-space: nowrap !important;
-  }
-
-  .symbol-mini-btn:hover,
-  .indicator-mini-btn:hover {
-    border-color: rgba(56, 189, 248, 0.66) !important;
-    background: rgba(56, 189, 248, 0.12) !important;
-  }
-
-  .symbol-mini-btn.primary,
-  .indicator-mini-btn.primary {
-    border-color: rgba(37, 99, 235, 0.95) !important;
-    background: linear-gradient(135deg, #2563eb, #0ea5e9) !important;
-    color: #ffffff !important;
-  }
-
-  .right-dock-body {
-    min-height: 0;
-    flex: 1 1 auto;
-    padding: 12px;
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
-  }
-
-  .symbol-select-wrap {
-    flex: 0 0 auto;
-    display: grid;
-    gap: 10px;
-    margin-bottom: 10px;
-  }
-
-  .symbol-group-select {
-    width: 100%;
-    height: 42px;
-    border-radius: 13px;
-    border: 1px solid rgba(96, 165, 250, 0.38);
-    background: #101a2b;
-    color: #eaf2ff;
-    padding: 0 12px;
-    font-size: 15px;
-    font-weight: 950;
-    outline: none;
-  }
-
-  .symbol-group-select:focus {
-    border-color: rgba(56, 189, 248, 0.8);
-    box-shadow: 0 0 0 4px rgba(56, 189, 248, 0.12);
-  }
-
-  .selected-group-box {
-    min-height: 0;
-    flex: 1 1 auto;
-    border-radius: 16px;
-    background: rgba(5, 10, 22, 0.54);
-    border: 1px solid rgba(148, 163, 184, 0.15);
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
-  }
-
-  .selected-group-head {
-    flex: 0 0 auto;
-    min-height: 45px;
-    padding: 0 13px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 10px;
-    border-bottom: 1px solid rgba(148, 163, 184, 0.11);
-  }
-
-  .selected-group-head strong {
-    color: #ffffff;
-    font-size: 15px;
-    font-weight: 1000;
-    letter-spacing: -0.03em;
-  }
-
-  .selected-group-count {
-    min-width: 26px;
-    height: 24px;
-    padding: 0 8px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 999px;
-    background: rgba(37, 99, 235, 0.24);
-    color: #60a5fa;
-    font-size: 12px;
-    font-weight: 1000;
-  }
-
-  .selected-symbol-list {
-    min-height: 0;
-    flex: 1 1 auto;
-    display: grid;
-    align-content: start;
-    gap: 6px;
-    padding: 8px;
-    overflow-y: auto;
-    overscroll-behavior: contain;
-  }
-
-  .selected-symbol-list::-webkit-scrollbar,
-  .indicator-list-scroll::-webkit-scrollbar,
-  .indicator-catalog::-webkit-scrollbar {
-    width: 7px;
-  }
-
-  .selected-symbol-list::-webkit-scrollbar-thumb,
-  .indicator-list-scroll::-webkit-scrollbar-thumb,
-  .indicator-catalog::-webkit-scrollbar-thumb {
-    background: rgba(96, 165, 250, 0.28);
-    border-radius: 999px;
-  }
-
-  .symbol-row {
-    min-height: 54px;
-    padding: 9px 9px 9px 11px;
-    border-radius: 13px;
-    background: rgba(15, 23, 42, 0.74);
-    border: 1px solid rgba(148, 163, 184, 0.12);
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 10px;
-    transition: 0.14s ease;
-  }
-
-  .symbol-row:hover {
-    border-color: rgba(56, 189, 248, 0.32);
-    background: rgba(56, 189, 248, 0.08);
-  }
-
-  .symbol-row a {
-    min-width: 0;
-    color: inherit;
-    text-decoration: none;
-    display: block;
-  }
-
-  .symbol-row strong {
-    display: block;
-    color: #ffffff;
-    font-size: 15px !important;
-    font-weight: 1000;
-    line-height: 1.25;
-    overflow: hidden;
-    white-space: nowrap;
-    text-overflow: ellipsis;
-  }
-
-  .symbol-row span {
-    display: block;
-    margin-top: 3px;
-    color: #60a5fa;
-    font-size: 13px !important;
-    font-weight: 900;
-    line-height: 1.2;
-  }
-
-  .symbol-trash-btn,
-  .indicator-trash-btn,
-  .indicator-edit-btn {
-    flex: 0 0 auto;
-    width: 30px !important;
-    height: 30px !important;
-    border: 0 !important;
-    border-radius: 10px !important;
-    background: transparent !important;
-    color: #64748b !important;
-    display: inline-flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    cursor: pointer !important;
-  }
-
-  .symbol-trash-btn:hover,
-  .indicator-trash-btn:hover {
-    color: #ef4444 !important;
-    background: rgba(239, 68, 68, 0.12) !important;
-  }
-
-  .indicator-edit-btn:hover {
-    color: #38bdf8 !important;
-    background: rgba(56, 189, 248, 0.12) !important;
-  }
-
-  .symbol-trash-btn svg,
-  .indicator-trash-btn svg,
-  .indicator-edit-btn svg {
-    width: 16px;
-    height: 16px;
-    pointer-events: none;
-  }
-
-  .symbol-empty {
-    padding: 18px 12px;
-    border-radius: 14px;
-    background: rgba(15, 23, 42, 0.52);
-    color: #94a3b8;
-    font-size: 12px;
-    font-weight: 800;
-    line-height: 1.55;
-  }
-
-  .symbol-empty.small {
-    font-size: 12px;
-  }
-
-  .symbol-help {
-    flex: 0 0 auto;
-    margin-top: 10px;
-    padding: 12px;
-    border-radius: 14px;
-    background: rgba(37, 99, 235, 0.12);
-    color: #dbeafe;
-    font-size: 12px !important;
-    font-weight: 850;
-    line-height: 1.6;
-  }
-
-  .indicator-search-mini {
-    flex: 0 0 auto;
-    position: relative;
-    margin-bottom: 10px;
-  }
-
-  .indicator-search-mini input {
-    width: 100%;
-    height: 42px;
-    border-radius: 13px;
-    border: 1px solid rgba(96, 165, 250, 0.30);
-    background: rgba(5, 10, 22, 0.78);
-    color: #ffffff;
-    padding: 0 40px 0 13px;
-    font-size: 14px;
-    font-weight: 900;
-    outline: none;
-  }
-
-  .indicator-search-mini input::placeholder {
-    color: #64748b;
-  }
-
-  .indicator-search-mini input:focus {
-    border-color: rgba(56, 189, 248, 0.72);
-    box-shadow: 0 0 0 4px rgba(56, 189, 248, 0.11);
-  }
-
-  .indicator-search-mini button {
-    position: absolute;
-    top: 5px;
-    right: 5px;
-    width: 32px;
-    height: 32px;
-    border: 0;
-    border-radius: 10px;
-    background: rgba(56, 189, 248, 0.14);
-    color: #7dd3fc;
-    font-size: 16px;
-    font-weight: 1000;
-    cursor: pointer;
-  }
-
-  .indicator-list-box {
-    min-height: 0;
-    flex: 1 1 auto;
-    border-radius: 16px;
-    background: rgba(5, 10, 22, 0.54);
-    border: 1px solid rgba(148, 163, 184, 0.15);
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
-  }
-
-  .indicator-list-head {
-    flex: 0 0 auto;
-    min-height: 45px;
-    padding: 0 13px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 10px;
-    border-bottom: 1px solid rgba(148, 163, 184, 0.11);
-  }
-
-  .indicator-list-head strong {
-    color: #ffffff;
-    font-size: 15px;
-    font-weight: 1000;
-  }
-
-  .indicator-count {
-    min-width: 26px;
-    height: 24px;
-    padding: 0 8px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 999px;
-    background: rgba(45, 212, 191, 0.16);
-    color: #67e8f9;
-    font-size: 12px;
-    font-weight: 1000;
-  }
-
-  .indicator-list-scroll {
-    min-height: 0;
-    flex: 1 1 auto;
-    padding: 8px;
-    overflow-y: auto;
-    display: grid;
-    align-content: start;
-    gap: 7px;
-  }
-
-  .indicator-row {
-    min-height: 60px;
-    padding: 10px;
-    border-radius: 14px;
-    background: rgba(15, 23, 42, 0.74);
-    border: 1px solid rgba(148, 163, 184, 0.12);
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    gap: 8px;
-    align-items: center;
-    cursor: default;
-    transition: 0.14s ease;
-  }
-
-  .indicator-row:hover {
-    border-color: rgba(45, 212, 191, 0.35);
-    background: rgba(45, 212, 191, 0.07);
-  }
-
-  .indicator-row-main {
-    min-width: 0;
-  }
-
-  .indicator-row-title {
-    display: flex;
-    align-items: center;
-    gap: 7px;
-    min-width: 0;
-  }
-
-  .indicator-color-dot {
-    flex: 0 0 auto;
-    width: 9px;
-    height: 9px;
-    border-radius: 999px;
-    background: #38bdf8;
-    box-shadow: 0 0 10px rgba(56, 189, 248, 0.65);
-  }
-
-  .indicator-row-title strong {
-    min-width: 0;
-    color: #ffffff;
-    font-size: 14px;
-    font-weight: 1000;
-    line-height: 1.25;
-    overflow: hidden;
-    white-space: nowrap;
-    text-overflow: ellipsis;
-  }
-
-  .indicator-row-desc {
-    margin-top: 5px;
-    color: #8aa5c7;
-    font-size: 12px;
-    font-weight: 780;
-    line-height: 1.35;
-    overflow: hidden;
-    white-space: nowrap;
-    text-overflow: ellipsis;
-  }
-
-  .indicator-row-actions {
-    display: inline-flex;
-    gap: 4px;
-    align-items: center;
-  }
-
-  .indicator-empty {
-    padding: 18px 12px;
-    border-radius: 14px;
-    background: rgba(15, 23, 42, 0.52);
-    color: #94a3b8;
-    font-size: 12px;
-    font-weight: 800;
-    line-height: 1.55;
-  }
-
-  /* ==============================
-     그룹 모달
-     ============================== */
-
-  .group-modal,
-  .indicator-modal {
-    position: fixed;
-    inset: 0;
-    z-index: 9999;
-    display: none;
-    align-items: center;
-    justify-content: center;
-    padding: 24px;
-    background: rgba(2, 6, 23, 0.66);
-    backdrop-filter: blur(10px);
-  }
-
-  .group-modal.open,
-  .indicator-modal.open {
-    display: flex;
-  }
-
-  .group-panel {
-    width: min(520px, calc(100vw - 32px));
-    max-height: min(680px, calc(100vh - 42px));
-    overflow: hidden;
-    border-radius: 22px;
-    border: 1px solid rgba(96, 165, 250, 0.24);
-    background: linear-gradient(180deg, #0f172a, #08111f);
-    box-shadow: 0 30px 90px rgba(0, 0, 0, 0.45);
-  }
-
-  .group-panel-head,
-  .indicator-panel-head {
-    padding: 18px 20px;
-    border-bottom: 1px solid rgba(148, 163, 184, 0.14);
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 14px;
-  }
-
-  .group-panel-head h2,
-  .indicator-panel-head h2 {
-    margin: 0;
-    color: #ffffff;
-    font-size: 22px;
-    font-weight: 1000;
-    letter-spacing: -0.05em;
-  }
-
-  .indicator-panel-head p {
-    margin: 5px 0 0;
-    color: #94a3b8;
-    font-size: 13px;
-    font-weight: 760;
-  }
-
-  .modal-close {
-    width: 36px;
-    height: 36px;
-    border: 0;
-    border-radius: 12px;
-    background: rgba(148, 163, 184, 0.10);
-    color: #cbd5e1;
-    font-size: 24px;
-    line-height: 1;
-    cursor: pointer;
-  }
-
-  .modal-close:hover {
-    background: rgba(239, 68, 68, 0.15);
-    color: #fecaca;
-  }
-
-  .group-form {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) 104px;
-    gap: 10px;
-    padding: 16px 20px;
-    border-bottom: 1px solid rgba(148, 163, 184, 0.10);
-  }
-
-  .group-form input {
-    height: 44px;
-    border-radius: 13px;
-    border: 1px solid rgba(96, 165, 250, 0.28);
-    background: rgba(2, 6, 23, 0.72);
-    color: #ffffff;
-    padding: 0 13px;
-    font-size: 14px;
-    font-weight: 900;
-    outline: none;
-  }
-
-  .group-form button {
-    border: 0;
-    border-radius: 13px;
-    background: linear-gradient(135deg, #2563eb, #0ea5e9);
-    color: #ffffff;
-    font-size: 14px;
-    font-weight: 1000;
-    cursor: pointer;
-  }
-
-  .group-manage-list {
-    padding: 14px 20px 20px;
-    display: grid;
-    gap: 9px;
-    max-height: 420px;
-    overflow-y: auto;
-  }
-
-  .group-manage-row {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) 58px;
-    gap: 8px;
-  }
-
-  .group-manage-row input {
-    height: 40px;
-    border-radius: 12px;
-    border: 1px solid rgba(148, 163, 184, 0.18);
-    background: rgba(15, 23, 42, 0.82);
-    color: #ffffff;
-    padding: 0 12px;
-    font-size: 14px;
-    font-weight: 850;
-    outline: none;
-  }
-
-  .group-manage-row button {
-    border: 0;
-    border-radius: 12px;
-    background: rgba(239, 68, 68, 0.13);
-    color: #fecaca;
-    font-size: 13px;
-    font-weight: 900;
-    cursor: pointer;
-  }
-
-  /* ==============================
-     지표 검색/설정 모달
-     ============================== */
-
-  .indicator-panel {
-    width: min(780px, calc(100vw - 32px));
-    max-height: min(760px, calc(100vh - 42px));
-    overflow: hidden;
-    border-radius: 24px;
-    border: 1px solid rgba(96, 165, 250, 0.24);
-    background:
-      radial-gradient(circle at top right, rgba(56, 189, 248, 0.12), transparent 36%),
-      linear-gradient(180deg, #0f172a, #07101d);
-    box-shadow: 0 30px 90px rgba(0, 0, 0, 0.50);
-    display: flex;
-    flex-direction: column;
-  }
-
-  .indicator-search-input {
-    flex: 0 0 auto;
-    margin: 16px 20px 0;
-    height: 48px;
-    border-radius: 15px;
-    border: 1px solid rgba(96, 165, 250, 0.28);
-    background: rgba(2, 6, 23, 0.78);
-    color: #ffffff;
-    padding: 0 15px;
-    font-size: 15px;
-    font-weight: 900;
-    outline: none;
-  }
-
-  .indicator-search-input::placeholder {
-    color: #64748b;
-  }
-
-  .indicator-search-input:focus {
-    border-color: rgba(56, 189, 248, 0.75);
-    box-shadow: 0 0 0 4px rgba(56, 189, 248, 0.12);
-  }
-
-  .indicator-catalog {
-    min-height: 0;
-    flex: 1 1 auto;
-    padding: 16px 20px 20px;
-    overflow-y: auto;
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    align-content: start;
-    gap: 10px;
-  }
-
-  .indicator-catalog-item {
-    min-height: 76px;
-    padding: 13px;
-    border-radius: 16px;
-    border: 1px solid rgba(148, 163, 184, 0.14);
-    background: rgba(15, 23, 42, 0.72);
-    cursor: pointer;
-    transition: 0.14s ease;
-  }
-
-  .indicator-catalog-item:hover {
-    border-color: rgba(56, 189, 248, 0.42);
-    background: rgba(56, 189, 248, 0.09);
-    transform: translateY(-1px);
-  }
-
-  .indicator-catalog-item strong {
-    display: block;
-    color: #ffffff;
-    font-size: 15px;
-    font-weight: 1000;
-    line-height: 1.25;
-  }
-
-  .indicator-catalog-item span {
-    display: block;
-    margin-top: 6px;
-    color: #94a3b8;
-    font-size: 12px;
-    font-weight: 760;
-    line-height: 1.45;
-  }
-
-  .indicator-settings-box {
-    display: none;
-    flex: 0 0 auto;
-    margin: 0 20px 20px;
-    border-radius: 18px;
-    border: 1px solid rgba(96, 165, 250, 0.20);
-    background: rgba(2, 6, 23, 0.48);
-    overflow: hidden;
-  }
-
-  .indicator-settings-box.open {
-    display: block;
-  }
-
-  .indicator-settings-head {
-    padding: 14px 15px;
-    border-bottom: 1px solid rgba(148, 163, 184, 0.12);
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-  }
-
-  .indicator-settings-head h3 {
-    margin: 0;
-    color: #ffffff;
-    font-size: 17px;
-    font-weight: 1000;
-  }
-
-  .active-indicator-list {
-    padding: 14px 15px 16px;
-    display: grid;
-    gap: 10px;
-  }
-
-  .indicator-setting-grid {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 10px;
-  }
-
-  .indicator-setting-field {
-    display: grid;
-    gap: 6px;
-  }
-
-  .indicator-setting-field label {
-    color: #94a3b8;
-    font-size: 12px;
-    font-weight: 900;
-  }
-
-  .indicator-setting-field input,
-  .indicator-setting-field select {
-    height: 40px;
-    border-radius: 12px;
-    border: 1px solid rgba(96, 165, 250, 0.22);
-    background: rgba(15, 23, 42, 0.88);
-    color: #ffffff;
-    padding: 0 11px;
-    font-size: 14px;
-    font-weight: 850;
-    outline: none;
-  }
-
-  .chart-top-btn.primary {
-    border-color: rgba(37, 99, 235, 0.95) !important;
-    background: linear-gradient(135deg, #2563eb, #0ea5e9) !important;
-    color: #ffffff !important;
-  }
-
-  @media (max-width: 1180px) {
-    .bv-symbol-panel {
-      height: auto;
-      min-height: 720px;
-    }
-  }
-
-  @media (max-width: 760px) {
-    .chart-card-top {
-      flex-wrap: wrap;
-    }
-
-    .tv-interval-dropdown {
-      order: 3;
-    }
-
-    .tv-interval-menu {
-      left: 0;
-      width: 170px;
-    }
-
-    .indicator-catalog {
-      grid-template-columns: 1fr;
-    }
-
-    .indicator-setting-grid {
-      grid-template-columns: 1fr;
-    }
-
-    .group-form {
-      grid-template-columns: 1fr;
-    }
-
-    .bv-symbol-panel {
-      grid-template-rows: auto auto;
-      min-height: auto;
-    }
-  }
-</style>
+<link rel="stylesheet" href="{% static 'stocks/css/bitgak_chart.css' %}?v=20260516-tv-style-indicators-v8">
 {% endblock %}
 
 {% block content %}
@@ -1058,21 +37,58 @@
     </div>
 
     <div class="bv-header-actions">
-      <a href="{% url 'stocks:search' %}">홈</a>
-      <button id="copyCodeBtn" type="button">코드 복사</button>
+      <a class="bv-login-link" href="#">로그인</a>
     </div>
   </header>
 
   <main class="bv-layout bv-layout-full">
-    <aside class="bv-left-tools">
-      <button class="tool-btn active" type="button" data-tool="cursor" title="커서">＋</button>
-      <button class="tool-btn" type="button" data-tool="trend" title="추세선">╱</button>
-      <button class="tool-btn" type="button" data-tool="extend" title="연장선">━</button>
-      <button class="tool-btn" type="button" data-tool="hline" title="수평선">─</button>
-      <button class="tool-btn" type="button" data-tool="vline" title="수직선">│</button>
-      <button class="tool-btn" type="button" data-tool="fibo" title="피보나치">⌁</button>
-      <button class="tool-btn" type="button" data-tool="undo" title="마지막 삭제">↶</button>
-      <button class="tool-btn" type="button" data-tool="clear" title="전체 삭제">⌂</button>
+    <aside class="bv-left-panel" aria-label="평단가 계산기">
+      <section class="avg-calc-card" aria-label="평단가 계산기">
+        <div class="avg-calc-headline">
+          <strong>평단가 계산기</strong>
+          <div class="avg-calc-head-actions">
+            <button id="openMyStockBtn" class="avg-mini-btn" type="button">내종목</button>
+            <span id="avgAutoSaveStatus" class="avg-auto-save-status">자동 저장됨</span>
+          </div>
+        </div>
+
+        <div class="avg-calc-row avg-calc-row-head">
+          <span>차수</span>
+          <span>단가</span>
+          <span>수량</span>
+          <span>금액</span>
+          <span></span>
+        </div>
+
+        <div id="avgCalcRows" class="avg-calc-rows"></div>
+
+        <button id="avgAddRowBtn" class="avg-add-row-btn" type="button">＋ 매수/매도 줄 추가</button>
+
+        <div class="avg-calc-result">
+          <div>
+            <span>보유 수량</span>
+            <strong id="avgTotalQty">-</strong>
+          </div>
+          <div>
+            <span>총 매수금</span>
+            <strong id="avgTotalAmount">-</strong>
+          </div>
+          <div>
+            <span>평가손익</span>
+            <strong id="avgProfitLoss">-</strong>
+          </div>
+          <div class="avg-calc-average">
+            <span>평단가</span>
+            <strong id="avgAveragePrice">-</strong>
+          </div>
+          <div class="avg-calc-return">
+            <span>수익률</span>
+            <strong id="avgReturnRate">-</strong>
+          </div>
+        </div>
+
+        <button id="avgCalcReset" class="avg-calc-reset" type="button">초기화</button>
+      </section>
     </aside>
 
     <section class="bv-main">
@@ -1089,102 +105,42 @@
               <span class="tv-interval-arrow">▾</span>
             </button>
 
-            <div class="tv-interval-menu" role="menu" aria-label="시간봉 선택">
-              <button class="tv-interval-custom" type="button" data-open-custom-interval>
-                <span>＋</span>
-                <strong>커스텀 인터벌 추가...</strong>
-              </button>
-
+            <div class="tv-interval-menu" role="menu" aria-label="기간 선택">
               <div class="tv-interval-section">
-                <span>분</span>
+                <span>기간</span>
                 <em></em>
               </div>
-              <button class="tv-interval-item" type="button" data-interval="1m" data-label="1분" role="menuitem">
-                <span>1 분</span>
-                <span class="tv-interval-sub">Minute</span>
-              </button>
-              <button class="tv-interval-item" type="button" data-interval="2m" data-label="2분" role="menuitem">
-                <span>2 분</span>
-                <span class="tv-interval-sub">Minute</span>
-              </button>
-              <button class="tv-interval-item" type="button" data-interval="3m" data-label="3분" role="menuitem">
-                <span>3 분</span>
-                <span class="tv-interval-sub">Minute</span>
-              </button>
-              <button class="tv-interval-item" type="button" data-interval="5m" data-label="5분" role="menuitem">
-                <span>5 분</span>
-                <span class="tv-interval-sub">Minute</span>
-              </button>
-              <button class="tv-interval-item" type="button" data-interval="10m" data-label="10분" role="menuitem">
-                <span>10 분</span>
-                <span class="tv-interval-sub">Minute</span>
-              </button>
-              <button class="tv-interval-item" type="button" data-interval="15m" data-label="15분" role="menuitem">
-                <span>15 분</span>
-                <span class="tv-interval-sub">Minute</span>
-              </button>
-              <button class="tv-interval-item" type="button" data-interval="30m" data-label="30분" role="menuitem">
-                <span>30 분</span>
-                <span class="tv-interval-sub">Minute</span>
-              </button>
-              <button class="tv-interval-item" type="button" data-interval="45m" data-label="45분" role="menuitem">
-                <span>45 분</span>
-                <span class="tv-interval-sub">Minute</span>
-              </button>
 
-              <div class="tv-interval-section border">
-                <span>시간</span>
-                <em></em>
-              </div>
-              <button class="tv-interval-item" type="button" data-interval="1h" data-label="1시간" role="menuitem">
-                <span>1 시간</span>
-                <span class="tv-interval-sub">Hour</span>
-              </button>
-              <button class="tv-interval-item" type="button" data-interval="2h" data-label="2시간" role="menuitem">
-                <span>2 시간</span>
-                <span class="tv-interval-sub">Hour</span>
-              </button>
-              <button class="tv-interval-item" type="button" data-interval="3h" data-label="3시간" role="menuitem">
-                <span>3 시간</span>
-                <span class="tv-interval-sub">Hour</span>
-              </button>
-              <button class="tv-interval-item" type="button" data-interval="4h" data-label="4시간" role="menuitem">
-                <span>4 시간</span>
-                <span class="tv-interval-sub">Hour</span>
-              </button>
-
-              <div class="tv-interval-section border">
-                <span>날</span>
-                <em></em>
-              </div>
               <button class="tv-interval-item active" type="button" data-interval="1d" data-label="일" role="menuitem">
-                <span>1 날</span>
+                <span>일</span>
                 <span class="tv-interval-sub">Day</span>
               </button>
+
               <button class="tv-interval-item" type="button" data-interval="1w" data-label="주" role="menuitem">
-                <span>1 주</span>
+                <span>주</span>
                 <span class="tv-interval-sub">Week</span>
               </button>
+
               <button class="tv-interval-item" type="button" data-interval="1mo" data-label="월" role="menuitem">
-                <span>1 달</span>
-                <span class="tv-interval-sub">Month</span>
-              </button>
-              <button class="tv-interval-item" type="button" data-interval="3mo" data-label="3달" role="menuitem">
-                <span>3 달</span>
-                <span class="tv-interval-sub">Month</span>
-              </button>
-              <button class="tv-interval-item" type="button" data-interval="6mo" data-label="6달" role="menuitem">
-                <span>6 달</span>
-                <span class="tv-interval-sub">Month</span>
-              </button>
-              <button class="tv-interval-item" type="button" data-interval="12mo" data-label="12달" role="menuitem">
-                <span>12 달</span>
+                <span>월</span>
                 <span class="tv-interval-sub">Month</span>
               </button>
             </div>
+          </div><button id="openIndicatorBtn" class="chart-top-btn" type="button">지표검색</button>
+
+
+          <div class="bv-drawing-toolbar" aria-label="차트 그리기 도구">
+            <button class="tool-btn active" type="button" data-tool="cursor" title="커서">＋</button>
+            <button class="tool-btn" type="button" data-tool="trend" title="추세선">╱</button>
+            <button class="tool-btn" type="button" data-tool="extend" title="연장선">━</button>
+            <button class="tool-btn" type="button" data-tool="hline" title="수평선">─</button>
+            <button class="tool-btn" type="button" data-tool="vline" title="수직선">│</button>
+            <button class="tool-btn" type="button" data-tool="fibo" title="피보나치">⌁</button>
+            <button class="tool-btn" type="button" data-tool="undo" title="마지막 삭제">↶</button>
+            <button class="tool-btn" type="button" data-tool="clear" title="전체 삭제">⌂</button>
           </div>
 
-          <button id="openIndicatorBtn" class="chart-top-btn" type="button">지표검색</button>
+          
 
           <div class="chart-top-spacer"></div>
 
@@ -1195,8 +151,8 @@
           날짜 -　시가 -　고가 -　저가 -　종가 -　거래량 -
         </div>
 
-        <div id="chartWrap" class="chart-wrap">
-          <div id="tvChart" class="tv-chart"></div>
+        <div id="chartWrap" class="chart-wrap chart-wrap-v5">
+          <div id="tvChart" class="tv-chart tv-chart-v5"></div>
           <svg id="drawingLayer" class="drawing-layer"></svg>
           <div id="chartIndicatorOverlay" class="chart-indicator-overlay"></div>
           <div id="chartLoading" class="chart-loading">차트 데이터를 불러오는 중입니다...</div>
@@ -1238,11 +194,6 @@
 
             <div id="selectedSymbolList" class="selected-symbol-list"></div>
           </div>
-
-          <div class="symbol-help">
-            상단 드롭다운에서 그룹을 선택하면 해당 그룹의 종목만 표시됩니다.
-            현재 보고 있는 종목은 [종목추가]로 선택된 그룹에 저장됩니다.
-          </div>
         </div>
       </section>
 
@@ -1281,16 +232,272 @@
               </div>
             </div>
           </div>
-
-          <div class="symbol-help">
-            지표를 더블클릭하면 설정창이 크게 열립니다.
-            휴지통 버튼을 누르면 해당 지표만 삭제됩니다.
-          </div>
         </div>
       </section>
     </aside>
   </main>
 </section>
+
+
+<div id="myStockModal" class="my-stock-modal" aria-hidden="true">
+  <div class="my-stock-panel">
+    <div class="my-stock-head">
+      <div>
+        <h2>내종목 투자노트</h2>
+        <p>{{ stock.name }} · {{ stock.code }} 기준으로 매수/매도 계획과 평단가를 저장합니다.</p>
+      </div>
+      <button class="modal-close" type="button" data-close-my-stock>×</button>
+    </div>
+
+    <div class="my-stock-summary-grid">
+      <div class="my-stock-summary-card">
+        <span>현재가</span>
+        <strong id="noteCurrentPrice">-</strong>
+      </div>
+      <div class="my-stock-summary-card">
+        <span>평단가</span>
+        <strong id="noteAveragePrice">-</strong>
+      </div>
+      <div class="my-stock-summary-card">
+        <span>보유수량</span>
+        <strong id="noteHoldQty">-</strong>
+      </div>
+      <div class="my-stock-summary-card">
+        <span>수익률</span>
+        <strong id="noteReturnRate">-</strong>
+      </div>
+    </div>
+
+
+    <div class="my-stock-style-box note-style-editor note-style-floating">
+      <div class="note-style-main">
+        <div class="note-style-controls">
+          <div class="note-color-control" data-note-field="bg">
+            <span>노트 배경</span>
+            <button type="button" class="note-color-button" data-note-color-button style="--note-dot-color:#334155" aria-label="노트 배경 색상 선택"></button>
+            <div class="note-color-popover" data-note-popover>
+              <button type="button" data-color="#ff4b6e" style="--dot-color:#ff4b6e"></button>
+              <button type="button" data-color="#ff9f1c" style="--dot-color:#ff9f1c"></button>
+              <button type="button" data-color="#52d400" style="--dot-color:#52d400"></button>
+              <button type="button" data-color="#2bbbd8" style="--dot-color:#2bbbd8"></button>
+              <button type="button" data-color="#3b82f6" style="--dot-color:#3b82f6"></button>
+              <button type="button" data-color="#7c5bd6" style="--dot-color:#7c5bd6"></button>
+              <button type="button" data-color="#e84393" style="--dot-color:#e84393"></button>
+              <button type="button" data-color="#ff6b2b" style="--dot-color:#ff6b2b"></button>
+              <button type="button" data-color="#34c759" style="--dot-color:#34c759"></button>
+              <button type="button" data-color="#38a8cf" style="--dot-color:#38a8cf"></button>
+              <button type="button" data-color="#4f73d9" style="--dot-color:#4f73d9"></button>
+              <button type="button" data-color="#9b5de5" style="--dot-color:#9b5de5"></button>
+              <button type="button" data-color="#db2ba7" style="--dot-color:#db2ba7"></button>
+              <button type="button" data-color="#e2672c" style="--dot-color:#e2672c"></button>
+              <button type="button" data-color="#43b883" style="--dot-color:#43b883"></button>
+              <button type="button" data-color="#18b8a6" style="--dot-color:#18b8a6"></button>
+              <button type="button" data-color="#5b5db8" style="--dot-color:#5b5db8"></button>
+              <button type="button" data-color="#bb3fe0" style="--dot-color:#bb3fe0"></button>
+              <button type="button" data-color="#fb8da0" style="--dot-color:#fb8da0"></button>
+              <button type="button" data-color="#ffd09a" style="--dot-color:#ffd09a"></button>
+              <button type="button" data-color="#98e96e" style="--dot-color:#98e96e"></button>
+              <button type="button" data-color="#7ed7e2" style="--dot-color:#7ed7e2"></button>
+              <button type="button" data-color="#93c5fd" style="--dot-color:#93c5fd"></button>
+              <button type="button" data-color="#b7a9df" style="--dot-color:#b7a9df"></button>
+              <button type="button" data-color="#ffffff" style="--dot-color:#ffffff"></button>
+              <button type="button" data-color="#eaf2ff" style="--dot-color:#eaf2ff"></button>
+              <button type="button" data-color="#d8dee6" style="--dot-color:#d8dee6"></button>
+              <button type="button" data-color="#a5adba" style="--dot-color:#a5adba"></button>
+              <button type="button" data-color="#7b8494" style="--dot-color:#7b8494"></button>
+              <button type="button" data-color="#384454" style="--dot-color:#384454"></button>
+              <button type="button" data-color="#111827" style="--dot-color:#111827"></button>
+              <button type="button" data-color="#000000" style="--dot-color:#000000"></button>
+            </div>
+          </div>
+
+          <div class="note-color-control" data-note-field="accent">
+            <span>내용 색상</span>
+            <button type="button" class="note-color-button" data-note-color-button style="--note-dot-color:#67e8f9" aria-label="내용 색상 선택"></button>
+            <div class="note-color-popover" data-note-popover>
+              <button type="button" data-color="#ff4b6e" style="--dot-color:#ff4b6e"></button>
+              <button type="button" data-color="#ff9f1c" style="--dot-color:#ff9f1c"></button>
+              <button type="button" data-color="#52d400" style="--dot-color:#52d400"></button>
+              <button type="button" data-color="#2bbbd8" style="--dot-color:#2bbbd8"></button>
+              <button type="button" data-color="#3b82f6" style="--dot-color:#3b82f6"></button>
+              <button type="button" data-color="#7c5bd6" style="--dot-color:#7c5bd6"></button>
+              <button type="button" data-color="#e84393" style="--dot-color:#e84393"></button>
+              <button type="button" data-color="#ff6b2b" style="--dot-color:#ff6b2b"></button>
+              <button type="button" data-color="#34c759" style="--dot-color:#34c759"></button>
+              <button type="button" data-color="#38a8cf" style="--dot-color:#38a8cf"></button>
+              <button type="button" data-color="#4f73d9" style="--dot-color:#4f73d9"></button>
+              <button type="button" data-color="#9b5de5" style="--dot-color:#9b5de5"></button>
+              <button type="button" data-color="#db2ba7" style="--dot-color:#db2ba7"></button>
+              <button type="button" data-color="#e2672c" style="--dot-color:#e2672c"></button>
+              <button type="button" data-color="#43b883" style="--dot-color:#43b883"></button>
+              <button type="button" data-color="#18b8a6" style="--dot-color:#18b8a6"></button>
+              <button type="button" data-color="#5b5db8" style="--dot-color:#5b5db8"></button>
+              <button type="button" data-color="#bb3fe0" style="--dot-color:#bb3fe0"></button>
+              <button type="button" data-color="#fb8da0" style="--dot-color:#fb8da0"></button>
+              <button type="button" data-color="#ffd09a" style="--dot-color:#ffd09a"></button>
+              <button type="button" data-color="#98e96e" style="--dot-color:#98e96e"></button>
+              <button type="button" data-color="#7ed7e2" style="--dot-color:#7ed7e2"></button>
+              <button type="button" data-color="#93c5fd" style="--dot-color:#93c5fd"></button>
+              <button type="button" data-color="#b7a9df" style="--dot-color:#b7a9df"></button>
+              <button type="button" data-color="#ffffff" style="--dot-color:#ffffff"></button>
+              <button type="button" data-color="#eaf2ff" style="--dot-color:#eaf2ff"></button>
+              <button type="button" data-color="#d8dee6" style="--dot-color:#d8dee6"></button>
+              <button type="button" data-color="#a5adba" style="--dot-color:#a5adba"></button>
+              <button type="button" data-color="#7b8494" style="--dot-color:#7b8494"></button>
+              <button type="button" data-color="#384454" style="--dot-color:#384454"></button>
+              <button type="button" data-color="#111827" style="--dot-color:#111827"></button>
+              <button type="button" data-color="#000000" style="--dot-color:#000000"></button>
+            </div>
+          </div>
+
+          <div class="note-color-control" data-note-field="text">
+            <span>글자 색상</span>
+            <button type="button" class="note-color-button" data-note-color-button style="--note-dot-color:#eaf2ff" aria-label="글자 색상 선택"></button>
+            <div class="note-color-popover" data-note-popover>
+              <button type="button" data-color="#ff4b6e" style="--dot-color:#ff4b6e"></button>
+              <button type="button" data-color="#ff9f1c" style="--dot-color:#ff9f1c"></button>
+              <button type="button" data-color="#52d400" style="--dot-color:#52d400"></button>
+              <button type="button" data-color="#2bbbd8" style="--dot-color:#2bbbd8"></button>
+              <button type="button" data-color="#3b82f6" style="--dot-color:#3b82f6"></button>
+              <button type="button" data-color="#7c5bd6" style="--dot-color:#7c5bd6"></button>
+              <button type="button" data-color="#e84393" style="--dot-color:#e84393"></button>
+              <button type="button" data-color="#ff6b2b" style="--dot-color:#ff6b2b"></button>
+              <button type="button" data-color="#34c759" style="--dot-color:#34c759"></button>
+              <button type="button" data-color="#38a8cf" style="--dot-color:#38a8cf"></button>
+              <button type="button" data-color="#4f73d9" style="--dot-color:#4f73d9"></button>
+              <button type="button" data-color="#9b5de5" style="--dot-color:#9b5de5"></button>
+              <button type="button" data-color="#db2ba7" style="--dot-color:#db2ba7"></button>
+              <button type="button" data-color="#e2672c" style="--dot-color:#e2672c"></button>
+              <button type="button" data-color="#43b883" style="--dot-color:#43b883"></button>
+              <button type="button" data-color="#18b8a6" style="--dot-color:#18b8a6"></button>
+              <button type="button" data-color="#5b5db8" style="--dot-color:#5b5db8"></button>
+              <button type="button" data-color="#bb3fe0" style="--dot-color:#bb3fe0"></button>
+              <button type="button" data-color="#fb8da0" style="--dot-color:#fb8da0"></button>
+              <button type="button" data-color="#ffd09a" style="--dot-color:#ffd09a"></button>
+              <button type="button" data-color="#98e96e" style="--dot-color:#98e96e"></button>
+              <button type="button" data-color="#7ed7e2" style="--dot-color:#7ed7e2"></button>
+              <button type="button" data-color="#93c5fd" style="--dot-color:#93c5fd"></button>
+              <button type="button" data-color="#b7a9df" style="--dot-color:#b7a9df"></button>
+              <button type="button" data-color="#ffffff" style="--dot-color:#ffffff"></button>
+              <button type="button" data-color="#eaf2ff" style="--dot-color:#eaf2ff"></button>
+              <button type="button" data-color="#d8dee6" style="--dot-color:#d8dee6"></button>
+              <button type="button" data-color="#a5adba" style="--dot-color:#a5adba"></button>
+              <button type="button" data-color="#7b8494" style="--dot-color:#7b8494"></button>
+              <button type="button" data-color="#384454" style="--dot-color:#384454"></button>
+              <button type="button" data-color="#111827" style="--dot-color:#111827"></button>
+              <button type="button" data-color="#000000" style="--dot-color:#000000"></button>
+            </div>
+          </div>
+        </div>
+
+        <div class="avgline-style-control">
+          <div class="avgline-style-head">
+            <strong>내 평단 라인</strong>
+            <span>차트에 표시되는 내 평단선 속성</span>
+          </div>
+          <div class="avgline-style-fields">
+            <label class="avgline-color-control" data-avgline-color-control>
+              <span>색상</span>
+              <button type="button" class="avgline-color-button" data-avgline-color-button style="--avgline-dot-color:#22d3ee" aria-label="내 평단 라인 색상 선택"></button>
+              <div class="note-color-popover avgline-color-popover" data-avgline-popover>
+                <button type="button" data-color="#ff4b6e" style="--dot-color:#ff4b6e"></button>
+              <button type="button" data-color="#ff9f1c" style="--dot-color:#ff9f1c"></button>
+              <button type="button" data-color="#52d400" style="--dot-color:#52d400"></button>
+              <button type="button" data-color="#2bbbd8" style="--dot-color:#2bbbd8"></button>
+              <button type="button" data-color="#3b82f6" style="--dot-color:#3b82f6"></button>
+              <button type="button" data-color="#7c5bd6" style="--dot-color:#7c5bd6"></button>
+              <button type="button" data-color="#e84393" style="--dot-color:#e84393"></button>
+              <button type="button" data-color="#ff6b2b" style="--dot-color:#ff6b2b"></button>
+              <button type="button" data-color="#34c759" style="--dot-color:#34c759"></button>
+              <button type="button" data-color="#38a8cf" style="--dot-color:#38a8cf"></button>
+              <button type="button" data-color="#4f73d9" style="--dot-color:#4f73d9"></button>
+              <button type="button" data-color="#9b5de5" style="--dot-color:#9b5de5"></button>
+              <button type="button" data-color="#db2ba7" style="--dot-color:#db2ba7"></button>
+              <button type="button" data-color="#e2672c" style="--dot-color:#e2672c"></button>
+              <button type="button" data-color="#43b883" style="--dot-color:#43b883"></button>
+              <button type="button" data-color="#18b8a6" style="--dot-color:#18b8a6"></button>
+              <button type="button" data-color="#5b5db8" style="--dot-color:#5b5db8"></button>
+              <button type="button" data-color="#bb3fe0" style="--dot-color:#bb3fe0"></button>
+              <button type="button" data-color="#fb8da0" style="--dot-color:#fb8da0"></button>
+              <button type="button" data-color="#ffd09a" style="--dot-color:#ffd09a"></button>
+              <button type="button" data-color="#98e96e" style="--dot-color:#98e96e"></button>
+              <button type="button" data-color="#7ed7e2" style="--dot-color:#7ed7e2"></button>
+              <button type="button" data-color="#93c5fd" style="--dot-color:#93c5fd"></button>
+              <button type="button" data-color="#b7a9df" style="--dot-color:#b7a9df"></button>
+              <button type="button" data-color="#ffffff" style="--dot-color:#ffffff"></button>
+              <button type="button" data-color="#eaf2ff" style="--dot-color:#eaf2ff"></button>
+              <button type="button" data-color="#d8dee6" style="--dot-color:#d8dee6"></button>
+              <button type="button" data-color="#a5adba" style="--dot-color:#a5adba"></button>
+              <button type="button" data-color="#7b8494" style="--dot-color:#7b8494"></button>
+              <button type="button" data-color="#384454" style="--dot-color:#384454"></button>
+              <button type="button" data-color="#111827" style="--dot-color:#111827"></button>
+              <button type="button" data-color="#000000" style="--dot-color:#000000"></button>
+              </div>
+            </label>
+
+            <label>
+              <span>선</span>
+              <select id="avgLineStyleSelect">
+                <option value="solid">실선</option>
+                <option value="dashed">점선</option>
+                <option value="dotted">점</option>
+                <option value="largeDashed">긴 점선</option>
+              </select>
+            </label>
+
+            <label>
+              <span>두께</span>
+              <select id="avgLineWidthSelect">
+                <option value="1">1px</option>
+                <option value="2">2px</option>
+                <option value="3">3px</option>
+                <option value="4">4px</option>
+              </select>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <div id="noteStylePreview" class="note-style-preview-card" aria-label="투자노트 색상 미리보기">
+        <strong>내종목 투자노트</strong>
+        <span><em>평단가</em><b id="previewAveragePrice">-</b></span>
+        <span><em>보유</em><b id="previewHoldQty">-</b></span>
+        <span><em>수익률</em><b id="previewReturnRate">-</b></span>
+        <div class="note-style-preview-trades" id="previewTradeList">
+          <small>매수/매도 계획을 입력하면 여기에 표시됩니다.</small>
+        </div>
+      </div>
+    </div>
+
+    <div class="my-stock-table-wrap">
+      <table class="my-stock-table">
+        <thead>
+          <tr>
+            <th>구분</th>
+            <th>단가</th>
+            <th>수량</th>
+            <th>금액</th>
+          </tr>
+        </thead>
+        <tbody id="myStockTableBody">
+          <tr>
+            <td colspan="4">저장된 투자노트가 없습니다.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <label class="my-stock-memo">
+      <span>메모</span>
+      <textarea id="investMemoInput" placeholder="예: 1차는 지지선, 2차는 하락 시 분할매수 계획"></textarea>
+    </label>
+
+    <div class="my-stock-actions">
+      <button id="myStockSaveBtn" type="button" class="my-stock-save">저장하기</button>
+      <button id="myStockDeleteBtn" type="button" class="my-stock-delete">노트 삭제</button>
+    </div>
+  </div>
+</div>
 
 <div id="groupModal" class="group-modal" aria-hidden="true">
   <div class="group-panel">
@@ -1340,10 +547,10 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="https://unpkg.com/lightweight-charts@4.2.3/dist/lightweight-charts.standalone.production.js"></script>
+<script src="https://unpkg.com/lightweight-charts@5.0.8/dist/lightweight-charts.standalone.production.js"></script>
 
-<script src="{% static 'stocks/js/bitgak_chart_core.js' %}"></script>
-<script src="{% static 'stocks/js/bitgak_indicators.js' %}"></script>
-<script src="{% static 'stocks/js/bitgak_search.js' %}"></script>
-<script src="{% static 'stocks/js/bitgak_groups.js' %}"></script>
+<script src="{% static 'stocks/js/bitgak_chart_core.js' %}?v=20260516-tv-style-indicators-v8"></script>
+<script src="{% static 'stocks/js/bitgak_groups.js' %}?v=20260516-tv-style-indicators-v8"></script>
+<script src="{% static 'stocks/js/bitgak_indicators.js' %}?v=20260516-tv-style-indicators-v8"></script>
+<script src="{% static 'stocks/js/bitgak_search.js' %}?v=20260516-tv-style-indicators-v8"></script>
 {% endblock %}

@@ -1,8 +1,13 @@
 .bitgak-chart-body .site-main {
+  position: fixed !important;
+  inset: 0 !important;
   max-width: none !important;
-  width: 100% !important;
+  width: 100vw !important;
+  height: 100vh !important;
   padding: 0 !important;
   margin: 0 !important;
+  overflow: hidden !important;
+  background: #050a14 !important;
 }
 
 .bitgak-chart-body .site-header {
@@ -10,5 +15,6 @@
 }
 
 .bitgak-chart-body {
-  overflow: hidden;
+  overflow: hidden !important;
+  background: #050a14 !important;
 }

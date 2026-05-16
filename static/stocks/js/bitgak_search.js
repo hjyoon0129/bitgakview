@@ -1,42 +1,151 @@
 (function () {
-  if (window.__BITGAK_SEARCH_LOADED__) return;
-  window.__BITGAK_SEARCH_LOADED__ = true;
-
-  const app = document.querySelector(".bv-app");
-  if (!app) return;
-
-  const searchUrl = app.dataset.searchUrl || "/stocks/";
+  if (window.__BITGAK_HEADER_SEARCH_LOADED__) return;
+  window.__BITGAK_HEADER_SEARCH_LOADED__ = true;
 
   const input = document.getElementById("stockSearchInput");
-  const btn = document.getElementById("stockSearchBtn");
-  const box = document.querySelector(".bv-search-live");
+  const button = document.getElementById("stockSearchBtn");
   const panel = document.getElementById("stockSearchPanel");
+  const jsonNode = document.getElementById("allStocksData");
 
   if (!input || !panel) return;
 
-  const state = {
-    timer: null,
-    universe: null,
-  };
-
   const fallbackStocks = [
-    { name: "삼성전자", code: "005930", market: "KOSPI", aliases: ["삼성", "삼전", "samsung"] },
-    { name: "삼성전자우", code: "005935", market: "KOSPI", aliases: ["삼전우", "삼성우"] },
-    { name: "SK하이닉스", code: "000660", market: "KOSPI", aliases: ["하이닉스", "하닉", "hynix"] },
-    { name: "NAVER", code: "035420", market: "KOSPI", aliases: ["네이버", "naver"] },
-    { name: "카카오", code: "035720", market: "KOSPI", aliases: ["kakao"] },
-    { name: "LG", code: "003550", market: "KOSPI", aliases: ["엘지"] },
-    { name: "LG전자", code: "066570", market: "KOSPI", aliases: ["엘지전자"] },
-    { name: "LG에너지솔루션", code: "373220", market: "KOSPI", aliases: ["엘지에너지솔루션", "엔솔"] },
-    { name: "현대차", code: "005380", market: "KOSPI", aliases: ["현대자동차"] },
-    { name: "기아", code: "000270", market: "KOSPI", aliases: ["kia"] },
-    { name: "셀트리온", code: "068270", market: "KOSPI", aliases: ["celltrion"] },
-    { name: "우리금융지주", code: "316140", market: "KOSPI", aliases: ["우리금융"] },
-    { name: "에코프로비엠", code: "247540", market: "KOSDAQ", aliases: ["에코비엠"] },
-    { name: "에코프로", code: "086520", market: "KOSDAQ", aliases: ["ecopro"] },
-    { name: "알테오젠", code: "196170", market: "KOSDAQ", aliases: ["alteogen"] },
-    { name: "HLB", code: "028300", market: "KOSDAQ", aliases: ["에이치엘비"] },
+    { name: "삼성전자", code: "005930", market: "KOSPI", aliases: ["삼성", "삼전", "samsung", "samsung electronics"], search_rank: 1000 },
+    { name: "삼성전자우", code: "005935", market: "KOSPI", aliases: ["삼전우", "삼성우"], search_rank: 930 },
+    { name: "삼성바이오로직스", code: "207940", market: "KOSPI", aliases: ["삼바", "삼성바이오"], search_rank: 880 },
+    { name: "삼성SDI", code: "006400", market: "KOSPI", aliases: ["삼성에스디아이", "sdi"], search_rank: 850 },
+    { name: "삼성전기", code: "009150", market: "KOSPI", aliases: ["삼전기"], search_rank: 830 },
+    { name: "삼성물산", code: "028260", market: "KOSPI", aliases: ["물산"], search_rank: 810 },
+    { name: "삼성중공업", code: "010140", market: "KOSPI", aliases: ["삼성중공"], search_rank: 790 },
+    { name: "SK하이닉스", code: "000660", market: "KOSPI", aliases: ["하이닉스", "하닉", "hynix"], search_rank: 980 },
+    { name: "NAVER", code: "035420", market: "KOSPI", aliases: ["네이버", "naver"], search_rank: 940 },
+    { name: "카카오", code: "035720", market: "KOSPI", aliases: ["kakao"], search_rank: 900 },
+    { name: "현대차", code: "005380", market: "KOSPI", aliases: ["현대자동차", "hyundai"], search_rank: 920 },
+    { name: "기아", code: "000270", market: "KOSPI", aliases: ["kia"], search_rank: 900 },
+    { name: "LG에너지솔루션", code: "373220", market: "KOSPI", aliases: ["엘지에너지솔루션", "lg엔솔", "엔솔"], search_rank: 890 },
+    { name: "LG전자", code: "066570", market: "KOSPI", aliases: ["엘지전자"], search_rank: 840 },
+    { name: "LG화학", code: "051910", market: "KOSPI", aliases: ["엘지화학"], search_rank: 850 },
+    { name: "LG", code: "003550", market: "KOSPI", aliases: ["엘지"], search_rank: 800 },
+    { name: "셀트리온", code: "068270", market: "KOSPI", aliases: ["celltrion"], search_rank: 820 },
+    { name: "KB금융", code: "105560", market: "KOSPI", aliases: ["kb", "국민은행"], search_rank: 790 },
+    { name: "신한지주", code: "055550", market: "KOSPI", aliases: ["신한"], search_rank: 770 },
+    { name: "우리금융지주", code: "316140", market: "KOSPI", aliases: ["우리금융"], search_rank: 760 },
+    { name: "POSCO홀딩스", code: "005490", market: "KOSPI", aliases: ["포스코", "posco"], search_rank: 760 },
+    { name: "HLB", code: "028300", market: "KOSDAQ", aliases: ["에이치엘비"], search_rank: 720 },
+    { name: "에코프로비엠", code: "247540", market: "KOSDAQ", aliases: ["에코비엠"], search_rank: 720 },
+    { name: "에코프로", code: "086520", market: "KOSDAQ", aliases: ["ecopro"], search_rank: 700 },
+    { name: "알테오젠", code: "196170", market: "KOSDAQ", aliases: ["alteogen"], search_rank: 700 },
+    { name: "레인보우로보틱스", code: "277810", market: "KOSDAQ", aliases: ["레인보우", "로보틱스"], search_rank: 660 }
   ];
+
+  const derivativeKeywords = ["ETF", "ETN", "ETNH", "레버리지", "인버스", "선물", "합성", "TR", "채권", "국채", "CD금리", "커버드콜"];
+  const CACHE_KEY = "bitgak:all-stocks-cache:v3";
+
+  function normalize(value) {
+    return String(value || "")
+      .toLowerCase()
+      .replace(/\s+/g, "")
+      .replace(/[(){}\[\].,·ㆍ_\-]/g, "")
+      .trim();
+  }
+
+  function normalizeCode(value) {
+    const text = String(value || "").trim();
+    const digits = text.replace(/\D/g, "");
+    if (!digits) return text;
+    return digits.length <= 6 ? digits.padStart(6, "0") : digits.slice(-6);
+  }
+
+  function isDerivativeName(name) {
+    const text = String(name || "").toUpperCase().replace(/\s+/g, "");
+    return derivativeKeywords.some(function (keyword) {
+      return text.includes(String(keyword).toUpperCase().replace(/\s+/g, ""));
+    });
+  }
+
+  function readJsonItems() {
+    if (!jsonNode) return [];
+    try {
+      const parsed = JSON.parse(jsonNode.textContent || "[]");
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  function normalizeItem(item) {
+    const code = normalizeCode(item.code || item.ticker || item.symbol || "");
+    const name = String(item.name || item.stock_name || item.ticker_name || "").trim();
+
+    return {
+      name,
+      code,
+      market: String(item.market || item.market_name || "KRX").trim(),
+      aliases: Array.isArray(item.aliases) ? item.aliases : [],
+      href: String(item.href || item.url || "").trim(),
+      isDerivative: Boolean(item.is_derivative || item.isDerivative || isDerivativeName(name)),
+      searchRank: Number(item.search_rank || item.searchRank || 0) || 0
+    };
+  }
+
+  function loadCachedItems() {
+    try {
+      const parsed = JSON.parse(localStorage.getItem(CACHE_KEY) || "[]");
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  function buildItems() {
+    const map = new Map();
+    const rawItems = readJsonItems();
+    const cachedItems = rawItems.length ? [] : loadCachedItems();
+
+    rawItems.concat(cachedItems).concat(fallbackStocks).forEach(function (raw) {
+      const item = normalizeItem(raw);
+      if (!item.name || !item.code || item.code === "000000") return;
+
+      const prev = map.get(item.code);
+      if (!prev) {
+        map.set(item.code, item);
+        return;
+      }
+
+      map.set(item.code, {
+        name: prev.name || item.name,
+        code: item.code,
+        market: prev.market || item.market,
+        aliases: Array.from(new Set((prev.aliases || []).concat(item.aliases || []))),
+        href: prev.href || item.href,
+        isDerivative: Boolean(prev.isDerivative || item.isDerivative),
+        searchRank: Math.max(Number(prev.searchRank || 0), Number(item.searchRank || 0))
+      });
+    });
+
+    const result = Array.from(map.values()).map(function (item) {
+      item.href = item.href || "/stocks/" + item.code + "/";
+      return item;
+    });
+
+    if (rawItems.length) {
+      try { localStorage.setItem(CACHE_KEY, JSON.stringify(result)); } catch (e) {}
+    }
+
+    return result;
+  }
+
+  const items = buildItems();
+
+  const chosungList = ["ㄱ", "ㄲ", "ㄴ", "ㄷ", "ㄸ", "ㄹ", "ㅁ", "ㅂ", "ㅃ", "ㅅ", "ㅆ", "ㅇ", "ㅈ", "ㅉ", "ㅊ", "ㅋ", "ㅌ", "ㅍ", "ㅎ"];
+
+  function getChosung(value) {
+    return String(value || "").split("").map(function (char) {
+      const code = char.charCodeAt(0) - 44032;
+      if (code >= 0 && code <= 11171) return chosungList[Math.floor(code / 588)];
+      return char.toLowerCase();
+    }).join("");
+  }
 
   function escapeHtml(value) {
     return String(value || "")
@@ -47,313 +156,170 @@
       .replaceAll("'", "&#039;");
   }
 
-  function normalizeText(value) {
-    return String(value || "")
-      .toLowerCase()
-      .replace(/\s+/g, "")
-      .replace(/[(){}\[\].,·ㆍ_\-]/g, "")
-      .trim();
-  }
-
-  function normalizeCode(value) {
-    const digits = String(value || "").replace(/\D/g, "");
-    if (!digits) return "";
-    return digits.length <= 6 ? digits.padStart(6, "0") : digits.slice(-6);
-  }
-
-  function normalizeItem(raw) {
-    const name = String(raw.name || raw.stock_name || raw.ticker_name || "").trim();
-    const code = normalizeCode(raw.code || raw.ticker || raw.symbol || "");
-    const market = String(raw.market || raw.market_name || "KRX").trim();
-    const aliases = Array.isArray(raw.aliases) ? raw.aliases : [];
-
-    if (!name || !code) return null;
-
-    return {
-      name,
-      code,
-      market,
-      aliases,
-      url: raw.href || raw.url || `/stocks/${code}/`,
-    };
-  }
-
-  function openPanel() {
-    if (box) box.classList.add("open");
-    panel.style.display = "block";
-  }
-
-  function closePanel() {
-    if (box) box.classList.remove("open");
-    panel.style.display = "";
-  }
-
-  function renderEmpty(message) {
-    panel.innerHTML = `<div class="stock-search-empty">${escapeHtml(message)}</div>`;
-    openPanel();
-  }
-
-  function parseUniverseFromHtml(html) {
-    const doc = new DOMParser().parseFromString(html, "text/html");
-    const results = [];
-    const map = new Map();
-
-    const jsonNode = doc.getElementById("allStocksData");
-
-    if (jsonNode) {
-      try {
-        const parsed = JSON.parse(jsonNode.textContent || "[]");
-
-        if (Array.isArray(parsed)) {
-          parsed.forEach(function (raw) {
-            const item = normalizeItem(raw);
-            if (item && !map.has(item.code)) {
-              map.set(item.code, item);
-              results.push(item);
-            }
-          });
-        }
-      } catch (e) {}
+  function sequentialMatch(text, query) {
+    let index = 0;
+    for (const char of text) {
+      if (char === query[index]) index += 1;
+      if (index >= query.length) return true;
     }
-
-    doc.querySelectorAll("a[href*='/stocks/']").forEach(function (a) {
-      const href = a.getAttribute("href") || "";
-      const match = href.match(/\/stocks\/([0-9A-Za-z]{6})\/?/);
-      if (!match) return;
-
-      const code = normalizeCode(match[1]);
-      if (!code || map.has(code)) return;
-
-      const name =
-        a.querySelector(".stock-name")?.textContent?.trim() ||
-        a.querySelector(".live-suggest-name")?.textContent?.trim() ||
-        a.querySelector(".quick-name")?.textContent?.trim() ||
-        a.textContent?.trim()?.split(/\s+/)[0] ||
-        "";
-
-      if (!name) return;
-
-      const market =
-        a.querySelector(".market-pill")?.textContent?.trim() ||
-        a.querySelector(".live-suggest-market")?.textContent?.trim() ||
-        a.querySelector(".badge")?.textContent?.trim() ||
-        "KRX";
-
-      const item = { name, code, market, aliases: [], url: href };
-
-      map.set(code, item);
-      results.push(item);
-    });
-
-    fallbackStocks.forEach(function (raw) {
-      const item = normalizeItem(raw);
-
-      if (item && !map.has(item.code)) {
-        map.set(item.code, item);
-        results.push(item);
-      }
-    });
-
-    return results;
+    return false;
   }
 
-  async function getUniverse() {
-    if (Array.isArray(state.universe) && state.universe.length) {
-      return state.universe;
-    }
+  function scoreItem(item, rawQuery) {
+    const query = normalize(rawQuery);
+    if (!query) return 0;
 
-    try {
-      const url = new URL(searchUrl, window.location.origin);
-
-      const res = await fetch(url.toString(), {
-        headers: { "X-Requested-With": "XMLHttpRequest" },
-        cache: "force-cache",
-      });
-
-      const html = await res.text();
-      state.universe = parseUniverseFromHtml(html);
-    } catch (e) {
-      state.universe = fallbackStocks.map(normalizeItem).filter(Boolean);
-    }
-
-    if (!state.universe.length) {
-      state.universe = fallbackStocks.map(normalizeItem).filter(Boolean);
-    }
-
-    return state.universe;
-  }
-
-  function scoreItem(item, query) {
-    const q = normalizeText(query);
-    if (!q) return 0;
-
-    const name = normalizeText(item.name);
-    const code = normalizeText(item.code);
-    const market = normalizeText(item.market);
-    const alias = normalizeText((item.aliases || []).join(" "));
+    const name = normalize(item.name);
+    const code = normalize(item.code);
+    const market = normalize(item.market);
+    const alias = normalize((item.aliases || []).join(" "));
+    const chosungName = getChosung(item.name);
+    const chosungAlias = getChosung((item.aliases || []).join(" "));
+    const chosungQuery = getChosung(rawQuery);
 
     let score = 0;
 
-    if (code === q) score = 10000;
-    else if (name === q) score = 9500;
-    else if (alias === q) score = 9300;
-    else if (code.startsWith(q)) score = 8500;
-    else if (name.startsWith(q)) score = 7800;
-    else if (alias.includes(q)) score = 7200;
-    else if (name.includes(q)) score = 6200;
-    else if (code.includes(q)) score = 5500;
-    else if (market.includes(q)) score = 800;
+    if (code === query) score = 5000;
+    else if (name === query) score = 4800;
+    else if (alias === query) score = 4700;
+    else if (code.startsWith(query)) score = 4300;
+    else if (name.startsWith(query)) score = 3900;
+    else if (alias.includes(query)) score = 3700;
+    else if (name.includes(query)) score = 3100;
+    else if (code.includes(query)) score = 2800;
+    else if (chosungQuery && chosungName.startsWith(chosungQuery)) score = 2300;
+    else if (chosungQuery && chosungName.includes(chosungQuery)) score = 2100;
+    else if (chosungQuery && chosungAlias.includes(chosungQuery)) score = 2000;
+    else if (query.length >= 2 && sequentialMatch(name, query)) score = 1100;
+    else if (market.includes(query)) score = 300;
 
     if (!score) return 0;
-
-    if (name.includes("삼성전자")) score += 500;
-    if (name.includes("sk하이닉스")) score += 450;
-    if (name.includes("naver")) score += 350;
-    if (name.includes("카카오")) score += 300;
-
+    score += Math.min(Number(item.searchRank || 0), 1200);
+    if (item.isDerivative) score -= 250;
     return score;
   }
 
-  function findMatches(universe, query) {
-    const q = query.trim();
+  function getMatches(query) {
+    const q = normalize(query);
     if (!q) return [];
 
-    return universe
+    return items
       .map(function (item) {
-        return {
-          ...item,
-          score: scoreItem(item, q),
-        };
+        return Object.assign({}, item, { score: scoreItem(item, query) });
       })
-      .filter(function (item) {
-        return item.score > 0;
-      })
+      .filter(function (item) { return item.score > 0; })
       .sort(function (a, b) {
         if (b.score !== a.score) return b.score - a.score;
+        if (Number(b.searchRank || 0) !== Number(a.searchRank || 0)) return Number(b.searchRank || 0) - Number(a.searchRank || 0);
+        if (a.isDerivative !== b.isDerivative) return a.isDerivative ? 1 : -1;
         return String(a.name).localeCompare(String(b.name), "ko");
       })
-      .slice(0, 20);
+      .slice(0, 80);
   }
 
-  function renderResults(results) {
-    if (!results.length) {
-      renderEmpty("검색 결과가 없습니다.");
+  function createItem(item, index) {
+    return ''
+      + '<a class="stock-search-item" data-index="' + index + '" href="' + escapeHtml(item.href) + '">'
+      + '  <div>'
+      + '    <div class="stock-search-name">' + escapeHtml(item.name) + '</div>'
+      + '    <div class="stock-search-code">' + escapeHtml(item.code) + '</div>'
+      + '  </div>'
+      + '  <span class="stock-search-market">' + escapeHtml(item.market) + '</span>'
+      + '</a>';
+  }
+
+  let lastMatches = [];
+  let activeIndex = -1;
+
+  function paintActive() {
+    panel.querySelectorAll(".stock-search-item").forEach(function (node) {
+      const index = Number(node.getAttribute("data-index"));
+      node.classList.toggle("active", index === activeIndex);
+    });
+  }
+
+  function render(query) {
+    const q = query.trim();
+    lastMatches = getMatches(q);
+    activeIndex = -1;
+    panel.innerHTML = "";
+
+    if (!q) {
+      panel.classList.remove("show");
       return;
     }
 
-    panel.innerHTML = results.slice(0, 12).map(function (item) {
-      return `
-        <button type="button" class="stock-search-item" data-url="${escapeHtml(item.url || `/stocks/${item.code}/`)}">
-          <div>
-            <div class="stock-search-name">${escapeHtml(item.name)}</div>
-            <div class="stock-search-code">${escapeHtml(item.code)}</div>
-          </div>
-          <div class="stock-search-market">${escapeHtml(item.market || "KRX")}</div>
-        </button>
-      `;
-    }).join("");
+    panel.classList.add("show");
 
-    openPanel();
+    if (!lastMatches.length) {
+      panel.innerHTML = '<div class="stock-search-empty">검색 결과가 없습니다. 예: 삼성전자, 삼전, LG, NAVER, 005930</div>';
+      return;
+    }
+
+    panel.innerHTML = lastMatches.slice(0, 60).map(createItem).join("");
   }
 
-  async function runSearch(query, options) {
-    options = options || {};
+  function goTarget() {
+    const matches = lastMatches.length ? lastMatches : getMatches(input.value);
+    const target = activeIndex >= 0 ? matches[activeIndex] : matches[0];
 
-    const q = String(query || "").trim();
-
-    if (!q) {
-      renderEmpty("종목명 또는 코드를 입력하세요.");
-      return [];
+    if (target) {
+      window.location.href = target.href;
+      return true;
     }
 
-    const onlyNumber = q.replace(/[^0-9]/g, "");
-
-    if (onlyNumber.length === 6) {
-      const direct = [{
-        name: "종목코드 직접 이동",
-        code: onlyNumber,
-        market: "KRX",
-        url: `/stocks/${onlyNumber}/`,
-      }];
-
-      renderResults(direct);
-
-      if (options.navigateFirst) {
-        window.location.href = direct[0].url;
-      }
-
-      return direct;
-    }
-
-    renderEmpty("검색 중입니다...");
-
-    const universe = await getUniverse();
-    const results = findMatches(universe, q);
-
-    renderResults(results);
-
-    if (options.navigateFirst && results[0]) {
-      window.location.href = results[0].url;
-    }
-
-    return results;
+    return false;
   }
 
-  function scheduleSearch() {
-    clearTimeout(state.timer);
-
-    state.timer = setTimeout(function () {
-      runSearch(input.value);
-    }, 180);
-  }
-
-  input.addEventListener("focus", function () {
-    openPanel();
-
-    if (!input.value.trim()) {
-      renderEmpty("종목명 또는 코드를 입력하세요.");
-    } else {
-      scheduleSearch();
-    }
+  input.addEventListener("input", function () {
+    render(input.value);
   });
 
-  input.addEventListener("input", scheduleSearch);
+  input.addEventListener("focus", function () {
+    if (input.value.trim()) render(input.value);
+  });
 
   input.addEventListener("keydown", function (event) {
-    if (event.key === "Enter") {
+    const count = Math.min(lastMatches.length, 60);
+
+    if (event.key === "ArrowDown" && count) {
       event.preventDefault();
+      activeIndex = activeIndex < count - 1 ? activeIndex + 1 : 0;
+      paintActive();
+      return;
+    }
 
-      const first = panel.querySelector(".stock-search-item");
+    if (event.key === "ArrowUp" && count) {
+      event.preventDefault();
+      activeIndex = activeIndex > 0 ? activeIndex - 1 : count - 1;
+      paintActive();
+      return;
+    }
 
-      if (first) {
-        window.location.href = first.dataset.url;
-        return;
-      }
-
-      runSearch(input.value, { navigateFirst: true });
+    if (event.key === "Enter") {
+      if (goTarget()) event.preventDefault();
     }
 
     if (event.key === "Escape") {
-      closePanel();
+      panel.classList.remove("show");
+      activeIndex = -1;
     }
   });
 
-  btn && btn.addEventListener("click", function () {
-    runSearch(input.value);
-  });
-
-  panel.addEventListener("click", function (event) {
-    const item = event.target.closest(".stock-search-item");
-    if (!item) return;
-
-    window.location.href = item.dataset.url;
-  });
+  if (button) {
+    button.addEventListener("click", function () {
+      if (!goTarget()) {
+        const q = encodeURIComponent(input.value.trim());
+        if (q) window.location.href = "/stocks/?q=" + q;
+      }
+    });
+  }
 
   document.addEventListener("click", function (event) {
-    if (box && !box.contains(event.target)) {
-      closePanel();
+    if (!event.target.closest(".bv-search-live")) {
+      panel.classList.remove("show");
     }
   });
 
-  renderEmpty("종목명 또는 코드를 입력하세요.");
+  if (input.value.trim()) render(input.value);
 })();

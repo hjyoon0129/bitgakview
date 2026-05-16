@@ -161,6 +161,15 @@
         min-height: calc(100vh - 58px);
       }
     }
+
+
+    .site-nav a:first-child:last-child {
+      border-color: rgba(37, 99, 235, 0.78);
+      background: linear-gradient(135deg, #2563eb, #0ea5e9);
+      color: #ffffff;
+      box-shadow: 0 10px 24px rgba(37, 99, 235, 0.20);
+    }
+
   </style>
 
   {% block extra_css %}{% endblock %}
@@ -173,10 +182,15 @@
     </a>
 
     <nav class="site-nav">
-      <a href="{% url 'stocks:search' %}">종목</a>
       <a href="#">로그인</a>
     </nav>
   </header>
+
+  {% block global_json_data %}
+    {% if all_stocks_payload %}
+      {{ all_stocks_payload|json_script:"allStocksData" }}
+    {% endif %}
+  {% endblock %}
 
   <main class="site-main">
     {% block content %}{% endblock %}
