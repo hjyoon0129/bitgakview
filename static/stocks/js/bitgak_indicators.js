@@ -20,6 +20,15 @@
   const rightList = document.getElementById("rightIndicatorList");
   const countEl = document.getElementById("activeIndicatorCount");
 
+  // 모바일 전용: 현재 적용 중인 지표를 별도 창에서 관리
+  const openMobileBtn = document.getElementById("openMobileIndicatorsBtn");
+  const mobileModal = document.getElementById("mobileIndicatorModal");
+  const mobilePanel = mobileModal ? mobileModal.querySelector(".mobile-indicator-panel") : null;
+  const mobileList = document.getElementById("mobileIndicatorList");
+  const mobileCountEl = document.getElementById("mobileActiveIndicatorCount");
+  const mobileBadgeEl = document.getElementById("mobileActiveIndicatorBadge");
+  const mobileAddBtn = document.getElementById("mobileAddIndicatorBtn");
+
   if (!modal || !catalogEl || !rightList) return;
 
   const STORAGE_KEY = "bitgak_chart_indicators_v5_tv";
@@ -1915,13 +1924,9 @@
     schedulePaneLabelRefresh();
   }
 
-  function renderRightList() {
-    if (countEl) countEl.textContent = String(indicators.length);
-    if (!rightList) return;
-
+  function buildIndicatorRowsHtml(emptyMessage) {
     if (!indicators.length) {
-      rightList.innerHTML = '<div class="indicator-empty">아직 추가된 지표가 없습니다. 위 검색창 또는 [지표추가] 버튼으로 지표를 추가하세요.</div>';
-      return;
+      return `<div class="indicator-empty">${escapeHtml(emptyMessage || "아직 추가된 지표가 없습니다. [지표검색]으로 필요한 지표를 먼저 추가하세요.")}</div>`;
     }
 
     function rowHtml(indicator) {
@@ -1940,9 +1945,9 @@
             </div>
           </div>
           <div class="indicator-row-actions">
-            <button class="indicator-eye-btn ${indicator.visible ? "" : "off"}" type="button" data-toggle-indicator-visible="${escapeHtml(indicator.id)}" title="차트 표시/숨김">${eyeIcon(indicator.visible)}</button>
-            <button class="indicator-edit-btn" type="button" data-edit-indicator="${escapeHtml(indicator.id)}" title="지표 속성">${editIcon()}</button>
-            <button class="indicator-trash-btn" type="button" data-remove-indicator="${escapeHtml(indicator.id)}" title="지표 삭제">${trashIcon()}</button>
+            <button class="indicator-eye-btn ${indicator.visible ? "" : "off"}" type="button" data-toggle-indicator-visible="${escapeHtml(indicator.id)}" title="차트 표시/숨김" aria-label="${indicator.visible ? "지표 숨김" : "지표 표시"}">${eyeIcon(indicator.visible)}</button>
+            <button class="indicator-edit-btn" type="button" data-edit-indicator="${escapeHtml(indicator.id)}" title="지표 속성" aria-label="지표 속성">${editIcon()}</button>
+            <button class="indicator-trash-btn" type="button" data-remove-indicator="${escapeHtml(indicator.id)}" title="지표 삭제" aria-label="지표 삭제">${trashIcon()}</button>
           </div>
         </div>
       `;
@@ -1954,7 +1959,63 @@
       return aw - bw;
     });
 
-    rightList.innerHTML = sorted.map(rowHtml).join("");
+    return sorted.map(rowHtml).join("");
+  }
+
+  function renderRightList() {
+    const total = indicators.length;
+    if (countEl) countEl.textContent = String(total);
+    if (mobileCountEl) mobileCountEl.textContent = String(total);
+    if (mobileBadgeEl) {
+      mobileBadgeEl.textContent = String(total);
+      mobileBadgeEl.classList.toggle("is-empty", total === 0);
+    }
+
+    if (rightList) {
+      rightList.innerHTML = buildIndicatorRowsHtml("아직 추가된 지표가 없습니다. 위 검색창 또는 [지표추가] 버튼으로 지표를 추가하세요.");
+    }
+
+    if (mobileList) {
+      mobileList.innerHTML = buildIndicatorRowsHtml("아직 추가된 지표가 없습니다. [지표검색]으로 필요한 지표를 먼저 추가하세요.");
+    }
+  }
+
+  function openMobileIndicatorModal() {
+    if (!mobileModal) return;
+    renderRightList();
+    mobileModal.classList.add("open", "is-open");
+    mobileModal.setAttribute("aria-hidden", "false");
+    document.body.classList.add("mobile-indicator-modal-open");
+  }
+
+  function closeMobileIndicatorModal() {
+    if (!mobileModal) return;
+    mobileModal.classList.remove("open", "is-open");
+    mobileModal.setAttribute("aria-hidden", "true");
+    document.body.classList.remove("mobile-indicator-modal-open");
+  }
+
+  function handleIndicatorListClick(event) {
+    const toggleBtn = event.target.closest("[data-toggle-indicator-visible]");
+    if (toggleBtn) { event.preventDefault(); event.stopPropagation(); toggleIndicatorVisible(toggleBtn.dataset.toggleIndicatorVisible); return; }
+    const removeBtn = event.target.closest("[data-remove-indicator]");
+    if (removeBtn) { event.preventDefault(); event.stopPropagation(); removeIndicator(removeBtn.dataset.removeIndicator); return; }
+    const editBtn = event.target.closest("[data-edit-indicator]");
+    if (editBtn) {
+      event.preventDefault();
+      event.stopPropagation();
+      closeMobileIndicatorModal();
+      openSettings(editBtn.dataset.editIndicator);
+    }
+  }
+
+  function handleIndicatorListDblClick(event) {
+    const row = event.target.closest("[data-indicator-row]");
+    if (!row) return;
+    event.preventDefault();
+    event.stopPropagation();
+    closeMobileIndicatorModal();
+    openSettings(row.dataset.indicatorRow);
   }
 
   function openModal() {
@@ -2829,21 +2890,30 @@
     input.value = clampNumber(Number(input.value || 1) + step, 1, 2000, 20);
   });
 
-  rightList.addEventListener("click", function (event) {
-    const toggleBtn = event.target.closest("[data-toggle-indicator-visible]");
-    if (toggleBtn) { event.preventDefault(); event.stopPropagation(); toggleIndicatorVisible(toggleBtn.dataset.toggleIndicatorVisible); return; }
-    const removeBtn = event.target.closest("[data-remove-indicator]");
-    if (removeBtn) { event.preventDefault(); event.stopPropagation(); removeIndicator(removeBtn.dataset.removeIndicator); return; }
-    const editBtn = event.target.closest("[data-edit-indicator]");
-    if (editBtn) { event.preventDefault(); event.stopPropagation(); openSettings(editBtn.dataset.editIndicator); }
-  });
+  rightList && rightList.addEventListener("click", handleIndicatorListClick);
+  rightList && rightList.addEventListener("dblclick", handleIndicatorListDblClick);
+  mobileList && mobileList.addEventListener("click", handleIndicatorListClick);
+  mobileList && mobileList.addEventListener("dblclick", handleIndicatorListDblClick);
 
-  rightList.addEventListener("dblclick", function (event) {
-    const row = event.target.closest("[data-indicator-row]");
-    if (!row) return;
+  openMobileBtn && openMobileBtn.addEventListener("click", function (event) {
     event.preventDefault();
     event.stopPropagation();
-    openSettings(row.dataset.indicatorRow);
+    openMobileIndicatorModal();
+  });
+
+  mobileAddBtn && mobileAddBtn.addEventListener("click", function (event) {
+    event.preventDefault();
+    event.stopPropagation();
+    closeMobileIndicatorModal();
+    openSearch(quickSearchInput ? quickSearchInput.value : "");
+  });
+
+  document.querySelectorAll("[data-close-mobile-indicators]").forEach(function (btn) {
+    btn.addEventListener("click", closeMobileIndicatorModal);
+  });
+
+  mobileModal && mobileModal.addEventListener("click", function (event) {
+    if (event.target === mobileModal) closeMobileIndicatorModal();
   });
 
   applyBtn && applyBtn.addEventListener("click", applySettings);
@@ -2855,7 +2925,7 @@
       return;
     }
     closeAllCustomSelects();
-    if (modal.classList.contains("open") && panel && !panel.contains(event.target) && !event.target.closest(".indicator-color-palette") && !event.target.closest(".bv-select-menu-portal") && !openTopBtn?.contains(event.target) && !openSideBtn?.contains(event.target) && !quickSearchBtn?.contains(event.target)) {
+    if (modal.classList.contains("open") && panel && !panel.contains(event.target) && !event.target.closest(".indicator-color-palette") && !event.target.closest(".bv-select-menu-portal") && !openTopBtn?.contains(event.target) && !openSideBtn?.contains(event.target) && !openMobileBtn?.contains(event.target) && !quickSearchBtn?.contains(event.target)) {
       closeModal();
     }
     if (!event.target.closest(".indicator-color-palette") && !event.target.closest("[data-color-target]")) closeColorPalette();
@@ -2874,6 +2944,7 @@
       closeAllCustomSelects();
       closeColorPalette();
       closeModal();
+      closeMobileIndicatorModal();
     }
   });
 

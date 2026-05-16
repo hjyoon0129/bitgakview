@@ -1284,9 +1284,31 @@
     } catch (e) {}
   }
 
+  function getEventClientPoint(event) {
+    if (!event) return null;
+
+    if (Number.isFinite(Number(event.clientX)) && Number.isFinite(Number(event.clientY))) {
+      return { x: Number(event.clientX), y: Number(event.clientY) };
+    }
+
+    const touch = event.touches && event.touches.length ? event.touches[0] :
+      (event.changedTouches && event.changedTouches.length ? event.changedTouches[0] : null);
+
+    if (touch && Number.isFinite(Number(touch.clientX)) && Number.isFinite(Number(touch.clientY))) {
+      return { x: Number(touch.clientX), y: Number(touch.clientY) };
+    }
+
+    return null;
+  }
+
   function getLocalPoint(event) {
     const rect = chartEl.getBoundingClientRect();
-    return { x: event.clientX - rect.left, y: event.clientY - rect.top };
+    const client = getEventClientPoint(event) || { x: rect.left, y: rect.top };
+    return { x: client.x - rect.left, y: client.y - rect.top };
+  }
+
+  function isMobileViewport() {
+    return !!(window.matchMedia && window.matchMedia("(max-width: 760px)").matches);
   }
 
   function coordinateToLogicalSafe(x) {
@@ -2125,19 +2147,37 @@
     openDrawingSettings(drawing);
   }
 
-  function updateDrawingCrosshairFromPointer(event) {
-    if (!event || drawingDrag) return;
-    const resolved = pointFromEvent(event);
-    if (!resolved) return;
-
-    state.crosshairPoint = resolved.point;
-    state.crosshairValue = resolved.value;
-
+  function scheduleDrawingCrosshairRender() {
     if (crosshairRaf) return;
     crosshairRaf = requestAnimationFrame(function () {
       crosshairRaf = null;
       renderDrawings();
     });
+  }
+
+  function setManualCrosshairFromEvent(event) {
+    const resolved = pointFromEvent(event);
+    if (!resolved) return false;
+
+    state.crosshairPoint = resolved.point;
+    state.crosshairValue = resolved.value;
+    scheduleDrawingCrosshairRender();
+    return true;
+  }
+
+  function updateDrawingCrosshairFromPointer(event) {
+    if (!event || drawingDrag) return;
+    setManualCrosshairFromEvent(event);
+  }
+
+  function updateMobileCrosshairFromTouch(event) {
+    if (!event || !isMobileViewport() || drawingDrag) return;
+
+    // 모바일 Lightweight Charts는 터치 중 기본 가격/시간 라벨이 잘 안 뜨는 경우가 있어
+    // 커서(십자선) 상태에서는 SVG 레이어에 직접 좌표 배지를 그린다.
+    if (normalizeDrawingTool(state.activeTool) !== "cursor" && !state.tempDrawing) return;
+
+    setManualCrosshairFromEvent(event);
   }
 
   function processDrawingToolTap(event) {
@@ -2868,8 +2908,14 @@
 
   drawingLayer.addEventListener("click", handleDrawingClick);
   drawingLayer.addEventListener("pointermove", handleDrawingMove);
+  chartWrap.addEventListener("pointerdown", updateMobileCrosshairFromTouch, { passive: true, capture: true });
+  chartEl.addEventListener("pointerdown", updateMobileCrosshairFromTouch, { passive: true, capture: true });
   chartWrap.addEventListener("pointermove", updateDrawingCrosshairFromPointer, { passive: true });
   chartEl.addEventListener("pointermove", updateDrawingCrosshairFromPointer, { passive: true });
+  chartWrap.addEventListener("touchstart", updateMobileCrosshairFromTouch, { passive: true });
+  chartWrap.addEventListener("touchmove", updateMobileCrosshairFromTouch, { passive: true });
+  chartEl.addEventListener("touchstart", updateMobileCrosshairFromTouch, { passive: true });
+  chartEl.addEventListener("touchmove", updateMobileCrosshairFromTouch, { passive: true });
   drawingLayer.addEventListener("pointerdown", handleDrawingPointerDown);
   drawingLayer.addEventListener("pointermove", handleDrawingDragMove);
   drawingLayer.addEventListener("pointerup", handleDrawingPointerUp);

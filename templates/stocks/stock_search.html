@@ -1,23 +1,39 @@
 {% extends "base.html" %}
+{% load static %}
 
-{% block title %}종목 검색 - BitgakView{% endblock %}
+{% block title %}BitgakView - 한국 주식 검색{% endblock %}
 {% block body_class %}stock-search-body{% endblock %}
 
 {% block extra_css %}
 <style>
-  .stock-search-body {
-    background:
-      radial-gradient(circle at top left, rgba(45, 212, 191, 0.12), transparent 27%),
-      radial-gradient(circle at top right, rgba(59, 130, 246, 0.12), transparent 27%),
-      linear-gradient(180deg, #07101d 0%, #07101d 42%, #091322 100%) !important;
-    color: #eaf2ff;
+  :root {
+    --bv-bg: #07101d;
+    --bv-panel: rgba(12, 24, 42, 0.92);
+    --bv-panel-2: rgba(8, 17, 31, 0.96);
+    --bv-line: rgba(74, 118, 176, 0.34);
+    --bv-line-strong: rgba(70, 165, 255, 0.48);
+    --bv-text: #eef7ff;
+    --bv-muted: #94a9c7;
+    --bv-blue: #2f7df6;
+    --bv-cyan: #2dd4ef;
+    --bv-green: #22c55e;
+    --bv-red: #ef4444;
+    --bv-yellow: #facc15;
+    --bv-radius-xl: 28px;
+    --bv-radius-lg: 20px;
+    --bv-radius-md: 15px;
+    --bv-shadow: 0 26px 80px rgba(0, 0, 0, 0.34);
   }
 
-
-  /* =========================================================
-     Home navbar patch
-     기존 홈 화면(검색 + 시장지표)은 유지하고 상단 네브바만 박스형으로 정리
-     ========================================================= */
+  .stock-search-body {
+    min-height: 100vh;
+    background:
+      radial-gradient(circle at top left, rgba(45, 212, 191, 0.13), transparent 30%),
+      radial-gradient(circle at top right, rgba(59, 130, 246, 0.16), transparent 34%),
+      linear-gradient(180deg, #06101b 0%, #07101d 45%, #091322 100%) !important;
+    color: var(--bv-text);
+    overflow-x: hidden;
+  }
 
   .stock-search-body > header,
   .stock-search-body .site-header,
@@ -29,106 +45,107 @@
     display: none !important;
   }
 
+  .home-shell {
+    width: min(1520px, calc(100vw - 40px));
+    margin: 0 auto;
+    padding: 22px 0 72px;
+  }
+
   .home-nav-wrap {
     position: sticky;
     top: 12px;
     z-index: 9999;
-    width: min(1500px, calc(100vw - 40px));
-    margin: 0 auto 20px;
+    margin-bottom: 22px;
   }
 
   .home-nav-card {
     min-height: 66px;
     padding: 10px 12px;
-    border-radius: 22px;
-    border: 1px solid rgba(96, 165, 250, 0.20);
+    border-radius: 24px;
+    border: 1px solid var(--bv-line);
     background:
-      radial-gradient(circle at 16% 0%, rgba(45, 212, 191, 0.10), transparent 34%),
-      linear-gradient(180deg, rgba(10, 18, 32, 0.92), rgba(5, 11, 21, 0.94));
-    box-shadow:
-      0 22px 60px rgba(0, 0, 0, 0.26),
-      inset 0 1px 0 rgba(255,255,255,0.05);
-    backdrop-filter: blur(14px);
+      linear-gradient(135deg, rgba(15, 46, 65, 0.92), rgba(10, 21, 38, 0.96) 44%, rgba(13, 26, 48, 0.94));
+    box-shadow: 0 20px 55px rgba(0, 0, 0, 0.24);
+    backdrop-filter: blur(16px);
     display: grid;
-    grid-template-columns: auto minmax(0, 1fr) auto;
-    gap: 16px;
+    grid-template-columns: 260px 1fr auto;
     align-items: center;
+    gap: 16px;
   }
 
   .home-brand {
     display: inline-flex;
     align-items: center;
-    gap: 10px;
-    min-width: 156px;
-    color: #ffffff;
+    gap: 12px;
     text-decoration: none;
+    color: var(--bv-text);
+    min-width: 0;
   }
 
   .home-logo {
-    width: 34px;
-    height: 34px;
-    border-radius: 12px;
-    background: linear-gradient(135deg, #2dd4bf, #38bdf8);
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    color: #03111d;
-    font-size: 15px;
+    width: 42px;
+    height: 42px;
+    border-radius: 14px;
+    display: grid;
+    place-items: center;
     font-weight: 1000;
-    box-shadow: 0 12px 28px rgba(45, 212, 191, 0.24);
+    color: #062033;
+    background: linear-gradient(135deg, #2dd4bf, #60a5fa);
+    box-shadow: 0 14px 32px rgba(45, 212, 191, 0.22);
+    flex: 0 0 auto;
   }
 
   .home-brand-text {
     display: flex;
     flex-direction: column;
-    line-height: 1.05;
+    line-height: 1.1;
+    min-width: 0;
   }
 
   .home-brand-name {
-    color: #ffffff;
-    font-size: 15px;
+    font-size: 18px;
     font-weight: 1000;
     letter-spacing: -0.04em;
   }
 
   .home-brand-sub {
     margin-top: 4px;
-    color: #7dd3fc;
-    font-size: 10px;
+    font-size: 11px;
     font-weight: 900;
-    letter-spacing: -0.02em;
+    color: #7dd3fc;
   }
 
   .home-nav-links {
-    display: inline-flex;
+    display: flex;
     justify-content: center;
     align-items: center;
-    gap: 6px;
+    gap: 8px;
     min-width: 0;
   }
 
   .home-nav-link {
-    height: 38px;
-    padding: 0 13px;
-    border-radius: 13px;
-    color: #a8c2e8;
+    min-height: 42px;
+    padding: 0 18px;
+    border-radius: 16px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    font-size: 13px;
-    font-weight: 1000;
+    color: #dbeafe;
     text-decoration: none;
+    font-size: 15px;
+    font-weight: 950;
     white-space: nowrap;
-    transition: 0.16s ease;
+    border: 1px solid transparent;
   }
 
   .home-nav-link:hover,
   .home-nav-link.active {
-    color: #ffffff;
-    background: rgba(56, 189, 248, 0.10);
+    color: #fff;
+    background: rgba(37, 99, 235, 0.20);
+    border-color: rgba(96, 165, 250, 0.28);
   }
 
-  .home-nav-actions {
+  .home-auth-actions {
     display: inline-flex;
     align-items: center;
     justify-content: flex-end;
@@ -137,843 +154,1021 @@
 
   .home-login-btn,
   .home-start-btn {
-    height: 40px;
-    padding: 0 15px;
-    border-radius: 14px;
+    height: 46px;
+    padding: 0 20px;
+    border-radius: 16px;
+    border: 1px solid rgba(96, 165, 250, 0.35);
+    background: rgba(15, 23, 42, 0.78);
+    color: #f8fbff;
+    text-decoration: none;
+    font-weight: 950;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    color: #dbeafe;
-    text-decoration: none;
-    font-size: 13px;
-    font-weight: 1000;
     white-space: nowrap;
-  }
-
-  .home-login-btn {
-    border: 1px solid rgba(96, 165, 250, 0.24);
-    background: rgba(15, 23, 42, 0.60);
   }
 
   .home-start-btn {
-    border: 1px solid rgba(125, 211, 252, 0.42);
-    background: linear-gradient(135deg, #2563eb, #0ea5e9);
-    color: #ffffff;
-    box-shadow: 0 14px 30px rgba(37, 99, 235, 0.24);
+    border-color: rgba(45, 212, 191, 0.28);
+    background: linear-gradient(135deg, #2874f0, #16b8d9);
   }
 
-  .home-login-btn:hover,
-  .home-start-btn:hover {
-    transform: translateY(-1px);
-    filter: brightness(1.06);
-  }
-
-  .search-page {
-    padding-top: 0;
-  }
-
-  @media (max-width: 980px) {
-    .home-nav-wrap {
-      top: 8px;
-      width: min(100%, calc(100vw - 20px));
-      margin-bottom: 14px;
-    }
-
-    .home-nav-card {
-      grid-template-columns: 1fr auto;
-      gap: 10px;
-    }
-
-    .home-nav-links {
-      grid-column: 1 / -1;
-      justify-content: flex-start;
-      overflow-x: auto;
-      padding-top: 2px;
-    }
-
-    .home-brand {
-      min-width: 0;
-    }
-
-    .home-brand-sub,
-    .home-start-btn {
-      display: none;
-    }
-  }
-
-  .search-page {
-    width: min(1500px, calc(100vw - 40px));
-    margin: 0 auto;
-    padding: 26px 0 48px;
-  }
-
-  .hero,
-  .content-grid {
+  .home-main-grid {
     display: grid;
     grid-template-columns: minmax(0, 1fr) 320px;
-    gap: 18px;
+    gap: 22px;
     align-items: start;
   }
 
-  .hero {
-    align-items: stretch;
-    margin-bottom: 18px;
+  .home-left-stack {
+    display: grid;
+    gap: 18px;
+    min-width: 0;
   }
 
-  .hero-main,
-  .market-side,
-  .market-dashboard,
-  .quick-section {
-    background: linear-gradient(180deg, rgba(13, 22, 39, 0.92), rgba(10, 18, 32, 0.96));
-    border: 1px solid rgba(148, 163, 184, 0.14);
-    border-radius: 26px;
-    box-shadow: 0 24px 80px rgba(0, 0, 0, 0.28);
-  }
-
-  .hero-main {
-    min-height: 318px;
-    padding: 36px;
-    position: relative;
+  .home-hero {
+    border: 1px solid var(--bv-line);
+    border-radius: var(--bv-radius-xl);
+    background:
+      radial-gradient(circle at 82% 20%, rgba(45, 212, 239, 0.13), transparent 36%),
+      linear-gradient(135deg, rgba(10, 23, 42, 0.98), rgba(13, 38, 59, 0.88));
+    box-shadow: var(--bv-shadow);
+    padding: 36px 38px 34px;
     overflow: visible;
   }
 
-  .hero-main::before {
-    content: "";
-    position: absolute;
-    top: -90px;
-    right: -70px;
-    width: 330px;
-    height: 330px;
-    border-radius: 999px;
-    background: radial-gradient(circle, rgba(56, 189, 248, 0.22), rgba(56, 189, 248, 0.04) 58%, transparent 72%);
-    filter: blur(2px);
-    pointer-events: none;
-  }
-
-  .eyebrow {
-    position: relative;
-    z-index: 2;
+  .home-badge {
     display: inline-flex;
     align-items: center;
-    padding: 8px 12px;
+    min-height: 30px;
+    padding: 0 14px;
     border-radius: 999px;
-    background: rgba(56, 189, 248, 0.09);
-    color: #bae6fd;
-    border: 1px solid rgba(56, 189, 248, 0.24);
+    border: 1px solid rgba(45, 212, 239, 0.28);
+    background: rgba(14, 116, 144, 0.24);
+    color: #7dd3fc;
     font-size: 12px;
-    font-weight: 1000;
+    font-weight: 950;
     margin-bottom: 18px;
   }
 
-  .hero h1 {
-    position: relative;
-    z-index: 2;
+  .home-title {
     margin: 0;
-    color: #ffffff;
-    font-size: clamp(40px, 4.2vw, 68px);
-    line-height: 1.03;
-    letter-spacing: -0.07em;
+    font-size: clamp(40px, 5.3vw, 76px);
+    line-height: 0.98;
+    letter-spacing: -0.075em;
     font-weight: 1000;
+    word-break: keep-all;
   }
 
-  .hero h1 span {
+  .home-title-main {
+    display: block;
+    color: #ffffff;
+  }
+
+  .home-title-accent-wrap {
+    display: block;
     color: #38bdf8;
-    text-shadow: 0 0 22px rgba(56, 189, 248, 0.18);
+    text-shadow: 0 16px 48px rgba(56, 189, 248, 0.18);
   }
 
-  .hero-desc {
-    position: relative;
-    z-index: 2;
-    margin: 16px 0 0;
-    max-width: 780px;
-    color: #b8c7dd;
-    font-size: 15px;
-    line-height: 1.75;
-    font-weight: 740;
+  .home-title-accent-1,
+  .home-title-accent-2 {
+    display: inline;
   }
 
-  .search-panel {
-    position: relative;
-    z-index: 50;
-    margin-top: 28px;
+  .home-title-accent-2 {
+    margin-left: 10px;
+  }
+
+  .home-desc {
+    margin: 22px 0 28px;
+    max-width: 920px;
+    color: #c7d7ee;
+    font-size: 16px;
+    font-weight: 800;
+    line-height: 1.7;
+  }
+
+  .home-search-form {
     display: grid;
     grid-template-columns: minmax(0, 1fr) 96px;
     gap: 10px;
-    align-items: start;
-  }
-
-  .search-live-box {
     position: relative;
   }
 
-  .search-panel input {
+  .home-search-input-wrap {
+    position: relative;
+    min-width: 0;
+  }
+
+  .home-search-input {
     width: 100%;
-    height: 58px;
+    height: 62px;
     border-radius: 18px;
-    border: 1px solid rgba(148, 163, 184, 0.22);
-    background: rgba(2, 6, 23, 0.84);
-    color: #ffffff;
-    padding: 0 18px;
-    font-size: 16px;
-    font-weight: 900;
+    border: 1px solid rgba(96, 165, 250, 0.24);
+    background: rgba(2, 8, 23, 0.76);
+    color: #f8fbff;
+    padding: 0 20px;
     outline: none;
+    font-size: 17px;
+    font-weight: 900;
   }
 
-  .search-panel input::placeholder {
-    color: #77859b;
+  .home-search-input::placeholder {
+    color: #7891b4;
   }
 
-  .search-panel input:focus {
-    border-color: #38bdf8;
-    box-shadow: 0 0 0 4px rgba(56, 189, 248, 0.13);
+  .home-search-input:focus {
+    border-color: rgba(45, 212, 239, 0.58);
+    box-shadow: 0 0 0 4px rgba(45, 212, 239, 0.10);
   }
 
-  .search-panel button {
-    height: 58px;
+  .home-search-btn {
+    height: 62px;
     border: 0;
     border-radius: 18px;
-    background: linear-gradient(135deg, #38bdf8, #2dd4bf);
-    color: #03111d;
-    font-size: 15px;
+    background: linear-gradient(135deg, #2dd4bf, #38bdf8);
+    color: #04111f;
+    font-size: 17px;
     font-weight: 1000;
     cursor: pointer;
-    transition: 0.16s ease;
   }
 
-  .search-panel button:hover {
-    filter: brightness(1.07);
-    transform: translateY(-1px);
-  }
-
-  .live-suggest-panel {
+  .stock-search-panel {
     position: absolute;
-    top: 66px;
+    top: calc(100% + 10px);
     left: 0;
     right: 0;
-    max-height: 430px;
-    overflow-y: auto;
-    padding: 8px;
-    border-radius: 18px;
-    border: 1px solid rgba(56, 189, 248, 0.24);
-    background: rgba(7, 14, 28, 0.99);
-    box-shadow: 0 24px 70px rgba(0, 0, 0, 0.46);
+    z-index: 50;
     display: none;
-    z-index: 999;
+    max-height: 360px;
+    overflow: auto;
+    border: 1px solid rgba(96, 165, 250, 0.28);
+    border-radius: 18px;
+    background: rgba(7, 16, 29, 0.98);
+    box-shadow: 0 24px 70px rgba(0, 0, 0, 0.45);
   }
 
-  .live-suggest-panel.show {
+  .stock-search-panel.active,
+  .stock-search-panel.is-open {
     display: block;
   }
 
-  .live-suggest-item {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    align-items: center;
+  .home-panel {
+    border: 1px solid var(--bv-line);
+    border-radius: var(--bv-radius-xl);
+    background: rgba(9, 20, 36, 0.88);
+    box-shadow: var(--bv-shadow);
+    overflow: hidden;
+  }
+
+  .home-panel-head {
+    padding: 22px 24px 14px;
+    display: flex;
+    justify-content: space-between;
     gap: 12px;
-    padding: 13px 14px;
-    border-radius: 14px;
-    color: #eaf2ff;
-    transition: 0.14s ease;
-    text-decoration: none;
+    align-items: flex-start;
   }
 
-  .live-suggest-item:hover,
-  .live-suggest-item.active {
-    background: rgba(56, 189, 248, 0.10);
-  }
-
-  .live-suggest-name {
-    color: #ffffff;
-    font-size: 15px;
+  .home-panel-title strong {
+    display: block;
+    font-size: 24px;
     font-weight: 1000;
+    letter-spacing: -0.045em;
   }
 
-  .live-suggest-code {
-    margin-top: 4px;
-    color: #60a5fa;
+  .home-panel-title span {
+    display: block;
+    margin-top: 8px;
+    color: #9db4d2;
     font-size: 13px;
-    font-weight: 900;
+    font-weight: 800;
+    line-height: 1.45;
   }
 
-  .live-suggest-market,
-  .badge,
-  .market-pill {
+  .market-date-pill {
+    min-height: 30px;
+    padding: 0 12px;
+    border-radius: 999px;
+    background: rgba(45, 212, 191, 0.11);
+    border: 1px solid rgba(45, 212, 191, 0.25);
+    color: #67e8f9;
     display: inline-flex;
     align-items: center;
-    justify-content: center;
-    border-radius: 999px;
-    background: rgba(45, 212, 191, 0.10);
-    color: #67e8f9;
-    border: 1px solid rgba(45, 212, 191, 0.16);
-    font-weight: 1000;
-    white-space: nowrap;
-  }
-
-  .live-suggest-market {
-    padding: 6px 10px;
-    font-size: 11px;
-  }
-
-  .live-suggest-empty {
-    padding: 18px 14px;
-    color: #94a3b8;
-    font-size: 14px;
-    font-weight: 850;
-  }
-
-  .market-side {
-    padding: 22px;
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-    gap: 14px;
-  }
-
-  .side-title,
-  .section-title,
-  .dashboard-title {
-    margin: 0;
-    color: #ffffff;
-    font-weight: 1000;
-    letter-spacing: -0.05em;
-  }
-
-  .side-title {
-    font-size: 18px;
-  }
-
-  .muted,
-  .section-sub,
-  .dashboard-sub {
-    margin: 7px 0 0;
-    color: #94a3b8;
-    font-size: 13px;
-    line-height: 1.6;
-    font-weight: 740;
-  }
-
-  .metric-grid {
-    display: grid;
-    gap: 12px;
-  }
-
-  .metric {
-    padding: 16px;
-    border-radius: 18px;
-    background: rgba(2, 6, 23, 0.48);
-    border: 1px solid rgba(148, 163, 184, 0.10);
-  }
-
-  .metric-label {
-    color: #93b4d7;
     font-size: 12px;
-    font-weight: 900;
-  }
-
-  .metric-value {
-    margin-top: 7px;
-    color: #ffffff;
-    font-size: 26px;
-    font-weight: 1000;
-    line-height: 1.12;
-    letter-spacing: -0.04em;
-  }
-
-  .section-head {
-    padding: 18px 20px;
-    border-bottom: 1px solid rgba(148, 163, 184, 0.10);
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-  }
-
-  .section-title {
-    font-size: 20px;
-  }
-
-  .badge {
-    min-width: 46px;
-    height: 24px;
-    padding: 0 9px;
-    background: rgba(56, 189, 248, 0.12);
-    color: #67e8f9;
-    border-color: rgba(56, 189, 248, 0.18);
-    font-size: 11px;
+    font-weight: 950;
+    white-space: nowrap;
   }
 
   .market-dashboard {
-    padding: 22px;
-    overflow: hidden;
-    position: relative;
-  }
-
-  .dashboard-head {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 16px;
-    margin-bottom: 18px;
-  }
-
-  .dashboard-title {
-    font-size: 23px;
-  }
-
-  .dashboard-sub {
-    font-size: 14px;
-  }
-
-  .dashboard-status {
-    display: inline-flex;
-    align-items: center;
-    gap: 7px;
-    padding: 8px 12px;
-    border-radius: 999px;
-    background: rgba(45, 212, 191, 0.10);
-    color: #67e8f9;
-    border: 1px solid rgba(45, 212, 191, 0.16);
-    font-size: 12px;
-    font-weight: 1000;
-    white-space: nowrap;
-  }
-
-  .dashboard-status::before {
-    content: "";
-    width: 7px;
-    height: 7px;
-    border-radius: 999px;
-    background: #2dd4bf;
-    box-shadow: 0 0 10px rgba(45, 212, 191, 0.7);
-  }
-
-  .market-main-grid {
+    padding: 14px 22px 24px;
     display: grid;
-    grid-template-columns: 410px minmax(0, 1fr);
-    gap: 16px;
+    grid-template-columns: 340px minmax(0, 1fr);
+    gap: 18px;
+    align-items: stretch;
   }
 
-  .main-gauge-card,
-  .sub-gauge-card,
-  .signal-card {
-    background: linear-gradient(180deg, rgba(7, 14, 28, 0.94), rgba(5, 10, 22, 0.96));
-    border: 1px solid rgba(148, 163, 184, 0.11);
-    box-shadow: inset 0 1px 0 rgba(255,255,255,0.035);
-  }
-
-  .main-gauge-card {
-    border-radius: 24px;
-    padding: 20px 20px 18px;
-  }
-
-  .gauge-card-top {
+  .timing-card {
+    min-height: 380px;
+    border-radius: 22px;
+    border: 1px solid rgba(96, 165, 250, 0.18);
+    background: rgba(3, 10, 22, 0.64);
+    padding: 20px;
     display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 14px;
-    margin-bottom: 8px;
+    flex-direction: column;
+    overflow: hidden;
   }
 
-  .gauge-label {
-    color: #ffffff;
+  .timing-card h3 {
+    margin: 0;
     font-size: 18px;
     font-weight: 1000;
-    letter-spacing: -0.04em;
   }
 
-  .gauge-desc {
-    margin-top: 6px;
-    color: #94a3b8;
+  .timing-card p {
+    margin: 8px 0 18px;
+    color: #9db4d2;
     font-size: 12px;
-    line-height: 1.6;
-    font-weight: 760;
+    font-weight: 800;
+    line-height: 1.5;
   }
 
-  .source-badge {
-    display: none !important;
+  .gauge-wrap {
+    flex: 1;
+    min-height: 285px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
 
-  .premium-gauge {
+  .gauge-box {
+    width: 278px;
+    height: 270px;
     position: relative;
-    width: 100%;
-    margin-top: 14px;
+    display: flex;
+    justify-content: center;
+    align-items: flex-end;
   }
 
-  .premium-gauge svg {
-    width: 100%;
-    height: auto;
-    display: block;
-    overflow: visible;
+  .gauge-semi {
+    position: absolute;
+    left: 50%;
+    bottom: 126px;
+    width: 232px;
+    height: 116px;
+    transform: translateX(-50%);
+    border-radius: 232px 232px 0 0;
+    background:
+      conic-gradient(
+        from 270deg at 50% 100%,
+        #ef4444 0deg,
+        #f97316 38deg,
+        #facc15 74deg,
+        #22c55e 124deg,
+        #22d3ee 180deg,
+        transparent 180deg 360deg
+      );
+    overflow: hidden;
   }
 
-  .gauge-arc-shadow {
-    fill: none;
-    stroke: rgba(15, 23, 42, 0.96);
-    stroke-width: 31;
-    stroke-linecap: round;
-    filter: drop-shadow(0 12px 26px rgba(0, 0, 0, 0.35));
-  }
-
-  .gauge-arc-color {
-    fill: none;
-    stroke-width: 24;
-    stroke-linecap: round;
-  }
-
-  .gauge-tick {
-    stroke: rgba(226, 232, 240, 0.18);
-    stroke-width: 2;
-    stroke-linecap: round;
-  }
-
-  .gauge-tick.major {
-    stroke: rgba(226, 232, 240, 0.34);
-    stroke-width: 3;
+  .gauge-semi::before {
+    content: "";
+    position: absolute;
+    left: 25px;
+    right: 25px;
+    bottom: 0;
+    height: 90px;
+    border-radius: 200px 200px 0 0;
+    background: #07101d;
+    z-index: 1;
   }
 
   .gauge-needle {
-    transform-origin: 150px 150px;
-    transform: rotate(0deg);
-    transition: transform 0.7s cubic-bezier(.2,.8,.2,1);
+    position: absolute;
+    left: 50%;
+    bottom: 126px;
+    width: 86px;
+    height: 6px;
+    border-radius: 999px;
+    background: #ffffff;
+    box-shadow: 0 4px 14px rgba(255, 255, 255, 0.28);
+    transform-origin: 0 50%;
+    transform: rotate(var(--needle-deg, -90deg));
+    transition: transform 0.55s cubic-bezier(.2, .8, .2, 1);
+    z-index: 5;
   }
 
-  .gauge-needle-line {
-    stroke: #ffffff;
-    stroke-width: 4;
-    stroke-linecap: round;
-    filter: drop-shadow(0 0 9px rgba(255, 255, 255, 0.34));
+  .gauge-needle::before {
+    content: "";
+    position: absolute;
+    right: -3px;
+    top: 50%;
+    width: 12px;
+    height: 12px;
+    border-radius: 2px 999px 999px 2px;
+    background: #fff;
+    transform: translateY(-50%) rotate(45deg);
   }
 
-  .gauge-needle-base {
-    fill: #ffffff;
-    filter: drop-shadow(0 0 14px rgba(56, 189, 248, 0.35));
-  }
-
-  .gauge-center-readout {
-    text-align: center;
-    margin-top: -18px;
+  .gauge-center {
+    position: absolute;
+    left: 50%;
+    bottom: 118px;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: #ffffff;
+    transform: translateX(-50%);
+    box-shadow: 0 0 0 6px rgba(255, 255, 255, 0.10);
+    z-index: 6;
   }
 
   .gauge-score {
+    position: absolute;
+    left: 50%;
+    bottom: 0;
+    transform: translateX(-50%);
+    width: 170px;
+    text-align: center;
+    z-index: 7;
+    pointer-events: none;
+    background: linear-gradient(180deg, rgba(10, 19, 34, 0.78), rgba(5, 12, 22, 0.96));
+    border: 1px solid rgba(96, 165, 250, 0.20);
+    border-radius: 18px;
+    padding: 13px 10px 11px;
+    box-shadow: 0 16px 34px rgba(0, 0, 0, 0.22);
+  }
+
+  .gauge-score-line {
     display: inline-flex;
     align-items: flex-end;
     justify-content: center;
-    gap: 5px;
-    color: #ffffff;
+    gap: 3px;
     line-height: 1;
-    white-space: nowrap;
   }
 
-  .score-number {
-    font-size: 50px;
+  .gauge-score strong {
+    font-size: 44px;
     font-weight: 1000;
+    line-height: 0.95;
     letter-spacing: -0.06em;
   }
 
-  .score-unit {
-    margin-bottom: 5px;
-    color: #6ee7f9;
-    font-size: 17px;
-    font-weight: 1000;
-    letter-spacing: -0.02em;
+  .gauge-score small {
+    font-size: 16px;
+    font-weight: 950;
+    color: #9db4d2;
+    margin-bottom: 4px;
   }
 
-  .gauge-state {
+  .gauge-score span {
     display: inline-flex;
-    margin-top: 10px;
-    padding: 8px 12px;
+    min-height: 28px;
+    padding: 0 12px;
+    margin-top: 9px;
+    align-items: center;
+    justify-content: center;
     border-radius: 999px;
-    background: rgba(56, 189, 248, 0.10);
-    border: 1px solid rgba(56, 189, 248, 0.17);
-    color: #bae6fd;
+    background: rgba(45, 212, 239, 0.14);
+    color: #67e8f9;
+    font-weight: 950;
+    font-size: 12px;
+  }
+
+  .market-side {
+    display: grid;
+    gap: 14px;
+    min-width: 0;
+  }
+
+  .market-bar-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+  }
+
+  .market-bar-card,
+  .market-metric-card {
+    border-radius: 20px;
+    border: 1px solid rgba(96, 165, 250, 0.16);
+    background: rgba(3, 10, 22, 0.68);
+    padding: 18px;
+    min-width: 0;
+  }
+
+  .market-bar-card strong,
+  .market-metric-card span {
+    display: block;
     font-size: 13px;
     font-weight: 1000;
+    color: #cfe3ff;
   }
 
-  .sub-gauge-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 12px;
-  }
-
-  .sub-gauge-card {
-    border-radius: 22px;
-    padding: 17px;
-  }
-
-  .mini-meter {
-    margin-top: 16px;
-  }
-
-  .mini-track {
-    position: relative;
-    height: 10px;
+  .market-bar {
+    height: 12px;
+    margin: 14px 0 10px;
     border-radius: 999px;
-    background: linear-gradient(90deg, #38bdf8 0%, #22c55e 35%, #f59e0b 66%, #ef4444 100%);
-    box-shadow: inset 0 0 0 1px rgba(255,255,255,0.12);
+    background: linear-gradient(90deg, #38bdf8, #22c55e, #facc15, #f97316, #ef4444);
+    position: relative;
+    overflow: visible;
   }
 
-  .mini-thumb {
+  .market-bar i {
     position: absolute;
     top: 50%;
-    left: calc(var(--score, 50) * 1%);
+    left: calc(var(--value, 50) * 1%);
     width: 18px;
     height: 18px;
-    border-radius: 999px;
-    background: #ffffff;
-    border: 4px solid #0b1220;
-    box-shadow: 0 0 18px rgba(56, 189, 248, 0.45);
+    border-radius: 50%;
     transform: translate(-50%, -50%);
-    transition: left 0.7s cubic-bezier(.2,.8,.2,1);
+    background: #f8fbff;
+    box-shadow: 0 0 0 3px rgba(15, 23, 42, 0.8);
   }
 
-  .mini-value-row {
+  .market-bar-value {
     display: flex;
-    align-items: baseline;
     justify-content: space-between;
+    align-items: end;
     gap: 10px;
-    margin-top: 14px;
   }
 
-  .mini-value {
-    color: #ffffff;
-    font-size: 28px;
+  .market-bar-value b {
+    font-size: 34px;
     font-weight: 1000;
-    letter-spacing: -0.04em;
+    line-height: 1;
   }
 
-  .mini-tag {
-    color: #8ecbff;
+  .market-bar-value em {
+    font-style: normal;
+    color: #7dd3fc;
     font-size: 12px;
-    font-weight: 1000;
+    font-weight: 950;
     text-align: right;
   }
 
-  /* 핵심 수정 영역: KOSPI ~ 판단 카드가 박스 안에 안정적으로 들어가도록 3열 2줄로 정리 */
-  .signal-grid {
+  .market-metric-grid {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 12px;
-    margin-top: 16px;
+    gap: 14px;
   }
 
-  .signal-card {
-    box-sizing: border-box;
-    padding: 15px 15px 14px;
-    border-radius: 18px;
-    min-width: 0;
-    min-height: 118px;
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-  }
-
-  .signal-card dt {
-    color: #94a3b8;
-    font-size: 12px;
-    font-weight: 900;
-    line-height: 1.2;
-    white-space: nowrap;
-  }
-
-  .signal-card dd {
-    margin: 8px 0 0;
-    color: #ffffff;
-    font-size: clamp(18px, 1.35vw, 23px);
+  .market-metric-card b {
+    display: block;
+    margin-top: 10px;
+    font-size: 28px;
     font-weight: 1000;
-    letter-spacing: -0.045em;
-    line-height: 1.12;
+    letter-spacing: -0.04em;
+    color: #fff;
+    line-height: 1.05;
     word-break: keep-all;
-    overflow-wrap: break-word;
   }
 
-  .signal-card span {
+  .market-metric-card em {
     display: block;
     margin-top: 7px;
-    color: #60a5fa;
-    font-size: 12px;
-    font-weight: 850;
-    line-height: 1.45;
-    word-break: keep-all;
-    overflow-wrap: break-word;
-  }
-
-  .signal-card.index-card {
-    padding: 15px 15px 14px;
-  }
-
-  .signal-card .index-main {
-    margin-top: 8px;
-    font-size: clamp(23px, 1.65vw, 29px);
-    line-height: 1.05;
-    letter-spacing: -0.065em;
-    white-space: nowrap;
-  }
-
-  .signal-card .index-sub {
-    margin-top: 8px;
-    color: #94a3b8;
+    font-style: normal;
+    color: #38bdf8;
     font-size: 12px;
     font-weight: 950;
-    line-height: 1.45;
-    white-space: nowrap;
+    word-break: keep-all;
   }
 
-  .signal-card .index-sub b {
-    font-size: 12px;
+  .home-side-stack {
+    display: grid;
+    gap: 16px;
+  }
+
+  .home-side-card {
+    border-radius: var(--bv-radius-xl);
+    border: 1px solid var(--bv-line);
+    background: rgba(9, 20, 36, 0.84);
+    box-shadow: var(--bv-shadow);
+    padding: 22px;
+  }
+
+  .home-side-card h3 {
+    margin: 0;
+    font-size: 20px;
     font-weight: 1000;
   }
 
-  .decision-card dd {
-    font-size: clamp(17px, 1.25vw, 22px);
-    line-height: 1.15;
+  .home-side-card p {
+    margin: 8px 0 18px;
+    color: #9db4d2;
+    font-size: 13px;
+    font-weight: 800;
+    line-height: 1.5;
   }
 
-  .decision-card span {
-    font-size: 11.5px;
-    line-height: 1.45;
+  .db-stat-card {
+    border-radius: 18px;
+    border: 1px solid rgba(96, 165, 250, 0.16);
+    background: rgba(3, 10, 22, 0.60);
+    padding: 18px;
+    margin-top: 14px;
   }
 
-  .change-up {
-    color: #ef4444 !important;
+  .db-stat-card span {
+    display: block;
+    color: #93c5fd;
+    font-size: 12px;
+    font-weight: 950;
   }
 
-  .change-down {
-    color: #38bdf8 !important;
-  }
-
-  .change-flat {
-    color: #94a3b8 !important;
-  }
-
-  .quick-section {
-    position: sticky;
-    top: 84px;
-    overflow: hidden;
+  .db-stat-card strong {
+    display: block;
+    margin-top: 8px;
+    font-size: 30px;
+    font-weight: 1000;
   }
 
   .quick-list {
     display: grid;
-    padding: 14px;
     gap: 10px;
   }
 
-  .quick-item {
+  .quick-link {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    gap: 13px;
-    padding: 14px;
+    gap: 12px;
+    min-height: 58px;
+    padding: 12px 14px;
     border-radius: 16px;
-    background: rgba(2, 6, 23, 0.46);
-    border: 1px solid rgba(148, 163, 184, 0.10);
-    transition: 0.14s ease;
+    text-decoration: none;
+    color: #f8fbff;
+    border: 1px solid rgba(96, 165, 250, 0.14);
+    background: rgba(3, 10, 22, 0.62);
+  }
+
+  .quick-link:hover {
+    border-color: rgba(45, 212, 239, 0.36);
+    background: rgba(14, 116, 144, 0.14);
+  }
+
+  .quick-link strong {
+    display: block;
+    font-size: 14px;
+    font-weight: 1000;
+  }
+
+  .quick-link span {
+    display: block;
+    margin-top: 3px;
+    color: #60a5fa;
+    font-size: 13px;
+    font-weight: 950;
+  }
+
+  .quick-badge {
+    min-height: 24px;
+    padding: 0 9px;
+    border-radius: 999px;
+    background: rgba(45, 212, 239, 0.16);
+    color: #67e8f9;
+    font-size: 11px;
+    font-weight: 1000;
+    display: inline-flex;
+    align-items: center;
+    font-style: normal;
+  }
+
+  .search-results-section {
+    display: none;
+    padding: 0 22px 24px;
+  }
+
+  .search-results-section.active {
+    display: block;
+  }
+
+  .search-result-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+  }
+
+  .stock-result-card {
+    min-height: 78px;
+    padding: 14px 16px;
+    border-radius: 16px;
+    border: 1px solid rgba(96, 165, 250, 0.16);
+    background: rgba(3, 10, 22, 0.66);
+    color: #f8fbff;
     text-decoration: none;
   }
 
-  .quick-item:hover {
-    border-color: rgba(56, 189, 248, 0.34);
-    background: rgba(56, 189, 248, 0.05);
-    transform: translateY(-1px);
-  }
-
-  .quick-name {
-    color: #ffffff;
+  .stock-result-card strong {
+    display: block;
     font-size: 15px;
     font-weight: 1000;
   }
 
-  .quick-code {
-    margin-top: 4px;
+  .stock-result-card span {
+    display: block;
+    margin-top: 5px;
     color: #60a5fa;
-    font-size: 13px;
-    font-weight: 900;
-  }
-
-  @media (max-width: 1280px) {
-    .market-main-grid {
-      grid-template-columns: 1fr;
-    }
-
-    .signal-grid {
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-    }
+    font-weight: 950;
   }
 
   @media (max-width: 1180px) {
-    .search-page {
-      width: min(100%, calc(100vw - 28px));
-      padding-top: 18px;
-    }
-
-    .hero,
-    .content-grid {
+    .home-main-grid {
       grid-template-columns: 1fr;
     }
 
-    .quick-section {
-      position: static;
-    }
-  }
-
-  @media (max-width: 900px) {
-    .signal-grid {
+    .home-side-stack {
       grid-template-columns: repeat(2, minmax(0, 1fr));
     }
+
+    .market-dashboard {
+      grid-template-columns: 320px minmax(0, 1fr);
+    }
   }
 
-  @media (max-width: 720px) {
-    .hero-main {
-      padding: 26px 18px;
+  @media (max-width: 860px) {
+    .home-shell {
+      width: min(100%, 420px);
+      padding: 16px 10px 64px;
+    }
+
+    .home-nav-wrap {
+      top: 8px;
+      margin-bottom: 16px;
+    }
+
+    .home-nav-card {
       min-height: auto;
+      grid-template-columns: 1fr auto;
+      grid-template-areas:
+        "brand auth"
+        "links links";
+      gap: 12px;
+      padding: 14px;
+      border-radius: 20px;
+      align-items: center;
     }
 
-    .hero h1 {
-      font-size: 38px;
+    .home-brand {
+      grid-area: brand;
+      justify-self: start;
     }
 
-    .search-panel {
-      grid-template-columns: 1fr;
+    .home-auth-actions {
+      grid-area: auth;
+      position: static !important;
+      justify-self: end;
+      align-self: center;
     }
 
-    .search-panel button {
-      height: 52px;
+    .home-nav-links {
+      grid-area: links;
+      width: 100%;
+      justify-content: flex-start;
+      gap: 7px;
+      overflow-x: auto;
+      scrollbar-width: none;
+      padding-top: 2px;
     }
 
-    .market-side {
+    .home-nav-links::-webkit-scrollbar {
       display: none;
     }
 
-    .sub-gauge-grid,
-    .signal-grid {
+    .home-nav-link {
+      min-height: 38px;
+      padding: 0 12px;
+      border-radius: 14px;
+      font-size: 13px;
+      flex: 0 0 auto;
+    }
+
+    .home-login-btn,
+    .home-start-btn {
+      height: 40px;
+      padding: 0 15px;
+      border-radius: 14px;
+      font-size: 13px;
+      min-width: 64px;
+    }
+
+    .home-logo {
+      width: 36px;
+      height: 36px;
+      border-radius: 12px;
+      font-size: 15px;
+    }
+
+    .home-brand-name {
+      font-size: 16px;
+    }
+
+    .home-brand-sub {
+      font-size: 10px;
+    }
+
+    .home-hero {
+      border-radius: 22px;
+      padding: 30px 22px 24px;
+    }
+
+    .home-badge {
+      min-height: 28px;
+      font-size: 11px;
+      margin-bottom: 14px;
+    }
+
+    .home-title {
+      font-size: 39px;
+      line-height: 1.03;
+      letter-spacing: -0.07em;
+    }
+
+    .home-title-accent-wrap {
+      margin-top: 2px;
+    }
+
+    .home-title-accent-1,
+    .home-title-accent-2 {
+      display: block;
+    }
+
+    .home-title-accent-2 {
+      margin-left: 0;
+      margin-top: 2px;
+    }
+
+    .home-desc {
+      margin: 18px 0 22px;
+      font-size: 13px;
+      line-height: 1.65;
+    }
+
+    .home-search-form {
       grid-template-columns: 1fr;
     }
 
-    .dashboard-head {
+    .home-search-input,
+    .home-search-btn {
+      height: 54px;
+      border-radius: 16px;
+      font-size: 15px;
+    }
+
+    .home-panel {
+      border-radius: 22px;
+    }
+
+    .home-panel-head {
+      padding: 20px 18px 12px;
       flex-direction: column;
     }
 
-    .score-number {
-      font-size: 42px;
+    .home-panel-title strong {
+      font-size: 22px;
     }
 
-    .signal-card {
-      min-height: 104px;
+    .home-panel-title span {
+      font-size: 12px;
     }
 
-    .signal-card .index-main {
-      font-size: 27px;
+    .market-date-pill {
+      align-self: flex-start;
+    }
+
+    .market-dashboard {
+      padding: 12px 16px 20px;
+      grid-template-columns: 1fr;
+    }
+
+    .timing-card {
+      min-height: 360px;
+      padding: 18px;
+      border-radius: 20px;
+    }
+
+    .timing-card h3 {
+      font-size: 17px;
+    }
+
+    .timing-card p {
+      margin-bottom: 18px;
+      font-size: 12px;
+    }
+
+    .gauge-wrap {
+      min-height: 270px;
+    }
+
+    .gauge-box {
+      width: 250px;
+      height: 255px;
+    }
+
+    .gauge-semi {
+      width: 210px;
+      height: 105px;
+      bottom: 108px;
+      border-radius: 210px 210px 0 0;
+    }
+
+    .gauge-semi::before {
+      left: 22px;
+      right: 22px;
+      height: 82px;
+    }
+
+    .gauge-needle {
+      width: 78px;
+      bottom: 108px;
+      height: 6px;
+    }
+
+    .gauge-center {
+      width: 16px;
+      height: 16px;
+      bottom: 100px;
+    }
+
+    .gauge-score {
+      width: 160px;
+      bottom: 4px;
+      padding: 12px 10px 10px;
+      border-radius: 16px;
+    }
+
+    .gauge-score strong {
+      font-size: 40px;
+    }
+
+    .gauge-score small {
+      font-size: 15px;
+      margin-bottom: 3px;
+    }
+
+    .gauge-score span {
+      margin-top: 8px;
+      font-size: 11px;
+      min-height: 26px;
+    }
+
+    .market-bar-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .market-metric-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .market-metric-card {
+      min-height: 96px;
+      padding: 15px 14px;
+      border-radius: 18px;
+    }
+
+    .market-metric-card span {
+      font-size: 12px;
+      line-height: 1.2;
+    }
+
+    .market-metric-card b {
+      margin-top: 8px;
+      font-size: 24px;
+      line-height: 1.08;
+    }
+
+    .market-metric-card em {
+      margin-top: 5px;
+      font-size: 11px;
+      line-height: 1.25;
+    }
+
+    .market-metric-card.decision-card b {
+      font-size: 21px;
+      letter-spacing: -0.06em;
+    }
+
+    .home-side-stack {
+      grid-template-columns: 1fr;
+    }
+
+    .home-side-card {
+      border-radius: 22px;
+      padding: 19px;
+    }
+
+    .search-result-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  @media (max-width: 420px) {
+    .home-shell {
+      width: 100%;
+      padding-left: 8px;
+      padding-right: 8px;
+    }
+
+    .home-nav-card {
+      padding: 12px;
+      gap: 11px;
+    }
+
+    .home-login-btn {
+      height: 38px;
+      min-width: 58px;
+      padding: 0 13px;
+      font-size: 12px;
+      border-radius: 13px;
+    }
+
+    .home-nav-link {
+      min-height: 36px;
+      padding: 0 11px;
+      font-size: 12px;
+    }
+
+    .home-title {
+      font-size: 36px;
+      line-height: 1.04;
+    }
+
+    .home-title-accent-wrap {
+      margin-top: 4px;
+    }
+
+    .home-title-accent-1 {
+      display: block;
+    }
+
+    .home-title-accent-2 {
+      display: block;
+      margin-top: 2px;
+    }
+
+    .market-dashboard {
+      padding-left: 12px;
+      padding-right: 12px;
+    }
+
+    .timing-card {
+      min-height: 350px;
+    }
+
+    .gauge-box {
+      width: 236px;
+      height: 245px;
+    }
+
+    .gauge-semi {
+      width: 198px;
+      height: 99px;
+      bottom: 105px;
+    }
+
+    .gauge-needle {
+      width: 72px;
+      bottom: 105px;
+    }
+
+    .gauge-center {
+      bottom: 98px;
+    }
+
+    .gauge-score {
+      width: 154px;
+      bottom: 2px;
+    }
+
+    .gauge-score strong {
+      font-size: 38px;
+    }
+
+    .market-metric-grid {
+      gap: 10px;
+    }
+
+    .market-metric-card {
+      padding: 13px 12px;
+      min-height: 92px;
+    }
+
+    .market-metric-card b {
+      font-size: 22px;
+    }
+
+    .market-metric-card.decision-card b {
+      font-size: 19px;
     }
   }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="search-page">
-  <nav class="home-nav-wrap" aria-label="BitgakView 홈 네비게이션">
+<div class="home-shell">
+  <nav class="home-nav-wrap" aria-label="BitgakView 메인 네비게이션">
     <div class="home-nav-card">
-      <a class="home-brand" href="{% url 'stocks:search' %}">
+      <a class="home-brand" href="/stocks/">
         <span class="home-logo">B</span>
         <span class="home-brand-text">
           <span class="home-brand-name">BitgakView</span>
@@ -982,779 +1177,339 @@
       </a>
 
       <div class="home-nav-links">
-        <a class="home-nav-link active" href="{% url 'stocks:search' %}">홈</a>
+        <a class="home-nav-link active" href="/stocks/">홈</a>
         <a class="home-nav-link" href="/stocks/features/">소개</a>
         <a class="home-nav-link" href="/stocks/pricing/">가격소개</a>
-        <a class="home-nav-link" href="#marketDashboard">시장지표</a>
-        <a class="home-nav-link" href="{% url 'stocks:detail' '005930' %}">차트</a>
+        <a class="home-nav-link" href="#marketSection">시장지표</a>
+        <a class="home-nav-link" href="/stocks/005930/">차트</a>
       </div>
 
-      <div class="home-nav-actions">
-        <a class="home-login-btn" href="/accounts/login/">로그인</a>
-        <a class="home-start-btn" href="{% url 'stocks:detail' '005930' %}">무료로 시작</a>
+      <div class="home-auth-actions">
+        {% if request.user.is_authenticated %}
+          <a class="home-login-btn" href="/accounts/logout/">로그아웃</a>
+        {% else %}
+          <a class="home-login-btn" href="/accounts/login/?next={{ request.get_full_path|urlencode }}">로그인</a>
+        {% endif %}
       </div>
     </div>
   </nav>
 
-  <section class="hero">
-    <div class="hero-main">
-      <div class="eyebrow">KRX 종목 검색 · BitgakView</div>
+  <main class="home-main-grid">
+    <div class="home-left-stack">
+      <section class="home-hero">
+        <div class="home-badge">KRX 종목 검색 · BitgakView</div>
 
-      <h1>
-        한국 주식을<br>
-        <span>빠르게 검색하고 차트로 확인</span>
-      </h1>
+        <h1 class="home-title">
+          <span class="home-title-main">한국 주식을</span>
+          <span class="home-title-accent-wrap">
+            <span class="home-title-accent-1">빠르게 검색하고</span>
+            <span class="home-title-accent-2">차트로 확인</span>
+          </span>
+        </h1>
 
-      <p class="hero-desc">
-        종목명, 종목코드, 초성, 별칭으로 검색할 수 있습니다.
-        엔터를 누르면 가장 관련도 높은 종목 차트로 바로 이동합니다.
-      </p>
+        <p class="home-desc">
+          종목명, 종목코드, 초성, 별칭으로 검색할 수 있습니다.
+          엔터를 누르면 가장 관련도 높은 종목 차트로 바로 이동합니다.
+        </p>
 
-      <form id="stockLiveSearchForm" class="search-panel" method="get" action="{% url 'stocks:search' %}">
-        <div class="search-live-box">
-          <input
-            id="mainStockSearchInput"
-            type="text"
-            name="q"
-            value="{{ q|default:'' }}"
-            placeholder="삼성전자, 삼전, LG, NAVER, 005930"
-            autocomplete="off"
-            spellcheck="false"
-          >
-          <div id="liveSuggestPanel" class="live-suggest-panel"></div>
-        </div>
-
-        <button type="submit">검색</button>
-      </form>
-    </div>
-
-    <aside class="market-side">
-      <div>
-        <h2 class="side-title">Market Database</h2>
-        <p class="muted">DB 종목 마스터와 대표 종목 백업 데이터를 함께 사용합니다.</p>
-      </div>
-
-      <div class="metric-grid">
-        <div class="metric">
-          <div class="metric-label">검색 가능 종목</div>
-          <div class="metric-value">{{ total_stock_count|default:0 }}</div>
-        </div>
-
-        <div class="metric">
-          <div class="metric-label">지원 시장</div>
-          <div class="metric-value">KOSPI<br>KOSDAQ</div>
-        </div>
-      </div>
-    </aside>
-  </section>
-
-  <section class="content-grid">
-    <article>
-      <section id="marketDashboard" class="market-dashboard">
-        <div class="dashboard-head">
-          <div>
-            <h2 class="dashboard-title">시장지표</h2>
-            <p class="dashboard-sub">KOSPI, KOSDAQ, 52주 위치, 단기 이격도, 최근 변동성을 조합해 시장 분위기를 계산합니다.</p>
+        <form class="home-search-form" action="/stocks/" method="get" autocomplete="off">
+          <div class="home-search-input-wrap">
+            <input
+              id="stockSearchInput"
+              class="home-search-input"
+              name="q"
+              type="text"
+              value="{{ q|default:'' }}"
+              placeholder="삼성전자, 삼전, LG, NAVER, 005930"
+              autocomplete="off"
+            >
+            <div id="stockSearchPanel" class="stock-search-panel"></div>
           </div>
-          <div id="marketStatus" class="dashboard-status">데이터 연결중</div>
+
+          <button id="stockSearchBtn" class="home-search-btn" type="submit">검색</button>
+        </form>
+      </section>
+
+      <section id="marketSection" class="home-panel">
+        <div class="home-panel-head">
+          <div class="home-panel-title">
+            <strong>시장지표</strong>
+            <span>KOSPI, KOSDAQ, 52주 위치, 단기 이격도, 최근 변동성을 조합해 시장 분위기를 계산합니다.</span>
+          </div>
+          <div id="marketBaseDate" class="market-date-pill">불러오는 중</div>
         </div>
 
-        <div class="market-main-grid">
-          <div class="main-gauge-card">
-            <div class="gauge-card-top">
-              <div>
-                <div class="gauge-label">투자 타이밍</div>
-                <div class="gauge-desc">0은 위험 관리 우선, 100은 분할 진입이 상대적으로 편한 구간입니다.</div>
-              </div>
-            </div>
+        <div class="market-dashboard">
+          <div class="timing-card">
+            <h3>투자 타이밍</h3>
+            <p>0은 위험 관리 우선, 100은 분할 진입이 상대적으로 편한 구간입니다.</p>
 
-            <div class="premium-gauge">
-              <svg viewBox="0 0 300 190" aria-label="투자 타이밍 게이지">
-                <defs>
-                  <linearGradient id="premiumGaugeGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                    <stop offset="0%" stop-color="#ef4444"/>
-                    <stop offset="27%" stop-color="#f97316"/>
-                    <stop offset="50%" stop-color="#f59e0b"/>
-                    <stop offset="72%" stop-color="#22c55e"/>
-                    <stop offset="100%" stop-color="#38bdf8"/>
-                  </linearGradient>
-                </defs>
+            <div class="gauge-wrap">
+              <div id="timingGauge" class="gauge-box" style="--needle-deg:-90deg;">
+                <div class="gauge-semi"></div>
+                <div id="timingGaugeNeedle" class="gauge-needle"></div>
+                <div class="gauge-center"></div>
 
-                <path class="gauge-arc-shadow" d="M 35 150 A 115 115 0 0 1 265 150"></path>
-                <path class="gauge-arc-color" d="M 35 150 A 115 115 0 0 1 265 150" stroke="url(#premiumGaugeGradient)"></path>
-
-                <line class="gauge-tick major" x1="35" y1="150" x2="49" y2="150"></line>
-                <line class="gauge-tick" x1="61" y1="85" x2="72" y2="93"></line>
-                <line class="gauge-tick major" x1="150" y1="35" x2="150" y2="52"></line>
-                <line class="gauge-tick" x1="239" y1="85" x2="228" y2="93"></line>
-                <line class="gauge-tick major" x1="265" y1="150" x2="251" y2="150"></line>
-
-                <g class="gauge-needle" id="timingNeedle">
-                  <line class="gauge-needle-line" x1="150" y1="150" x2="150" y2="55"></line>
-                  <circle class="gauge-needle-base" cx="150" cy="150" r="8"></circle>
-                </g>
-              </svg>
-
-              <div class="gauge-center-readout">
                 <div class="gauge-score">
-                  <span id="timingScore" class="score-number">52</span><span class="score-unit">/100</span>
+                  <div class="gauge-score-line">
+                    <strong id="marketTimingScore">52</strong><small>/100</small>
+                  </div>
+                  <span id="marketTimingLabel">중립</span>
                 </div>
-                <div id="timingLabel" class="gauge-state">중립</div>
               </div>
             </div>
           </div>
 
-          <div>
-            <div class="sub-gauge-grid">
-              <div class="sub-gauge-card">
-                <div class="gauge-label">Fear & Greed</div>
-                <div class="gauge-desc">지수 모멘텀과 변동성으로 추정한 시장 심리입니다.</div>
-
-                <div id="fearMeter" class="mini-meter" style="--score: 55;">
-                  <div class="mini-track">
-                    <div class="mini-thumb"></div>
-                  </div>
+          <div class="market-side">
+            <div class="market-bar-grid">
+              <div class="market-bar-card">
+                <strong>Fear & Greed</strong>
+                <div class="market-bar">
+                  <i id="fearGreedMarker" style="--value:55"></i>
                 </div>
-
-                <div class="mini-value-row">
-                  <div id="fearScore" class="mini-value">55</div>
-                  <div id="fearLabel" class="mini-tag">Neutral</div>
+                <div class="market-bar-value">
+                  <b id="fearGreedScore">55</b>
+                  <em id="fearGreedLabel">Neutral</em>
                 </div>
               </div>
 
-              <div class="sub-gauge-card">
-                <div class="gauge-label">시장 과열도</div>
-                <div class="gauge-desc">52주 고점 위치, 단기 상승률, 이격도를 반영합니다.</div>
-
-                <div id="overheatMeter" class="mini-meter" style="--score: 64;">
-                  <div class="mini-track">
-                    <div class="mini-thumb"></div>
-                  </div>
+              <div class="market-bar-card">
+                <strong>시장 과열도</strong>
+                <div class="market-bar">
+                  <i id="overheatMarker" style="--value:64"></i>
                 </div>
-
-                <div class="mini-value-row">
-                  <div id="overheatScore" class="mini-value">64</div>
-                  <div id="overheatLabel" class="mini-tag">약간 과열</div>
+                <div class="market-bar-value">
+                  <b id="overheatScore">64</b>
+                  <em id="overheatLabel">약간 과열</em>
                 </div>
               </div>
             </div>
 
-            <div class="signal-grid">
-              <dl class="signal-card index-card">
-                <dt>KOSPI</dt>
-                <dd id="kospiPrice" class="index-main">현재 지수</dd>
-                <span class="index-sub">전일대비 <b id="kospiChange">-</b></span>
-              </dl>
+            <div class="market-metric-grid">
+              <div class="market-metric-card kospi-card">
+                <span>KOSPI</span>
+                <b id="kospiPrice">-</b>
+                <em id="kospiChange">전일대비 -</em>
+              </div>
 
-              <dl class="signal-card index-card">
-                <dt>KOSDAQ</dt>
-                <dd id="kosdaqPrice" class="index-main">현재 지수</dd>
-                <span class="index-sub">전일대비 <b id="kosdaqChange">-</b></span>
-              </dl>
+              <div class="market-metric-card kosdaq-card">
+                <span>KOSDAQ</span>
+                <b id="kosdaqPrice">-</b>
+                <em id="kosdaqChange">전일대비 -</em>
+              </div>
 
-              <dl class="signal-card">
-                <dt>52주 위치</dt>
-                <dd id="kospiPosition">-</dd>
-                <span>낮을수록 저점권</span>
-              </dl>
+              <div class="market-metric-card position-card">
+                <span>52주 위치</span>
+                <b id="kospiPosition">-</b>
+                <em>낮을수록 저점권</em>
+              </div>
 
-              <dl class="signal-card">
-                <dt>20일 이격</dt>
-                <dd id="distance20">-</dd>
-                <span>단기 과열 확인</span>
-              </dl>
+              <div class="market-metric-card distance-card">
+                <span>20일 이격</span>
+                <b id="distance20">-</b>
+                <em>단기 과열 확인</em>
+              </div>
 
-              <dl class="signal-card">
-                <dt>KRX 변동성</dt>
-                <dd id="vixValue">-</dd>
-                <span id="vixSub">20거래일 기준</span>
-              </dl>
+              <div class="market-metric-card volatility-card">
+                <span>KRX 변동성</span>
+                <b id="vixValue">-</b>
+                <em>20일 변동성</em>
+              </div>
 
-              <dl class="signal-card decision-card">
-                <dt>판단</dt>
-                <dd id="marketDecision">관망</dd>
-                <span id="decisionSub">매수/대기 참고</span>
-              </dl>
+              <div class="market-metric-card decision-card">
+                <span>판단</span>
+                <b id="decisionText">관망</b>
+                <em id="decisionSub">시장 데이터를 불러오는 중입니다.</em>
+              </div>
             </div>
+          </div>
+        </div>
+
+        <div id="searchResultsSection" class="search-results-section {% if stocks and q %}active{% endif %}">
+          <div class="home-panel-title" style="margin-bottom:14px;">
+            <strong>검색 결과</strong>
+            <span>검색한 종목을 누르면 차트로 이동합니다.</span>
+          </div>
+
+          <div class="search-result-grid">
+            {% for item in stocks %}
+              <a class="stock-result-card" href="/stocks/{{ item.code }}/">
+                <strong>{{ item.name }}</strong>
+                <span>{{ item.code }} · {{ item.market }}</span>
+              </a>
+            {% empty %}
+              {% if q %}
+                <div class="stock-result-card">
+                  <strong>검색 결과가 없습니다.</strong>
+                  <span>다른 종목명 또는 코드를 입력해보세요.</span>
+                </div>
+              {% endif %}
+            {% endfor %}
           </div>
         </div>
       </section>
+    </div>
 
-      {{ all_stocks_payload|json_script:"allStocksData" }}
-    </article>
+    <aside class="home-side-stack">
+      <section class="home-side-card">
+        <h3>Market Database</h3>
+        <p>DB 종목 마스터와 대표 종목 백업 데이터를 함께 사용합니다.</p>
 
-    <aside class="quick-section">
-      <div class="section-head">
-        <div>
-          <h2 class="section-title">빠른 이동</h2>
-          <div class="section-sub">대표 종목 바로가기</div>
+        <div class="db-stat-card">
+          <span>검색 가능 종목</span>
+          <strong>{{ total_stock_count|default:"3964" }}</strong>
         </div>
-      </div>
 
-      <div class="quick-list">
-        <a class="quick-item" href="{% url 'stocks:detail' '005930' %}">
-          <div>
-            <div class="quick-name">삼성전자</div>
-            <div class="quick-code">005930</div>
-          </div>
-          <span class="badge">KOSPI</span>
-        </a>
+        <div class="db-stat-card">
+          <span>지원 시장</span>
+          <strong>KOSPI<br>KOSDAQ</strong>
+        </div>
+      </section>
 
-        <a class="quick-item" href="{% url 'stocks:detail' '000660' %}">
-          <div>
-            <div class="quick-name">SK하이닉스</div>
-            <div class="quick-code">000660</div>
-          </div>
-          <span class="badge">KOSPI</span>
-        </a>
+      <section class="home-side-card">
+        <h3>빠른 이동</h3>
+        <p>대표 종목 차트로 바로 이동합니다.</p>
 
-        <a class="quick-item" href="{% url 'stocks:detail' '035420' %}">
-          <div>
-            <div class="quick-name">NAVER</div>
-            <div class="quick-code">035420</div>
-          </div>
-          <span class="badge">KOSPI</span>
-        </a>
+        <div class="quick-list">
+          <a class="quick-link" href="/stocks/005930/">
+            <span>
+              <strong>삼성전자</strong>
+              <span>005930</span>
+            </span>
+            <em class="quick-badge">KOSPI</em>
+          </a>
 
-        <a class="quick-item" href="{% url 'stocks:detail' '035720' %}">
-          <div>
-            <div class="quick-name">카카오</div>
-            <div class="quick-code">035720</div>
-          </div>
-          <span class="badge">KOSPI</span>
-        </a>
-      </div>
+          <a class="quick-link" href="/stocks/000660/">
+            <span>
+              <strong>SK하이닉스</strong>
+              <span>000660</span>
+            </span>
+            <em class="quick-badge">KOSPI</em>
+          </a>
+
+          <a class="quick-link" href="/stocks/035420/">
+            <span>
+              <strong>NAVER</strong>
+              <span>035420</span>
+            </span>
+            <em class="quick-badge">KOSPI</em>
+          </a>
+
+          <a class="quick-link" href="/stocks/035720/">
+            <span>
+              <strong>카카오</strong>
+              <span>035720</span>
+            </span>
+            <em class="quick-badge">KOSPI</em>
+          </a>
+        </div>
+      </section>
     </aside>
-  </section>
+  </main>
 </div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
-(function () {
-  const input = document.getElementById("mainStockSearchInput");
-  const form = document.getElementById("stockLiveSearchForm");
-  const panel = document.getElementById("liveSuggestPanel");
-  const jsonNode = document.getElementById("allStocksData");
+  (function () {
+    const marketUrl = "/stocks/api/market-temperature/";
 
-  if (!input || !form || !panel || !jsonNode) {
-    return;
-  }
-
-  const fallbackStocks = [
-    { name: "삼성전자", code: "005930", market: "KOSPI", aliases: ["삼성", "삼전", "samsung", "samsung electronics"], search_rank: 1000 },
-    { name: "삼성전자우", code: "005935", market: "KOSPI", aliases: ["삼전우", "삼성우"], search_rank: 930 },
-    { name: "삼성바이오로직스", code: "207940", market: "KOSPI", aliases: ["삼바", "삼성바이오"], search_rank: 880 },
-    { name: "삼성SDI", code: "006400", market: "KOSPI", aliases: ["삼성에스디아이", "sdi"], search_rank: 850 },
-    { name: "삼성전기", code: "009150", market: "KOSPI", aliases: ["삼전기"], search_rank: 830 },
-    { name: "삼성물산", code: "028260", market: "KOSPI", aliases: ["물산"], search_rank: 810 },
-    { name: "삼성중공업", code: "010140", market: "KOSPI", aliases: ["삼성중공"], search_rank: 790 },
-    { name: "SK하이닉스", code: "000660", market: "KOSPI", aliases: ["하이닉스", "하닉", "hynix"], search_rank: 980 },
-    { name: "NAVER", code: "035420", market: "KOSPI", aliases: ["네이버", "naver"], search_rank: 940 },
-    { name: "카카오", code: "035720", market: "KOSPI", aliases: ["kakao"], search_rank: 900 },
-    { name: "현대차", code: "005380", market: "KOSPI", aliases: ["현대자동차", "hyundai"], search_rank: 920 },
-    { name: "기아", code: "000270", market: "KOSPI", aliases: ["kia"], search_rank: 900 },
-    { name: "LG에너지솔루션", code: "373220", market: "KOSPI", aliases: ["엘지에너지솔루션", "lg엔솔", "엔솔"], search_rank: 890 },
-    { name: "LG전자", code: "066570", market: "KOSPI", aliases: ["엘지전자"], search_rank: 840 },
-    { name: "LG화학", code: "051910", market: "KOSPI", aliases: ["엘지화학"], search_rank: 850 },
-    { name: "LG", code: "003550", market: "KOSPI", aliases: ["엘지"], search_rank: 800 },
-    { name: "셀트리온", code: "068270", market: "KOSPI", aliases: ["celltrion"], search_rank: 820 },
-    { name: "KB금융", code: "105560", market: "KOSPI", aliases: ["kb", "국민은행"], search_rank: 790 },
-    { name: "신한지주", code: "055550", market: "KOSPI", aliases: ["신한"], search_rank: 770 },
-    { name: "우리금융지주", code: "316140", market: "KOSPI", aliases: ["우리금융"], search_rank: 760 },
-    { name: "POSCO홀딩스", code: "005490", market: "KOSPI", aliases: ["포스코", "posco"], search_rank: 760 },
-    { name: "HLB", code: "028300", market: "KOSDAQ", aliases: ["에이치엘비"], search_rank: 720 },
-    { name: "에코프로비엠", code: "247540", market: "KOSDAQ", aliases: ["에코비엠"], search_rank: 720 },
-    { name: "에코프로", code: "086520", market: "KOSDAQ", aliases: ["ecopro"], search_rank: 700 },
-    { name: "알테오젠", code: "196170", market: "KOSDAQ", aliases: ["alteogen"], search_rank: 700 },
-    { name: "레인보우로보틱스", code: "277810", market: "KOSDAQ", aliases: ["레인보우", "로보틱스"], search_rank: 660 }
-  ];
-
-  const derivativeKeywords = ["ETF", "ETN", "ETNH", "레버리지", "인버스", "선물", "합성", "TR", "채권", "국채", "CD금리", "커버드콜"];
-
-  let rawItems = [];
-
-  try {
-    const parsed = JSON.parse(jsonNode.textContent || "[]");
-    rawItems = Array.isArray(parsed) ? parsed : [];
-  } catch (error) {
-    rawItems = [];
-  }
-
-  function normalize(value) {
-    return String(value || "")
-      .toLowerCase()
-      .replace(/\s+/g, "")
-      .replace(/[(){}\[\].,·ㆍ_\-]/g, "")
-      .trim();
-  }
-
-  function isDerivativeName(name) {
-    const text = String(name || "").toUpperCase().replace(/\s+/g, "");
-    return derivativeKeywords.some(function (keyword) {
-      return text.includes(String(keyword).toUpperCase().replace(/\s+/g, ""));
-    });
-  }
-
-  function normalizeCode(value) {
-    const digits = String(value || "").replace(/\D/g, "");
-    if (!digits) return "";
-    return digits.length <= 6 ? digits.padStart(6, "0") : digits.slice(-6);
-  }
-
-  function normalizeItem(item) {
-    const code = normalizeCode(item.code || item.ticker || item.symbol || "");
-    const name = String(item.name || item.stock_name || item.ticker_name || "").trim();
-
-    return {
-      name: name,
-      code: code,
-      market: String(item.market || item.market_name || "KRX").trim(),
-      aliases: Array.isArray(item.aliases) ? item.aliases : [],
-      href: String(item.href || item.url || "").trim(),
-      isDerivative: Boolean(item.is_derivative || item.isDerivative || isDerivativeName(name)),
-      searchRank: Number(item.search_rank || item.searchRank || 0) || 0
-    };
-  }
-
-  function buildItems() {
-    const map = new Map();
-
-    rawItems.concat(fallbackStocks).forEach(function (raw) {
-      const item = normalizeItem(raw);
-
-      if (!item.name || !item.code || item.code === "000000") {
-        return;
-      }
-
-      const prev = map.get(item.code);
-
-      if (!prev) {
-        map.set(item.code, item);
-        return;
-      }
-
-      map.set(item.code, {
-        name: prev.name || item.name,
-        code: item.code,
-        market: prev.market || item.market,
-        aliases: Array.from(new Set((prev.aliases || []).concat(item.aliases || []))),
-        href: prev.href || item.href,
-        isDerivative: Boolean(prev.isDerivative || item.isDerivative),
-        searchRank: Math.max(Number(prev.searchRank || 0), Number(item.searchRank || 0))
-      });
-    });
-
-    return Array.from(map.values()).map(function (item) {
-      item.href = item.href || "/stocks/" + item.code + "/";
-      return item;
-    });
-  }
-
-  const items = buildItems();
-
-  const chosungList = [
-    "ㄱ", "ㄲ", "ㄴ", "ㄷ", "ㄸ", "ㄹ", "ㅁ", "ㅂ", "ㅃ", "ㅅ",
-    "ㅆ", "ㅇ", "ㅈ", "ㅉ", "ㅊ", "ㅋ", "ㅌ", "ㅍ", "ㅎ"
-  ];
-
-  function getChosung(value) {
-    return String(value || "").split("").map(function (char) {
-      const code = char.charCodeAt(0) - 44032;
-
-      if (code >= 0 && code <= 11171) {
-        return chosungList[Math.floor(code / 588)];
-      }
-
-      return char.toLowerCase();
-    }).join("");
-  }
-
-  function escapeHtml(value) {
-    return String(value || "")
-      .replaceAll("&", "&amp;")
-      .replaceAll("<", "&lt;")
-      .replaceAll(">", "&gt;")
-      .replaceAll('"', "&quot;")
-      .replaceAll("'", "&#039;");
-  }
-
-  function sequentialMatch(text, query) {
-    let index = 0;
-
-    for (const char of text) {
-      if (char === query[index]) {
-        index += 1;
-      }
-
-      if (index >= query.length) {
-        return true;
-      }
+    function setText(id, value) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.textContent = value === undefined || value === null || value === "" ? "-" : value;
     }
 
-    return false;
-  }
+    function setScore(id, value) {
+      const el = document.getElementById(id);
+      if (!el) return;
 
-  function scoreItem(item, rawQuery) {
-    const query = normalize(rawQuery);
-
-    if (!query) {
-      return 0;
-    }
-
-    const name = normalize(item.name);
-    const code = normalize(item.code);
-    const market = normalize(item.market);
-    const alias = normalize((item.aliases || []).join(" "));
-    const chosungName = getChosung(item.name);
-    const chosungAlias = getChosung((item.aliases || []).join(" "));
-    const chosungQuery = getChosung(rawQuery);
-
-    let score = 0;
-
-    if (code === query) score = 5000;
-    else if (name === query) score = 4800;
-    else if (alias === query) score = 4700;
-    else if (code.startsWith(query)) score = 4300;
-    else if (name.startsWith(query)) score = 3900;
-    else if (alias.includes(query)) score = 3700;
-    else if (name.includes(query)) score = 3100;
-    else if (code.includes(query)) score = 2800;
-    else if (chosungQuery && chosungName.startsWith(chosungQuery)) score = 2300;
-    else if (chosungQuery && chosungName.includes(chosungQuery)) score = 2100;
-    else if (chosungQuery && chosungAlias.includes(chosungQuery)) score = 2000;
-    else if (query.length >= 2 && sequentialMatch(name, query)) score = 1100;
-    else if (market.includes(query)) score = 300;
-
-    if (!score) {
-      return 0;
-    }
-
-    score += Math.min(Number(item.searchRank || 0), 1200);
-
-    if (item.isDerivative) {
-      score -= 250;
-    }
-
-    return score;
-  }
-
-  function getMatches(query) {
-    const q = normalize(query);
-
-    if (!q) {
-      return [];
-    }
-
-    return items
-      .map(function (item) {
-        return Object.assign({}, item, { score: scoreItem(item, query) });
-      })
-      .filter(function (item) {
-        return item.score > 0;
-      })
-      .sort(function (a, b) {
-        if (b.score !== a.score) return b.score - a.score;
-        if (Number(b.searchRank || 0) !== Number(a.searchRank || 0)) return Number(b.searchRank || 0) - Number(a.searchRank || 0);
-        if (a.isDerivative !== b.isDerivative) return a.isDerivative ? 1 : -1;
-        return String(a.name).localeCompare(String(b.name), "ko");
-      })
-      .slice(0, 80);
-  }
-
-  function createSuggestItem(item, index) {
-    return ''
-      + '<a class="live-suggest-item" data-index="' + index + '" href="' + escapeHtml(item.href) + '">'
-      + '  <div>'
-      + '    <div class="live-suggest-name">' + escapeHtml(item.name) + '</div>'
-      + '    <div class="live-suggest-code">' + escapeHtml(item.code) + '</div>'
-      + '  </div>'
-      + '  <div class="live-suggest-market">' + escapeHtml(item.market) + '</div>'
-      + '</a>';
-  }
-
-  let lastMatches = [];
-  let activeIndex = -1;
-
-  function paintActiveSuggest() {
-    panel.querySelectorAll(".live-suggest-item").forEach(function (node) {
-      const index = Number(node.getAttribute("data-index"));
-      node.classList.toggle("active", index === activeIndex);
-    });
-  }
-
-  function renderSuggest(query) {
-    const q = query.trim();
-    const matches = getMatches(q);
-
-    lastMatches = matches;
-    activeIndex = -1;
-    panel.innerHTML = "";
-
-    if (!q) {
-      panel.classList.remove("show");
-      return;
-    }
-
-    panel.classList.add("show");
-
-    if (!matches.length) {
-      panel.innerHTML = '<div class="live-suggest-empty">검색 결과가 없습니다. 예: 삼성전자, 삼전, LG, NAVER, 005930</div>';
-      return;
-    }
-
-    panel.innerHTML = matches.slice(0, 60).map(createSuggestItem).join("");
-  }
-
-  function goFirstMatch() {
-    const matches = lastMatches.length ? lastMatches : getMatches(input.value);
-    const target = activeIndex >= 0 ? matches[activeIndex] : matches[0];
-
-    if (target) {
-      window.location.href = target.href;
-      return true;
-    }
-
-    return false;
-  }
-
-  input.addEventListener("input", function () {
-    renderSuggest(this.value);
-  });
-
-  input.addEventListener("focus", function () {
-    if (this.value.trim()) {
-      renderSuggest(this.value);
-    }
-  });
-
-  input.addEventListener("keydown", function (event) {
-    const suggestCount = Math.min(lastMatches.length, 60);
-
-    if (event.key === "ArrowDown" && suggestCount) {
-      event.preventDefault();
-      activeIndex = activeIndex < suggestCount - 1 ? activeIndex + 1 : 0;
-      paintActiveSuggest();
-      return;
-    }
-
-    if (event.key === "ArrowUp" && suggestCount) {
-      event.preventDefault();
-      activeIndex = activeIndex > 0 ? activeIndex - 1 : suggestCount - 1;
-      paintActiveSuggest();
-      return;
-    }
-
-    if (event.key === "Enter") {
-      if (goFirstMatch()) {
-        event.preventDefault();
-      }
-    }
-
-    if (event.key === "Escape") {
-      panel.classList.remove("show");
-      activeIndex = -1;
-    }
-  });
-
-  form.addEventListener("submit", function (event) {
-    if (goFirstMatch()) {
-      event.preventDefault();
-    }
-  });
-
-  document.addEventListener("click", function (event) {
-    if (!event.target.closest(".search-live-box")) {
-      panel.classList.remove("show");
-    }
-  });
-
-  if (input.value.trim()) {
-    renderSuggest(input.value);
-  }
-})();
-</script>
-
-<script>
-(function () {
-  const statusEl = document.getElementById("marketStatus");
-  const sourceBadge = document.getElementById("marketSourceBadge");
-  const timingNeedle = document.getElementById("timingNeedle");
-  const timingScoreEl = document.getElementById("timingScore");
-  const timingLabelEl = document.getElementById("timingLabel");
-  const fearMeter = document.getElementById("fearMeter");
-  const overheatMeter = document.getElementById("overheatMeter");
-  const fearScoreEl = document.getElementById("fearScore");
-  const fearLabelEl = document.getElementById("fearLabel");
-  const overheatScoreEl = document.getElementById("overheatScore");
-  const overheatLabelEl = document.getElementById("overheatLabel");
-  const vixValueEl = document.getElementById("vixValue");
-  const kospiPositionEl = document.getElementById("kospiPosition");
-  const kospiChangeEl = document.getElementById("kospiChange");
-  const kospiPriceEl = document.getElementById("kospiPrice");
-  const kosdaqChangeEl = document.getElementById("kosdaqChange");
-  const kosdaqPriceEl = document.getElementById("kosdaqPrice");
-  const distance20El = document.getElementById("distance20");
-  const marketDecisionEl = document.getElementById("marketDecision");
-  const decisionSubEl = document.getElementById("decisionSub");
-
-  function clamp(value, min, max) {
-    const n = Number(value);
-
-    if (!Number.isFinite(n)) {
-      return min;
-    }
-
-    return Math.max(min, Math.min(max, n));
-  }
-
-  function getTimingLabel(score) {
-    const s = clamp(score, 0, 100);
-
-    if (s >= 78) return "분할매수 유리";
-    if (s >= 62) return "관심 구간";
-    if (s >= 46) return "중립";
-    if (s >= 30) return "보수적 관망";
-    return "위험 관리";
-  }
-
-  function getFearLabel(score) {
-    const s = clamp(score, 0, 100);
-
-    if (s >= 80) return "Extreme Greed";
-    if (s >= 62) return "Greed";
-    if (s >= 43) return "Neutral";
-    if (s >= 25) return "Fear";
-    return "Extreme Fear";
-  }
-
-  function getOverheatLabel(score) {
-    const s = clamp(score, 0, 100);
-
-    if (s >= 82) return "강한 과열";
-    if (s >= 68) return "과열 주의";
-    if (s >= 48) return "중립";
-    if (s >= 30) return "안정";
-    return "저온";
-  }
-
-  function setChangeText(el, value) {
-    if (!el) return;
-
-    const text = String(value || "-").trim();
-    el.textContent = text;
-    el.classList.remove("change-up", "change-down", "change-flat");
-
-    if (text.startsWith("+")) {
-      el.classList.add("change-up");
-    } else if (text.startsWith("-")) {
-      el.classList.add("change-down");
-    } else {
-      el.classList.add("change-flat");
-    }
-  }
-
-  function setIndexPrice(el, label, value) {
-    if (!el) return;
-    el.textContent = value ? String(value) : "현재 지수";
-    el.setAttribute("aria-label", label + " 현재 지수");
-  }
-
-  function updateGauge(data) {
-    const timing = clamp(data.timing, 0, 100);
-    const fear = clamp(data.fear, 0, 100);
-    const overheat = clamp(data.overheat, 0, 100);
-    const angle = -90 + timing * 1.8;
-
-    if (timingNeedle) {
-      timingNeedle.style.transform = "rotate(" + angle + "deg)";
-    }
-
-    if (timingScoreEl) timingScoreEl.textContent = String(Math.round(timing));
-    if (timingLabelEl) timingLabelEl.textContent = data.timingLabel || getTimingLabel(timing);
-
-    if (fearMeter) fearMeter.style.setProperty("--score", String(fear));
-    if (overheatMeter) overheatMeter.style.setProperty("--score", String(overheat));
-
-    if (fearScoreEl) fearScoreEl.textContent = String(Math.round(fear));
-    if (fearLabelEl) fearLabelEl.textContent = data.fearLabel || getFearLabel(fear);
-
-    if (overheatScoreEl) overheatScoreEl.textContent = String(Math.round(overheat));
-    if (overheatLabelEl) overheatLabelEl.textContent = data.overheatLabel || getOverheatLabel(overheat);
-
-    if (vixValueEl) vixValueEl.textContent = data.vix || "-";
-    if (kospiPositionEl) kospiPositionEl.textContent = data.kospiPosition || "-";
-    setIndexPrice(kospiPriceEl, "KOSPI", data.kospiPrice);
-    setChangeText(kospiChangeEl, data.kospiChange);
-    setIndexPrice(kosdaqPriceEl, "KOSDAQ", data.kosdaqPrice);
-    setChangeText(kosdaqChangeEl, data.kosdaqChange);
-    if (distance20El) distance20El.textContent = data.distance20 || "-";
-    if (marketDecisionEl) marketDecisionEl.textContent = data.decision || getTimingLabel(timing);
-    if (decisionSubEl) decisionSubEl.textContent = data.decisionSub || "시장 지표 계산값";
-  }
-
-  function setStatus(text, source) {
-    if (statusEl) statusEl.textContent = text;
-    if (sourceBadge) sourceBadge.textContent = source;
-  }
-
-  async function loadMarketTemperature() {
-    try {
-      const res = await fetch("/stocks/api/market-temperature/", {
-        headers: { "Accept": "application/json" },
-        cache: "no-store"
-      });
-
-      if (!res.ok) {
-        throw new Error("market api failed");
-      }
-
-      const data = await res.json();
-
-      updateGauge({
-        timing: data.market_timing_score || data.timing || 52,
-        fear: data.fear_greed_score || data.fear || 55,
-        overheat: data.overheat_score || data.overheat || 64,
-        timingLabel: data.timing_label,
-        fearLabel: data.fear_label,
-        overheatLabel: data.overheat_label,
-        vix: data.vix_value,
-        kospiPosition: data.kospi_position,
-        kospiChange: data.kospi_change,
-        kospiPrice: data.kospi_price,
-        kosdaqChange: data.kosdaq_change,
-        kosdaqPrice: data.kosdaq_price,
-        distance20: data.distance_20,
-        decision: data.decision,
-        decisionSub: data.decision_sub
-      });
-
-      if (data.ok) {
-        setStatus(data.base_date ? data.base_date + " 기준" : "시장 데이터 반영", "PYKRX");
+      const num = Number(value);
+      if (Number.isFinite(num)) {
+        el.textContent = Number.isInteger(num) ? String(num) : num.toFixed(1);
       } else {
-        setStatus("기본 지표 표시중", "BASIC");
+        el.textContent = "-";
       }
-    } catch (error) {
-      updateGauge({
-        timing: 52,
-        fear: 55,
-        overheat: 64,
-        vix: "-",
-        kospiPosition: "-",
-        kospiChange: "-",
-        kospiPrice: "현재 지수",
-        kosdaqChange: "-",
-        kosdaqPrice: "현재 지수",
-        distance20: "-",
-        decision: "관망",
-        decisionSub: "서버 API 연결 전 기본값"
-      });
-
-      setStatus("기본 지표 표시중", "BASIC");
     }
-  }
 
-  loadMarketTemperature();
-})();
+    function setMarker(id, value) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      const num = Math.max(0, Math.min(100, Number(value) || 0));
+      el.style.setProperty("--value", num);
+    }
+
+    function setGauge(value) {
+      const score = Math.max(0, Math.min(100, Number(value) || 0));
+      const gauge = document.getElementById("timingGauge");
+      const needle = document.getElementById("timingGaugeNeedle");
+      const deg = -160 + (score * 1.4);
+      const degValue = deg + "deg";
+
+      if (gauge) gauge.style.setProperty("--needle-deg", degValue);
+      if (needle) needle.style.transform = "rotate(" + degValue + ")";
+    }
+
+    function renderMarket(data) {
+      if (!data) return;
+
+      setScore("marketTimingScore", data.market_timing_score);
+      setText("marketTimingLabel", data.timing_label || data.decision || "중립");
+      setGauge(data.market_timing_score);
+
+      setScore("fearGreedScore", data.fear_greed_score);
+      setText("fearGreedLabel", data.fear_label || "Neutral");
+      setMarker("fearGreedMarker", data.fear_greed_score);
+
+      setScore("overheatScore", data.overheat_score);
+      setText("overheatLabel", data.overheat_label || "중립");
+      setMarker("overheatMarker", data.overheat_score);
+
+      setText("kospiPrice", data.kospi_price);
+      setText("kospiChange", data.kospi_change ? "전일대비 " + data.kospi_change : "전일대비 -");
+
+      setText("kosdaqPrice", data.kosdaq_price);
+      setText("kosdaqChange", data.kosdaq_change ? "전일대비 " + data.kosdaq_change : "전일대비 -");
+
+      setText("kospiPosition", data.kospi_position);
+      setText("distance20", data.distance_20);
+      setText("vixValue", data.vix_value);
+
+      setText("decisionText", data.decision || data.timing_label || "관망");
+      setText("decisionSub", data.decision_sub || "시장 데이터를 확인했습니다.");
+
+      const baseDate = data.base_date ? data.base_date + " 기준" : "시장지표";
+      setText("marketBaseDate", baseDate);
+    }
+
+    function loadMarketLazy() {
+      fetch(marketUrl, {
+        headers: {
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        cache: "force-cache"
+      })
+        .then(function (res) {
+          return res.json();
+        })
+        .then(renderMarket)
+        .catch(function () {
+          setText("marketBaseDate", "시장지표 로딩 실패");
+          setText("decisionSub", "잠시 후 다시 시도해주세요.");
+        });
+    }
+
+    document.addEventListener("DOMContentLoaded", function () {
+      setGauge(52);
+
+      if ("requestIdleCallback" in window) {
+        requestIdleCallback(loadMarketLazy, { timeout: 1300 });
+      } else {
+        setTimeout(loadMarketLazy, 700);
+      }
+    });
+  })();
 </script>
+
+<script src="{% static 'stocks/js/bitgak_search.js' %}?v=20260516-home-login-gauge-fixed-v4"></script>
 {% endblock %}

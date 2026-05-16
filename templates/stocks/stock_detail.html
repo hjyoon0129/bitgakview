@@ -5,7 +5,7 @@
 {% block body_class %}bitgak-chart-body{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'stocks/css/bitgak_chart.css' %}?v=20260516-drawer-overlay-dup-pane-v1">
+<link rel="stylesheet" href="{% static 'stocks/css/bitgak_chart.css' %}?v=20260517-mobile-final-align-v5">
 {% endblock %}
 
 {% block content %}
@@ -20,7 +20,7 @@
 >
   <header class="bv-header">
     <div class="bv-logo-area">
-      <a class="bv-home-link" href="{% url 'stocks:search' %}" title="메인으로">
+      <a class="bv-home-link" href="{% url 'stocks:search' %}?lite=1" title="메인으로">
         <div class="bv-logo">B</div>
         <div class="bv-brand">BitgakView</div>
       </a>
@@ -43,7 +43,11 @@
     </div>
 
     <div class="bv-header-actions">
-      <a class="bv-login-link" href="#">로그인</a>
+      {% if request.user.is_authenticated %}
+        <a class="bv-login-link" href="/accounts/logout/" title="로그아웃">로그아웃</a>
+      {% else %}
+        <a class="bv-login-link" href="/accounts/login/?next={{ request.get_full_path|urlencode }}" title="로그인">로그인</a>
+      {% endif %}
     </div>
   </header>
 
@@ -248,8 +252,12 @@
                 <span class="tv-interval-sub">Month</span>
               </button>
             </div>
-          </div><button id="openIndicatorBtn" class="chart-top-btn" type="button">지표검색</button>
-
+          </div>
+          <button id="openIndicatorBtn" class="chart-top-btn" type="button">지표검색</button>
+          <button id="openMobileIndicatorsBtn" class="chart-top-btn mobile-current-indicator-btn" type="button" aria-haspopup="dialog" aria-controls="mobileIndicatorModal">
+            적용지표
+            <span id="mobileActiveIndicatorBadge" class="mobile-active-indicator-badge">0</span>
+          </button>
 
           <div class="bv-drawing-toolbar" aria-label="차트 그리기 도구">
             <button class="tool-btn active" type="button" data-tool="cursor" title="커서">＋</button>
@@ -262,7 +270,7 @@
             <button class="tool-btn" type="button" data-tool="clear" title="전체 삭제">⌂</button>
           </div>
 
-          
+
 
           <div class="chart-top-spacer"></div>
 
@@ -637,6 +645,33 @@
   </div>
 </div>
 
+<div id="mobileIndicatorModal" class="mobile-indicator-modal" aria-hidden="true">
+  <div class="mobile-indicator-panel" role="dialog" aria-modal="true" aria-labelledby="mobileIndicatorTitle">
+    <div class="mobile-indicator-head">
+      <div>
+        <h2 id="mobileIndicatorTitle">적용 지표</h2>
+        <p>현재 차트에 적용된 지표를 모바일에서 바로 숨김/설정/삭제합니다.</p>
+      </div>
+      <button class="modal-close mobile-indicator-close" type="button" data-close-mobile-indicators aria-label="적용 지표 창 닫기">×</button>
+    </div>
+
+    <div class="mobile-indicator-summary">
+      <span>현재 적용 중</span>
+      <strong><b id="mobileActiveIndicatorCount">0</b>개</strong>
+    </div>
+
+    <div id="mobileIndicatorList" class="mobile-indicator-list">
+      <div class="indicator-empty">
+        아직 추가된 지표가 없습니다. [지표검색]으로 필요한 지표를 먼저 추가하세요.
+      </div>
+    </div>
+
+    <div class="mobile-indicator-bottom-actions">
+      <button id="mobileAddIndicatorBtn" class="chart-top-btn primary" type="button">＋ 지표검색 열기</button>
+    </div>
+  </div>
+</div>
+
 <div id="indicatorModal" class="indicator-modal" aria-hidden="true">
   <div class="indicator-panel">
     <div class="indicator-panel-head">
@@ -671,9 +706,9 @@
 {% block extra_js %}
 <script src="https://unpkg.com/lightweight-charts@5.0.8/dist/lightweight-charts.standalone.production.js"></script>
 
-<script src="{% static 'stocks/js/bitgak_chart_core.js' %}?v=20260516-drawer-overlay-dup-pane-v1"></script>
-<script src="{% static 'stocks/js/bitgak_groups.js' %}?v=20260516-drawer-overlay-dup-pane-v1"></script>
-<script src="{% static 'stocks/js/bitgak_portfolio.js' %}?v=20260516-drawer-overlay-dup-pane-v1"></script>
-<script src="{% static 'stocks/js/bitgak_indicators.js' %}?v=20260516-drawer-overlay-dup-pane-v1"></script>
-<script src="{% static 'stocks/js/bitgak_search.js' %}?v=20260516-drawer-overlay-dup-pane-v1"></script>
+<script src="{% static 'stocks/js/bitgak_chart_core.js' %}?v=20260517-mobile-final-align-v5"></script>
+<script src="{% static 'stocks/js/bitgak_groups.js' %}?v=20260517-mobile-final-align-v5"></script>
+<script src="{% static 'stocks/js/bitgak_portfolio.js' %}?v=20260517-mobile-final-align-v5"></script>
+<script src="{% static 'stocks/js/bitgak_indicators.js' %}?v=20260517-mobile-final-align-v5"></script>
+<script src="{% static 'stocks/js/bitgak_search.js' %}?v=20260517-mobile-final-align-v5"></script>
 {% endblock %}

@@ -1048,3 +1048,204 @@
   background: rgba(59, 130, 246, 0.10);
 }
 
+
+/* =========================================================
+   Mobile current indicator manager
+   - 모바일에서만 보이는 [적용지표] 버튼과 전용 관리창
+   ========================================================= */
+.mobile-current-indicator-btn {
+  display: none;
+  align-items: center;
+  gap: 7px;
+  white-space: nowrap;
+}
+
+.mobile-active-indicator-badge {
+  min-width: 22px;
+  height: 22px;
+  padding: 0 7px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(37, 99, 235, 0.16);
+  border: 1px solid rgba(37, 99, 235, 0.20);
+  color: #2563eb;
+  font-size: 11px;
+  font-weight: 1000;
+  line-height: 1;
+}
+
+.mobile-active-indicator-badge.is-empty {
+  background: rgba(100, 116, 139, 0.12);
+  border-color: rgba(100, 116, 139, 0.16);
+  color: #64748b;
+}
+
+.mobile-indicator-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 10030;
+  display: none;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 12px;
+  background: rgba(2, 6, 23, 0.68);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.mobile-indicator-modal.open,
+.mobile-indicator-modal.is-open {
+  display: flex;
+}
+
+.mobile-indicator-panel {
+  width: min(520px, 100%);
+  max-height: min(76vh, 680px);
+  overflow: hidden;
+  border-radius: 24px 24px 20px 20px;
+  border: 1px solid rgba(96, 165, 250, 0.24);
+  background:
+    radial-gradient(circle at top right, rgba(56, 189, 248, 0.14), transparent 38%),
+    linear-gradient(180deg, #0f172a, #06101f 72%, #050a14);
+  box-shadow: 0 28px 90px rgba(0, 0, 0, 0.56);
+  color: #ffffff;
+  display: flex;
+  flex-direction: column;
+}
+
+.mobile-indicator-head {
+  flex: 0 0 auto;
+  padding: 18px 18px 14px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.13);
+}
+
+.mobile-indicator-head h2 {
+  margin: 0;
+  color: #ffffff;
+  font-size: 21px;
+  font-weight: 1000;
+  letter-spacing: -0.05em;
+  line-height: 1.15;
+}
+
+.mobile-indicator-head p {
+  margin: 7px 0 0;
+  color: #9fb0c8;
+  font-size: 12px;
+  font-weight: 850;
+  line-height: 1.45;
+  word-break: keep-all;
+}
+
+.mobile-indicator-summary {
+  flex: 0 0 auto;
+  margin: 13px 14px 0;
+  padding: 12px 13px;
+  border-radius: 16px;
+  border: 1px solid rgba(96, 165, 250, 0.18);
+  background: rgba(15, 23, 42, 0.68);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.mobile-indicator-summary span {
+  color: #9fb0c8;
+  font-size: 12px;
+  font-weight: 950;
+}
+
+.mobile-indicator-summary strong {
+  color: #67e8f9;
+  font-size: 15px;
+  font-weight: 1000;
+}
+
+.mobile-indicator-list {
+  min-height: 0;
+  flex: 1 1 auto;
+  display: grid;
+  align-content: start;
+  gap: 9px;
+  padding: 13px 14px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.mobile-indicator-list .indicator-row {
+  min-height: 60px;
+  padding: 11px 10px 11px 12px;
+  border-radius: 16px;
+  background: rgba(15, 23, 42, 0.78);
+  border-color: rgba(148, 163, 184, 0.15);
+}
+
+.mobile-indicator-list .indicator-row.off {
+  opacity: 0.72;
+  background: rgba(15, 23, 42, 0.48);
+}
+
+.mobile-indicator-list .indicator-row-title strong {
+  font-size: 15px;
+}
+
+.mobile-indicator-list .indicator-row-actions {
+  gap: 6px;
+}
+
+.mobile-indicator-list .indicator-eye-btn,
+.mobile-indicator-list .indicator-edit-btn,
+.mobile-indicator-list .indicator-trash-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 12px;
+  background: rgba(2, 6, 23, 0.28);
+}
+
+.mobile-indicator-list .indicator-eye-btn:hover,
+.mobile-indicator-list .indicator-edit-btn:hover,
+.mobile-indicator-list .indicator-trash-btn:hover {
+  background: rgba(56, 189, 248, 0.14);
+}
+
+.mobile-indicator-list .indicator-empty {
+  min-height: 122px;
+  padding: 28px 18px;
+  border-radius: 18px;
+  border: 1px dashed rgba(96, 165, 250, 0.24);
+  background: rgba(15, 23, 42, 0.40);
+  color: #9fb0c8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  line-height: 1.55;
+}
+
+.mobile-indicator-bottom-actions {
+  flex: 0 0 auto;
+  padding: 0 14px 16px;
+}
+
+.mobile-indicator-bottom-actions .chart-top-btn {
+  width: 100%;
+  height: 44px;
+  border-radius: 15px;
+}
+
+@media (max-width: 760px) {
+  .mobile-current-indicator-btn {
+    display: inline-flex;
+  }
+
+  body.mobile-indicator-modal-open {
+    touch-action: none;
+  }
+}

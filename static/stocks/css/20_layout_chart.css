@@ -2229,3 +2229,47 @@
   background: var(--label-color, #60a5fa);
   box-shadow: 0 0 8px color-mix(in srgb, var(--label-color, #60a5fa) 70%, transparent);
 }
+
+/* =========================================================
+   평단가 계산기 행 버튼 위치 보정
+   - 1차/2차 오른쪽 톱니 + 빨간 X가 차트 경계에 붙거나 잘리는 문제 수정
+   ========================================================= */
+
+.bitgak-chart-body .avg-calc-card {
+  padding-right: 22px !important;
+  overflow: hidden !important;
+}
+
+.bitgak-chart-body .avg-calc-row {
+  grid-template-columns: 42px minmax(96px, 1fr) 70px minmax(76px, 88px) 44px !important;
+  column-gap: 7px !important;
+  align-items: center !important;
+  padding-right: 4px !important;
+}
+
+.bitgak-chart-body .avg-row-actions {
+  width: 44px !important;
+  min-width: 44px !important;
+  max-width: 44px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  gap: 4px !important;
+  overflow: visible !important;
+  transform: translateX(-6px) !important;
+}
+
+.bitgak-chart-body .avg-row-style,
+.bitgak-chart-body .avg-row-delete {
+  width: 21px !important;
+  height: 26px !important;
+  min-width: 21px !important;
+  flex: 0 0 21px !important;
+  border-radius: 9px !important;
+  display: grid !important;
+  place-items: center !important;
+}
+
+.bitgak-chart-body .avg-row-delete {
+  margin-right: 0 !important;
+}

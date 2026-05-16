@@ -246,3 +246,75 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* =========================================================
+   Mobile chart top indicator buttons refinement
+   ========================================================= */
+@media (max-width: 760px) {
+  .bitgak-chart-body .chart-card-top {
+    align-items: center;
+    gap: 8px;
+    padding: 8px 9px;
+  }
+
+  .bitgak-chart-body .chart-title {
+    width: 100%;
+    min-width: 0;
+    font-size: 14px;
+    line-height: 1.25;
+  }
+
+  .bitgak-chart-body .tv-interval-dropdown,
+  .bitgak-chart-body #openIndicatorBtn,
+  .bitgak-chart-body #openMobileIndicatorsBtn {
+    flex: 0 0 auto;
+  }
+
+  .bitgak-chart-body .tv-interval-btn,
+  .bitgak-chart-body .chart-top-btn {
+    height: 32px;
+    border-radius: 11px;
+    font-size: 12px;
+    padding: 0 10px;
+  }
+
+  .bitgak-chart-body .tv-interval-btn {
+    min-width: 74px;
+  }
+
+  .bitgak-chart-body #openIndicatorBtn {
+    min-width: 74px;
+  }
+
+  .bitgak-chart-body #openMobileIndicatorsBtn {
+    min-width: 86px;
+    padding-right: 8px;
+  }
+
+  .bitgak-chart-body .mobile-active-indicator-badge {
+    min-width: 20px;
+    height: 20px;
+    padding: 0 6px;
+    font-size: 10px;
+  }
+
+  .bitgak-chart-body .bv-drawing-toolbar {
+    order: 20;
+    margin-top: 1px;
+  }
+}
+
+@media (max-width: 420px) {
+  .bitgak-chart-body .chart-card-top {
+    gap: 7px;
+  }
+
+  .bitgak-chart-body .tv-interval-btn,
+  .bitgak-chart-body .chart-top-btn {
+    padding: 0 9px;
+  }
+
+  .bitgak-chart-body #openMobileIndicatorsBtn {
+    min-width: 82px;
+  }
+}

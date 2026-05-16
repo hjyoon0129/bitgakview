@@ -44,6 +44,10 @@
   let activeDrawerView = null;
   let drawerCloseTimer = null;
 
+  function isMobileViewport() {
+    return !!(window.matchMedia && window.matchMedia("(max-width: 760px)").matches);
+  }
+
   function toNumber(value) {
     const n = Number(String(value || "").replace(/,/g, ""));
     return Number.isFinite(n) ? n : 0;
@@ -205,7 +209,7 @@
 
     if (target === "portfolio") renderPortfolio();
 
-    requestResize();
+    if (!isMobileViewport()) requestResize();
   }
 
   function toggleDrawer(view) {
@@ -223,7 +227,7 @@
     syncDrawerState(false);
     openAvgBtn && openAvgBtn.classList.remove("active");
     openPortfolioBtn && openPortfolioBtn.classList.remove("active");
-    requestResize();
+    if (!isMobileViewport()) requestResize();
   }
 
   function requestResize() {
@@ -628,6 +632,18 @@
   });
 
   if (closeBtn) closeBtn.addEventListener("click", closeDrawer);
+
+  document.addEventListener("click", function (event) {
+    if (!isMobileViewport() || !isDrawerOpen()) return;
+    if (event.target.closest(".bv-tool-drawer")) return;
+    if (event.target.closest("[data-drawer-open]")) return;
+    closeDrawer();
+  });
+
+  document.addEventListener("keydown", function (event) {
+    if (event.key === "Escape" && isMobileViewport() && isDrawerOpen()) closeDrawer();
+  });
+
   if (savePortfolioBtn) savePortfolioBtn.addEventListener("click", saveCurrentAverageToPortfolio);
   if (saveCapitalBtn) saveCapitalBtn.addEventListener("click", saveCapital);
   if (increaseCapitalBtn) increaseCapitalBtn.addEventListener("click", increaseCapitalToNeeded);

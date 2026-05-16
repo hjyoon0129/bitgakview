@@ -2822,3 +2822,1221 @@
   }
 }
 
+
+
+/* =========================================================
+   Mobile header + chart top layout fix v2
+   - 모바일 1행: 로고 / 검색 / 로그인
+   - 모바일 2행: 평단가 계산기 / 포트폴리오
+   - 차트 상단 버튼/그리기툴/OHLC가 겹치지 않도록 고정 정렬
+   ========================================================= */
+@media (max-width: 760px) {
+  .bitgak-chart-body .bv-app {
+    grid-template-rows: 106px minmax(0, 1fr) !important;
+    height: 100vh !important;
+    min-height: 0 !important;
+  }
+
+  .bitgak-chart-body .bv-header {
+    height: 106px !important;
+    min-height: 106px !important;
+    padding: 7px 10px 8px !important;
+    display: grid !important;
+    grid-template-columns: 34px minmax(0, 1fr) auto !important;
+    grid-template-rows: 40px 40px !important;
+    align-items: center !important;
+    gap: 8px !important;
+    overflow: visible !important;
+  }
+
+  .bitgak-chart-body .bv-logo-area {
+    grid-column: 1 / 2 !important;
+    grid-row: 1 / 2 !important;
+    min-width: 0 !important;
+  }
+
+  .bitgak-chart-body .bv-logo {
+    width: 30px !important;
+    height: 30px !important;
+    border-radius: 11px !important;
+    font-size: 13px !important;
+  }
+
+  .bitgak-chart-body .bv-brand {
+    display: none !important;
+  }
+
+  .bitgak-chart-body .bv-search,
+  .bitgak-chart-body .bv-search-live {
+    grid-column: 2 / 3 !important;
+    grid-row: 1 / 2 !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    height: 38px !important;
+    margin: 0 !important;
+  }
+
+  .bitgak-chart-body .bv-search input {
+    min-width: 0 !important;
+    padding-left: 14px !important;
+    padding-right: 8px !important;
+    font-size: 13px !important;
+  }
+
+  .bitgak-chart-body .bv-search button {
+    flex-basis: 34px !important;
+    width: 34px !important;
+  }
+
+  .bitgak-chart-body .bv-header-actions {
+    grid-column: 3 / 4 !important;
+    grid-row: 1 / 2 !important;
+    display: flex !important;
+    margin-left: 0 !important;
+    align-items: center !important;
+    justify-content: flex-end !important;
+    gap: 0 !important;
+    min-width: 0 !important;
+  }
+
+  .bitgak-chart-body .bv-header-actions a,
+  .bitgak-chart-body .bv-header-actions button {
+    height: 38px !important;
+    min-width: 58px !important;
+    padding: 0 11px !important;
+    border-radius: 14px !important;
+    font-size: 12px !important;
+    font-weight: 1000 !important;
+    white-space: nowrap !important;
+  }
+
+  .bitgak-chart-body .bv-drawer-actions {
+    grid-column: 1 / 4 !important;
+    grid-row: 2 / 3 !important;
+    width: 100% !important;
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
+    align-items: center !important;
+    gap: 8px !important;
+    order: initial !important;
+    margin: 0 !important;
+  }
+
+  .bitgak-chart-body .bv-drawer-action-btn {
+    width: 100% !important;
+    height: 40px !important;
+    padding: 0 10px !important;
+    border-radius: 14px !important;
+    font-size: 13px !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+  }
+
+  .bitgak-chart-body .bv-layout,
+  .bitgak-chart-body .bv-layout-full,
+  .bitgak-chart-body .bv-layout.bv-drawer-open,
+  .bitgak-chart-body .bv-layout-full.bv-drawer-open {
+    grid-row: 2 / 3 !important;
+    height: calc(100vh - 106px) !important;
+    min-height: 0 !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .bitgak-chart-body .bv-layout > .bv-main,
+  .bitgak-chart-body .bv-layout-full > .bv-main,
+  .bitgak-chart-body .bv-layout.bv-drawer-open > .bv-main,
+  .bitgak-chart-body .bv-layout-full.bv-drawer-open > .bv-main {
+    padding: 7px 8px 8px !important;
+    min-height: 0 !important;
+  }
+
+  .bitgak-chart-body .bv-left-panel.bv-tool-drawer {
+    top: 116px !important;
+    left: 8px !important;
+    right: auto !important;
+    bottom: 10px !important;
+    width: min(430px, calc(100vw - 16px)) !important;
+    max-width: min(430px, calc(100vw - 16px)) !important;
+  }
+
+  .bitgak-chart-body .chart-card,
+  .bitgak-chart-body .chart-card-full {
+    min-height: 0 !important;
+    border-radius: 12px !important;
+  }
+
+  .bitgak-chart-body .chart-card-top {
+    flex: 0 0 auto !important;
+    min-height: 116px !important;
+    height: auto !important;
+    padding: 8px 9px 7px !important;
+    display: grid !important;
+    grid-template-columns: auto auto auto minmax(0, 1fr) !important;
+    grid-template-rows: 22px 32px 34px !important;
+    grid-template-areas:
+      "title title title title"
+      "interval search active ."
+      "tools tools tools tools" !important;
+    align-items: center !important;
+    gap: 7px 8px !important;
+    overflow: visible !important;
+    z-index: 80 !important;
+  }
+
+  .bitgak-chart-body .chart-title {
+    grid-area: title !important;
+    width: auto !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    font-size: 13px !important;
+    line-height: 1.2 !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+  }
+
+  .bitgak-chart-body .tv-interval-dropdown {
+    grid-area: interval !important;
+    align-self: center !important;
+    justify-self: start !important;
+    z-index: 160 !important;
+  }
+
+  .bitgak-chart-body #openIndicatorBtn {
+    grid-area: search !important;
+    align-self: center !important;
+    justify-self: start !important;
+  }
+
+  .bitgak-chart-body #openMobileIndicatorsBtn {
+    grid-area: active !important;
+    align-self: center !important;
+    justify-self: start !important;
+  }
+
+  .bitgak-chart-body .tv-interval-btn,
+  .bitgak-chart-body .chart-top-btn {
+    height: 32px !important;
+    min-height: 32px !important;
+    border-radius: 11px !important;
+    font-size: 12px !important;
+    padding: 0 10px !important;
+    line-height: 1 !important;
+    white-space: nowrap !important;
+  }
+
+  .bitgak-chart-body .tv-interval-btn {
+    min-width: 72px !important;
+  }
+
+  .bitgak-chart-body #openIndicatorBtn {
+    min-width: 72px !important;
+  }
+
+  .bitgak-chart-body #openMobileIndicatorsBtn {
+    min-width: 92px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 6px !important;
+  }
+
+  .bitgak-chart-body .mobile-active-indicator-badge {
+    min-width: 20px !important;
+    height: 20px !important;
+    padding: 0 6px !important;
+    font-size: 10px !important;
+  }
+
+  .bitgak-chart-body .bv-drawing-toolbar {
+    grid-area: tools !important;
+    order: initial !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    height: 34px !important;
+    margin: 0 !important;
+    padding: 3px !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    justify-content: flex-start !important;
+    background: rgba(15, 23, 42, 0.04) !important;
+  }
+
+  .bitgak-chart-body .tool-btn {
+    width: 28px !important;
+    height: 28px !important;
+    flex: 0 0 28px !important;
+  }
+
+  .bitgak-chart-body .chart-top-spacer,
+  .bitgak-chart-body .chart-mode-text {
+    display: none !important;
+  }
+
+  .bitgak-chart-body .ohlc-info {
+    flex: 0 0 38px !important;
+    height: 38px !important;
+    min-height: 38px !important;
+    padding: 10px 10px 0 !important;
+    font-size: 12px !important;
+    line-height: 1.2 !important;
+    position: relative !important;
+    z-index: 50 !important;
+    border-top: 1px solid #eef2f7 !important;
+    border-bottom: 1px solid #e5edf6 !important;
+    background: #ffffff !important;
+  }
+
+  .bitgak-chart-body .chart-wrap,
+  .bitgak-chart-body .chart-wrap-v5 {
+    flex: 1 1 auto !important;
+    height: auto !important;
+    min-height: 0 !important;
+  }
+
+  .bitgak-chart-body .stock-search-panel {
+    top: calc(100% + 8px) !important;
+    left: -42px !important;
+    width: calc(100vw - 20px) !important;
+    max-height: min(430px, calc(100vh - 132px)) !important;
+    z-index: 100000 !important;
+  }
+}
+
+@media (max-width: 420px) {
+  .bitgak-chart-body .bv-header {
+    grid-template-columns: 32px minmax(0, 1fr) auto !important;
+    padding-left: 8px !important;
+    padding-right: 8px !important;
+    gap: 7px !important;
+  }
+
+  .bitgak-chart-body .bv-header-actions a,
+  .bitgak-chart-body .bv-header-actions button {
+    min-width: 54px !important;
+    padding: 0 9px !important;
+    font-size: 11px !important;
+  }
+
+  .bitgak-chart-body .chart-card-top {
+    grid-template-columns: auto auto auto minmax(0, 1fr) !important;
+    gap: 7px 6px !important;
+    padding-left: 8px !important;
+    padding-right: 8px !important;
+  }
+
+  .bitgak-chart-body .tv-interval-btn,
+  .bitgak-chart-body .chart-top-btn {
+    padding-left: 8px !important;
+    padding-right: 8px !important;
+  }
+
+  .bitgak-chart-body #openMobileIndicatorsBtn {
+    min-width: 86px !important;
+  }
+}
+
+/* =========================================================
+   Mobile modal balance fix v3
+   - 모바일 평단가/포트폴리오는 차트 레이아웃을 밀지 않는 중앙 모달
+   - 상단 1행/2행/차트 사이 간격 8px 기준으로 정렬
+   - 적용지표 모달은 바텀시트가 아니라 위쪽 모달로 표시
+   ========================================================= */
+@media (max-width: 760px) {
+  .bitgak-chart-body .bv-app {
+    grid-template-rows: 100px minmax(0, 1fr) !important;
+  }
+
+  .bitgak-chart-body .bv-header {
+    height: 100px !important;
+    min-height: 100px !important;
+    padding: 8px 10px !important;
+    grid-template-columns: 32px minmax(0, 1fr) 58px !important;
+    grid-template-rows: 38px 38px !important;
+    gap: 8px !important;
+  }
+
+  .bitgak-chart-body .bv-logo {
+    width: 30px !important;
+    height: 30px !important;
+    border-radius: 11px !important;
+  }
+
+  .bitgak-chart-body .bv-search,
+  .bitgak-chart-body .bv-search-live {
+    width: min(100%, 276px) !important;
+    max-width: 276px !important;
+    height: 38px !important;
+    justify-self: start !important;
+  }
+
+  .bitgak-chart-body .bv-search input {
+    padding-left: 13px !important;
+    padding-right: 6px !important;
+    font-size: 12px !important;
+  }
+
+  .bitgak-chart-body .bv-search button {
+    flex: 0 0 32px !important;
+    width: 32px !important;
+  }
+
+  .bitgak-chart-body .bv-header-actions {
+    width: 58px !important;
+    justify-self: end !important;
+  }
+
+  .bitgak-chart-body .bv-header-actions a,
+  .bitgak-chart-body .bv-header-actions button {
+    width: 58px !important;
+    min-width: 58px !important;
+    height: 38px !important;
+    padding: 0 !important;
+    border-radius: 13px !important;
+    font-size: 11px !important;
+  }
+
+  .bitgak-chart-body .bv-drawer-actions {
+    gap: 8px !important;
+  }
+
+  .bitgak-chart-body .bv-drawer-action-btn {
+    height: 38px !important;
+    border-radius: 14px !important;
+  }
+
+  .bitgak-chart-body .bv-layout,
+  .bitgak-chart-body .bv-layout-full,
+  .bitgak-chart-body .bv-layout.bv-drawer-open,
+  .bitgak-chart-body .bv-layout-full.bv-drawer-open {
+    height: calc(100vh - 100px) !important;
+    height: calc(100dvh - 100px) !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    grid-template-rows: minmax(0, 1fr) !important;
+    position: relative !important;
+  }
+
+  .bitgak-chart-body .bv-layout > .bv-main,
+  .bitgak-chart-body .bv-layout-full > .bv-main,
+  .bitgak-chart-body .bv-layout.bv-drawer-open > .bv-main,
+  .bitgak-chart-body .bv-layout-full.bv-drawer-open > .bv-main {
+    grid-column: 1 / 2 !important;
+    grid-row: 1 / 2 !important;
+    padding: 8px !important;
+    transform: none !important;
+    transition: none !important;
+  }
+
+  .bitgak-chart-body .bv-layout.bv-drawer-open::before,
+  .bitgak-chart-body .bv-layout-full.bv-drawer-open::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: 10900;
+    background: rgba(2, 6, 23, 0.62);
+    backdrop-filter: blur(7px);
+    -webkit-backdrop-filter: blur(7px);
+  }
+
+  .bitgak-chart-body .bv-left-panel.bv-tool-drawer {
+    position: fixed !important;
+    top: calc(50% + 20px) !important;
+    left: 50% !important;
+    right: auto !important;
+    bottom: auto !important;
+    width: min(390px, calc(100vw - 26px)) !important;
+    max-width: min(390px, calc(100vw - 26px)) !important;
+    height: auto !important;
+    max-height: calc(100vh - 132px) !important;
+    max-height: calc(100dvh - 132px) !important;
+    padding: 0 !important;
+    border-radius: 24px !important;
+    overflow: hidden !important;
+    z-index: 11000 !important;
+    opacity: 0 !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+    transform: translate(-50%, -50%) scale(0.985) !important;
+    transition: opacity .18s ease, transform .18s ease, visibility .18s ease !important;
+    box-shadow: 0 30px 100px rgba(0, 0, 0, 0.60) !important;
+  }
+
+  .bitgak-chart-body .bv-layout.bv-drawer-open > .bv-left-panel.bv-tool-drawer,
+  .bitgak-chart-body .bv-layout-full.bv-drawer-open > .bv-left-panel.bv-tool-drawer,
+  .bitgak-chart-body .bv-left-panel.bv-tool-drawer.open,
+  .bitgak-chart-body .bv-left-panel.bv-tool-drawer.bv-drawer-closing {
+    display: flex !important;
+  }
+
+  .bitgak-chart-body .bv-layout.bv-drawer-open > .bv-left-panel.bv-tool-drawer,
+  .bitgak-chart-body .bv-layout-full.bv-drawer-open > .bv-left-panel.bv-tool-drawer,
+  .bitgak-chart-body .bv-left-panel.bv-tool-drawer.open {
+    opacity: 1 !important;
+    visibility: visible !important;
+    pointer-events: auto !important;
+    transform: translate(-50%, -50%) scale(1) !important;
+  }
+
+  .bitgak-chart-body .bv-left-panel.bv-tool-drawer.bv-drawer-closing {
+    opacity: 0 !important;
+    pointer-events: none !important;
+    transform: translate(-50%, -50%) scale(0.985) !important;
+  }
+
+  .bitgak-chart-body .bv-tool-drawer-head {
+    padding: 16px 16px 12px !important;
+  }
+
+  .bitgak-chart-body .bv-tool-drawer-tabs {
+    margin: 0 14px 12px !important;
+  }
+
+  .bitgak-chart-body .bv-left-panel.bv-tool-drawer .bv-drawer-view {
+    padding: 0 14px 14px !important;
+    overflow-y: auto !important;
+    overscroll-behavior: contain !important;
+  }
+
+  .bitgak-chart-body .avg-calc-card,
+  .bitgak-chart-body .portfolio-panel {
+    border-radius: 18px !important;
+  }
+
+  .bitgak-chart-body .mobile-indicator-modal {
+    align-items: flex-start !important;
+    justify-content: center !important;
+    padding: max(86px, env(safe-area-inset-top)) 12px 16px !important;
+  }
+
+  .bitgak-chart-body .mobile-indicator-panel {
+    width: min(390px, calc(100vw - 24px)) !important;
+    max-height: min(70vh, 560px) !important;
+    max-height: min(70dvh, 560px) !important;
+    border-radius: 24px !important;
+    box-shadow: 0 28px 90px rgba(0, 0, 0, 0.58) !important;
+  }
+}
+
+@media (max-width: 420px) {
+  .bitgak-chart-body .bv-header {
+    grid-template-columns: 32px minmax(0, 1fr) 56px !important;
+    padding-left: 8px !important;
+    padding-right: 8px !important;
+  }
+
+  .bitgak-chart-body .bv-search,
+  .bitgak-chart-body .bv-search-live {
+    max-width: 258px !important;
+  }
+
+  .bitgak-chart-body .bv-header-actions,
+  .bitgak-chart-body .bv-header-actions a,
+  .bitgak-chart-body .bv-header-actions button {
+    width: 56px !important;
+    min-width: 56px !important;
+  }
+
+  .bitgak-chart-body .bv-left-panel.bv-tool-drawer {
+    width: calc(100vw - 24px) !important;
+    max-width: calc(100vw - 24px) !important;
+  }
+}
+
+@media (max-width: 380px) {
+  .bitgak-chart-body .bv-search,
+  .bitgak-chart-body .bv-search-live {
+    max-width: 236px !important;
+  }
+
+  .bitgak-chart-body .bv-search input {
+    font-size: 11px !important;
+  }
+}
+
+/* =========================================================
+   Mobile spacing + modal stacking + touch crosshair final v4
+   - 모바일 헤더/버튼/차트 간격 8px 기준 정렬
+   - 평단가/포트폴리오 모달이 블러 뒤로 숨지 않도록 z-index 스택 고정
+   - 검색/로그인/도구 버튼 폭 균형 조정
+   ========================================================= */
+@media (max-width: 760px) {
+  .bitgak-chart-body .bv-app {
+    grid-template-rows: 108px minmax(0, 1fr) !important;
+  }
+
+  .bitgak-chart-body .bv-header {
+    height: 108px !important;
+    min-height: 108px !important;
+    padding: 8px 10px 10px !important;
+    grid-template-columns: 32px minmax(0, 1fr) 58px !important;
+    grid-template-rows: 38px 40px !important;
+    column-gap: 8px !important;
+    row-gap: 8px !important;
+  }
+
+  .bitgak-chart-body .bv-search,
+  .bitgak-chart-body .bv-search-live {
+    width: 100% !important;
+    max-width: none !important;
+    height: 38px !important;
+  }
+
+  .bitgak-chart-body .bv-search input {
+    padding-left: 13px !important;
+    padding-right: 4px !important;
+    font-size: 12px !important;
+  }
+
+  .bitgak-chart-body .bv-search button {
+    flex: 0 0 32px !important;
+    width: 32px !important;
+  }
+
+  .bitgak-chart-body .bv-header-actions,
+  .bitgak-chart-body .bv-header-actions a,
+  .bitgak-chart-body .bv-header-actions button {
+    width: 58px !important;
+    min-width: 58px !important;
+  }
+
+  .bitgak-chart-body .bv-drawer-actions {
+    height: 40px !important;
+    gap: 8px !important;
+  }
+
+  .bitgak-chart-body .bv-drawer-action-btn {
+    height: 40px !important;
+    min-height: 40px !important;
+    border-radius: 14px !important;
+  }
+
+  .bitgak-chart-body .bv-layout,
+  .bitgak-chart-body .bv-layout-full,
+  .bitgak-chart-body .bv-layout.bv-drawer-open,
+  .bitgak-chart-body .bv-layout-full.bv-drawer-open {
+    height: calc(100vh - 108px) !important;
+    height: calc(100dvh - 108px) !important;
+    isolation: isolate !important;
+  }
+
+  .bitgak-chart-body .bv-layout > .bv-main,
+  .bitgak-chart-body .bv-layout-full > .bv-main,
+  .bitgak-chart-body .bv-layout.bv-drawer-open > .bv-main,
+  .bitgak-chart-body .bv-layout-full.bv-drawer-open > .bv-main {
+    padding: 8px 10px 10px !important;
+    transform: none !important;
+    transition: none !important;
+  }
+
+  .bitgak-chart-body .chart-card,
+  .bitgak-chart-body .chart-card-full {
+    border-radius: 12px !important;
+  }
+
+  .bitgak-chart-body .chart-card-top {
+    min-height: 116px !important;
+    padding: 8px 9px 7px !important;
+  }
+
+  .bitgak-chart-body .ohlc-info {
+    flex-basis: 38px !important;
+    height: 38px !important;
+    min-height: 38px !important;
+  }
+
+  .bitgak-chart-body .stock-search-panel {
+    left: -40px !important;
+    width: calc(100vw - 20px) !important;
+    max-width: calc(100vw - 20px) !important;
+  }
+
+  .bitgak-chart-body .bv-layout.bv-drawer-open::before,
+  .bitgak-chart-body .bv-layout-full.bv-drawer-open::before {
+    z-index: 2147482000 !important;
+    background: rgba(2, 6, 23, 0.58) !important;
+    backdrop-filter: blur(7px) !important;
+    -webkit-backdrop-filter: blur(7px) !important;
+  }
+
+  .bitgak-chart-body .bv-left-panel.bv-tool-drawer {
+    top: calc(50% + 12px) !important;
+    left: 50% !important;
+    width: min(390px, calc(100vw - 24px)) !important;
+    max-width: min(390px, calc(100vw - 24px)) !important;
+    max-height: calc(100vh - 126px) !important;
+    max-height: calc(100dvh - 126px) !important;
+    z-index: 2147483000 !important;
+    transform: translate(-50%, -50%) scale(0.985) !important;
+  }
+
+  .bitgak-chart-body .bv-layout.bv-drawer-open > .bv-left-panel.bv-tool-drawer,
+  .bitgak-chart-body .bv-layout-full.bv-drawer-open > .bv-left-panel.bv-tool-drawer,
+  .bitgak-chart-body .bv-left-panel.bv-tool-drawer.open {
+    opacity: 1 !important;
+    visibility: visible !important;
+    pointer-events: auto !important;
+    transform: translate(-50%, -50%) scale(1) !important;
+    z-index: 2147483000 !important;
+  }
+
+  .bitgak-chart-body .mobile-indicator-modal {
+    align-items: flex-start !important;
+    padding: max(70px, env(safe-area-inset-top)) 12px 16px !important;
+  }
+
+  .bitgak-chart-body .mobile-indicator-panel {
+    max-height: min(74vh, 590px) !important;
+    max-height: min(74dvh, 590px) !important;
+  }
+}
+
+@media (max-width: 420px) {
+  .bitgak-chart-body .bv-header {
+    grid-template-columns: 32px minmax(0, 1fr) 56px !important;
+    padding-left: 9px !important;
+    padding-right: 9px !important;
+  }
+
+  .bitgak-chart-body .bv-header-actions,
+  .bitgak-chart-body .bv-header-actions a,
+  .bitgak-chart-body .bv-header-actions button {
+    width: 56px !important;
+    min-width: 56px !important;
+  }
+
+  .bitgak-chart-body .bv-layout > .bv-main,
+  .bitgak-chart-body .bv-layout-full > .bv-main,
+  .bitgak-chart-body .bv-layout.bv-drawer-open > .bv-main,
+  .bitgak-chart-body .bv-layout-full.bv-drawer-open > .bv-main {
+    padding-left: 9px !important;
+    padding-right: 9px !important;
+  }
+
+  .bitgak-chart-body .bv-left-panel.bv-tool-drawer {
+    width: calc(100vw - 22px) !important;
+    max-width: calc(100vw - 22px) !important;
+  }
+}
+
+/* =========================================================
+   Mobile final alignment v5
+   - 헤더 버튼줄과 차트 카드 사이 여백 축소
+   - 평단가/포트폴리오 모달을 모바일 레이아웃 내부 기준으로 정렬
+   - 적용지표 창/지표검색 열기 버튼 크기 보강
+   ========================================================= */
+@media (max-width: 760px) {
+  .bitgak-chart-body .bv-app {
+    grid-template-rows: 108px minmax(0, 1fr) !important;
+  }
+
+  .bitgak-chart-body .bv-header {
+    height: 108px !important;
+    min-height: 108px !important;
+    padding: 8px 10px 8px !important;
+    grid-template-columns: 32px minmax(0, 1fr) 60px !important;
+    grid-template-rows: 38px 40px !important;
+    column-gap: 8px !important;
+    row-gap: 8px !important;
+    align-content: start !important;
+  }
+
+  .bitgak-chart-body .bv-logo-area,
+  .bitgak-chart-body .bv-header-actions,
+  .bitgak-chart-body .bv-search,
+  .bitgak-chart-body .bv-search-live,
+  .bitgak-chart-body .bv-drawer-actions {
+    align-self: center !important;
+  }
+
+  .bitgak-chart-body .bv-search,
+  .bitgak-chart-body .bv-search-live {
+    width: 100% !important;
+    max-width: none !important;
+    height: 38px !important;
+  }
+
+  .bitgak-chart-body .bv-search input {
+    font-size: 12px !important;
+    padding-left: 13px !important;
+    padding-right: 4px !important;
+  }
+
+  .bitgak-chart-body .bv-search button {
+    flex: 0 0 32px !important;
+    width: 32px !important;
+  }
+
+  .bitgak-chart-body .bv-header-actions,
+  .bitgak-chart-body .bv-header-actions a,
+  .bitgak-chart-body .bv-header-actions button {
+    width: 60px !important;
+    min-width: 60px !important;
+    height: 38px !important;
+  }
+
+  .bitgak-chart-body .bv-drawer-actions {
+    height: 40px !important;
+    gap: 8px !important;
+  }
+
+  .bitgak-chart-body .bv-drawer-action-btn {
+    height: 40px !important;
+    min-height: 40px !important;
+    border-radius: 14px !important;
+  }
+
+  .bitgak-chart-body .bv-layout,
+  .bitgak-chart-body .bv-layout-full,
+  .bitgak-chart-body .bv-layout.bv-drawer-open,
+  .bitgak-chart-body .bv-layout-full.bv-drawer-open {
+    height: calc(100vh - 108px) !important;
+    height: calc(100dvh - 108px) !important;
+    position: relative !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    grid-template-rows: minmax(0, 1fr) !important;
+    column-gap: 0 !important;
+    transition: none !important;
+    overflow: hidden !important;
+  }
+
+  .bitgak-chart-body .bv-layout > .bv-main,
+  .bitgak-chart-body .bv-layout-full > .bv-main,
+  .bitgak-chart-body .bv-layout.bv-drawer-open > .bv-main,
+  .bitgak-chart-body .bv-layout-full.bv-drawer-open > .bv-main {
+    grid-column: 1 / 2 !important;
+    grid-row: 1 / 2 !important;
+    height: 100% !important;
+    min-height: 0 !important;
+    padding: 4px 10px 8px !important;
+    transform: none !important;
+    transition: none !important;
+  }
+
+  .bitgak-chart-body .chart-card,
+  .bitgak-chart-body .chart-card-full {
+    width: 100% !important;
+    max-width: none !important;
+    height: 100% !important;
+    border-radius: 12px !important;
+  }
+
+  .bitgak-chart-body .chart-card-top {
+    min-height: 114px !important;
+    padding: 8px 9px 7px !important;
+    grid-template-rows: 22px 33px 34px !important;
+    gap: 7px 8px !important;
+  }
+
+  .bitgak-chart-body #openIndicatorBtn {
+    min-width: 82px !important;
+    height: 33px !important;
+    padding: 0 12px !important;
+    font-size: 12px !important;
+  }
+
+  .bitgak-chart-body #openMobileIndicatorsBtn {
+    min-width: 98px !important;
+    height: 33px !important;
+    padding: 0 10px !important;
+  }
+
+  .bitgak-chart-body .tv-interval-btn {
+    height: 33px !important;
+    min-width: 72px !important;
+  }
+
+  .bitgak-chart-body .bv-drawing-toolbar {
+    height: 34px !important;
+    border-radius: 14px !important;
+  }
+
+  .bitgak-chart-body .ohlc-info {
+    flex: 0 0 36px !important;
+    height: 36px !important;
+    min-height: 36px !important;
+    padding: 9px 10px 0 !important;
+  }
+
+  .bitgak-chart-body .bv-layout.bv-drawer-open::before,
+  .bitgak-chart-body .bv-layout-full.bv-drawer-open::before {
+    content: "" !important;
+    position: absolute !important;
+    inset: 0 !important;
+    z-index: 2147482000 !important;
+    background: rgba(2, 6, 23, 0.58) !important;
+    backdrop-filter: blur(7px) !important;
+    -webkit-backdrop-filter: blur(7px) !important;
+  }
+
+  .bitgak-chart-body .bv-left-panel.bv-tool-drawer {
+    position: absolute !important;
+    top: 8px !important;
+    left: 50% !important;
+    right: auto !important;
+    bottom: 8px !important;
+    width: min(392px, calc(100% - 20px)) !important;
+    max-width: min(392px, calc(100% - 20px)) !important;
+    height: auto !important;
+    max-height: none !important;
+    min-width: 0 !important;
+    padding: 0 !important;
+    border-radius: 24px !important;
+    overflow: hidden !important;
+    z-index: 2147483000 !important;
+    opacity: 0 !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+    transform: translateX(-50%) scale(0.985) !important;
+    transform-origin: center center !important;
+    transition: opacity .18s ease, transform .18s ease, visibility .18s ease !important;
+    box-shadow: 0 30px 100px rgba(0, 0, 0, 0.60) !important;
+  }
+
+  .bitgak-chart-body .bv-layout.bv-drawer-open > .bv-left-panel.bv-tool-drawer,
+  .bitgak-chart-body .bv-layout-full.bv-drawer-open > .bv-left-panel.bv-tool-drawer,
+  .bitgak-chart-body .bv-left-panel.bv-tool-drawer.open {
+    display: flex !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    pointer-events: auto !important;
+    transform: translateX(-50%) scale(1) !important;
+    grid-column: auto !important;
+    grid-row: auto !important;
+  }
+
+  .bitgak-chart-body .bv-left-panel.bv-tool-drawer.bv-drawer-closing {
+    display: flex !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+    transform: translateX(-50%) scale(0.985) !important;
+  }
+
+  .bitgak-chart-body .bv-tool-drawer-head {
+    padding: 16px 16px 12px !important;
+  }
+
+  .bitgak-chart-body .bv-tool-drawer-tabs {
+    margin: 0 14px 12px !important;
+  }
+
+  .bitgak-chart-body .bv-left-panel.bv-tool-drawer .bv-drawer-view {
+    min-width: 0 !important;
+    padding: 0 14px 14px !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    overscroll-behavior: contain !important;
+  }
+
+  .bitgak-chart-body .avg-calc-card,
+  .bitgak-chart-body .portfolio-panel {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    border-radius: 18px !important;
+    overflow-x: hidden !important;
+  }
+
+  .bitgak-chart-body .portfolio-summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 8px !important;
+  }
+
+  .bitgak-chart-body .portfolio-card,
+  .bitgak-chart-body .portfolio-summary-card {
+    min-width: 0 !important;
+  }
+
+  .bitgak-chart-body .portfolio-donut-wrap {
+    grid-template-columns: 122px minmax(0, 1fr) !important;
+    gap: 10px !important;
+  }
+
+  .bitgak-chart-body .portfolio-donut {
+    width: 122px !important;
+    height: 122px !important;
+  }
+
+  .bitgak-chart-body .portfolio-donut::after {
+    inset: 24px !important;
+  }
+
+  .bitgak-chart-body .portfolio-donut span {
+    inset: 34px !important;
+    font-size: 12px !important;
+  }
+
+  .bitgak-chart-body .mobile-indicator-modal {
+    align-items: flex-start !important;
+    justify-content: center !important;
+    padding: max(58px, env(safe-area-inset-top)) 10px 14px !important;
+  }
+
+  .bitgak-chart-body .mobile-indicator-panel {
+    width: min(392px, calc(100vw - 20px)) !important;
+    max-width: min(392px, calc(100vw - 20px)) !important;
+    max-height: min(78vh, 620px) !important;
+    max-height: min(78dvh, 620px) !important;
+    border-radius: 24px !important;
+  }
+
+  .bitgak-chart-body .mobile-indicator-bottom-actions {
+    padding-top: 12px !important;
+  }
+
+  .bitgak-chart-body #mobileAddIndicatorBtn {
+    width: 100% !important;
+    height: 46px !important;
+    min-height: 46px !important;
+    border-radius: 15px !important;
+    font-size: 14px !important;
+    font-weight: 1000 !important;
+  }
+}
+
+@media (max-width: 420px) {
+  .bitgak-chart-body .bv-header {
+    grid-template-columns: 32px minmax(0, 1fr) 58px !important;
+    padding-left: 9px !important;
+    padding-right: 9px !important;
+  }
+
+  .bitgak-chart-body .bv-header-actions,
+  .bitgak-chart-body .bv-header-actions a,
+  .bitgak-chart-body .bv-header-actions button {
+    width: 58px !important;
+    min-width: 58px !important;
+  }
+
+  .bitgak-chart-body .bv-layout > .bv-main,
+  .bitgak-chart-body .bv-layout-full > .bv-main,
+  .bitgak-chart-body .bv-layout.bv-drawer-open > .bv-main,
+  .bitgak-chart-body .bv-layout-full.bv-drawer-open > .bv-main {
+    padding-left: 9px !important;
+    padding-right: 9px !important;
+  }
+
+  .bitgak-chart-body .bv-left-panel.bv-tool-drawer {
+    width: calc(100% - 18px) !important;
+    max-width: calc(100% - 18px) !important;
+  }
+
+  .bitgak-chart-body .portfolio-donut-wrap {
+    grid-template-columns: 108px minmax(0, 1fr) !important;
+  }
+
+  .bitgak-chart-body .portfolio-donut {
+    width: 108px !important;
+    height: 108px !important;
+  }
+
+  .bitgak-chart-body .portfolio-donut::after {
+    inset: 22px !important;
+  }
+
+  .bitgak-chart-body .portfolio-donut span {
+    inset: 30px !important;
+    font-size: 11px !important;
+  }
+}
+
+/* =========================================================
+   Mobile tool modal hard fix v6
+   - 모바일 평단가/포트폴리오 클릭 시 drawer를 차트 내부 absolute가 아니라
+     viewport 기준 fixed modal로 강제 고정한다.
+   - 기존 grid/padding/slide drawer 규칙을 모두 덮어써서 좌우 잘림을 방지한다.
+   ========================================================= */
+@media (max-width: 760px) {
+  .bitgak-chart-body .bv-layout.bv-drawer-open,
+  .bitgak-chart-body .bv-layout-full.bv-drawer-open {
+    grid-template-columns: minmax(0, 1fr) !important;
+    grid-template-rows: minmax(0, 1fr) !important;
+    overflow: hidden !important;
+  }
+
+  .bitgak-chart-body .bv-layout.bv-drawer-open > .bv-main,
+  .bitgak-chart-body .bv-layout-full.bv-drawer-open > .bv-main {
+    padding-left: 10px !important;
+    padding-right: 10px !important;
+    margin: 0 !important;
+    transform: none !important;
+    filter: none !important;
+    transition: none !important;
+  }
+
+  .bitgak-chart-body .bv-layout.bv-drawer-open::before,
+  .bitgak-chart-body .bv-layout-full.bv-drawer-open::before {
+    content: "" !important;
+    position: fixed !important;
+    inset: 0 !important;
+    z-index: 2147482000 !important;
+    display: block !important;
+    background: rgba(2, 6, 23, 0.56) !important;
+    backdrop-filter: blur(7px) !important;
+    -webkit-backdrop-filter: blur(7px) !important;
+    pointer-events: auto !important;
+  }
+
+  .bitgak-chart-body .bv-left-panel.bv-tool-drawer,
+  .bitgak-chart-body .bv-layout > .bv-left-panel.bv-tool-drawer,
+  .bitgak-chart-body .bv-layout-full > .bv-left-panel.bv-tool-drawer {
+    position: fixed !important;
+    top: 118px !important;
+    left: 50% !important;
+    right: auto !important;
+    bottom: auto !important;
+    width: min(372px, calc(100vw - 28px)) !important;
+    min-width: 0 !important;
+    max-width: min(372px, calc(100vw - 28px)) !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: calc(100vh - 136px) !important;
+    max-height: calc(100dvh - 136px) !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border-radius: 24px !important;
+    overflow: hidden !important;
+    z-index: 2147483000 !important;
+    opacity: 0 !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+    display: flex !important;
+    flex-direction: column !important;
+    transform: translate3d(-50%, 8px, 0) scale(0.985) !important;
+    transform-origin: top center !important;
+    transition: opacity .16s ease, transform .16s ease, visibility .16s ease !important;
+    box-shadow: 0 30px 100px rgba(0, 0, 0, 0.64) !important;
+  }
+
+  .bitgak-chart-body .bv-layout.bv-drawer-open > .bv-left-panel.bv-tool-drawer,
+  .bitgak-chart-body .bv-layout-full.bv-drawer-open > .bv-left-panel.bv-tool-drawer,
+  .bitgak-chart-body .bv-left-panel.bv-tool-drawer.open {
+    opacity: 1 !important;
+    visibility: visible !important;
+    pointer-events: auto !important;
+    display: flex !important;
+    transform: translate3d(-50%, 0, 0) scale(1) !important;
+    grid-column: auto !important;
+    grid-row: auto !important;
+  }
+
+  .bitgak-chart-body .bv-left-panel.bv-tool-drawer.bv-drawer-closing {
+    opacity: 0 !important;
+    visibility: visible !important;
+    pointer-events: none !important;
+    display: flex !important;
+    transform: translate3d(-50%, 8px, 0) scale(0.985) !important;
+  }
+
+  .bitgak-chart-body .bv-tool-drawer-head {
+    flex: 0 0 auto !important;
+    padding: 15px 16px 11px !important;
+  }
+
+  .bitgak-chart-body .bv-tool-drawer-head strong {
+    font-size: 18px !important;
+  }
+
+  .bitgak-chart-body .bv-tool-drawer-tabs {
+    flex: 0 0 auto !important;
+    margin: 0 !important;
+    padding: 11px 14px !important;
+  }
+
+  .bitgak-chart-body .bv-left-panel.bv-tool-drawer .bv-drawer-view {
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    max-height: calc(100vh - 250px) !important;
+    max-height: calc(100dvh - 250px) !important;
+    padding: 0 14px 14px !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    overscroll-behavior: contain !important;
+  }
+
+  .bitgak-chart-body .bv-left-panel.bv-tool-drawer .bv-drawer-view:not(.active) {
+    display: none !important;
+  }
+
+  .bitgak-chart-body .bv-left-panel.bv-tool-drawer .bv-drawer-view.active {
+    display: block !important;
+  }
+
+  .bitgak-chart-body .avg-calc-card,
+  .bitgak-chart-body .portfolio-panel,
+  .bitgak-chart-body .portfolio-card,
+  .bitgak-chart-body .portfolio-summary-card {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  .bitgak-chart-body .avg-calc-card {
+    padding: 15px 13px !important;
+  }
+
+  .bitgak-chart-body .avg-calc-row {
+    grid-template-columns: 38px minmax(92px, 1fr) 64px 82px 30px !important;
+    gap: 6px !important;
+  }
+
+  .bitgak-chart-body .avg-calc-row input,
+  .bitgak-chart-body .avg-calc-row select {
+    height: 34px !important;
+    font-size: 12px !important;
+  }
+
+  .bitgak-chart-body .avg-calc-row output {
+    max-width: 82px !important;
+    font-size: 11px !important;
+  }
+
+  .bitgak-chart-body .avg-row-actions {
+    width: 30px !important;
+    min-width: 30px !important;
+  }
+
+  .bitgak-chart-body .avg-row-style,
+  .bitgak-chart-body .avg-row-delete {
+    width: 24px !important;
+    height: 26px !important;
+  }
+
+  .bitgak-chart-body .portfolio-summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 8px !important;
+  }
+
+  .bitgak-chart-body .portfolio-donut-wrap {
+    grid-template-columns: 112px minmax(0, 1fr) !important;
+    gap: 10px !important;
+  }
+
+  .bitgak-chart-body .portfolio-donut {
+    width: 112px !important;
+    height: 112px !important;
+  }
+
+  .bitgak-chart-body .portfolio-donut::after { inset: 22px !important; }
+  .bitgak-chart-body .portfolio-donut span { inset: 30px !important; font-size: 11px !important; }
+}
+
+@media (max-width: 420px) {
+  .bitgak-chart-body .bv-left-panel.bv-tool-drawer,
+  .bitgak-chart-body .bv-layout > .bv-left-panel.bv-tool-drawer,
+  .bitgak-chart-body .bv-layout-full > .bv-left-panel.bv-tool-drawer {
+    width: calc(100vw - 24px) !important;
+    max-width: calc(100vw - 24px) !important;
+  }
+
+  .bitgak-chart-body .avg-calc-row {
+    grid-template-columns: 36px minmax(84px, 1fr) 58px 76px 28px !important;
+    gap: 5px !important;
+  }
+
+  .bitgak-chart-body .avg-calc-card {
+    padding: 14px 12px !important;
+  }
+}
