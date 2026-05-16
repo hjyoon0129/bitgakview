@@ -75,6 +75,7 @@
   const PANE_LABELS = {
     rsi: "RSI",
     macd: "MACD+RSI",
+    stoch: "Stoch",
     volume: "거래량",
   };
 
@@ -388,12 +389,15 @@
     const fixed = normalizePaneType(type);
     if (!fixed) return;
 
-    const el = ensurePaneLabel(fixed, text || PANE_LABELS[fixed]);
+    const labelText = text || PANE_LABELS[fixed] || fixed.toUpperCase();
+    const el = ensurePaneLabel(fixed, labelText);
     if (!el) return;
 
-    el.textContent = text || PANE_LABELS[fixed] || fixed.toUpperCase();
+    el.dataset.paneLabelText = labelText;
+    el.textContent = labelText;
 
     if (color) {
+      el.dataset.paneLabelColor = color;
       el.style.setProperty("--label-color", color);
     }
   }
@@ -434,7 +438,7 @@
     const activeTypes = uniquePaneTypes(state.activePaneTypes);
 
     paneLabelEls.forEach(function (el) {
-      el.style.display = "none";
+      el.style.setProperty("display", "none", "important");
     });
 
     if (!activeTypes.length) return;
@@ -443,6 +447,7 @@
       if (type === "volume") return 118;
       if (type === "rsi") return 158;
       if (type === "macd") return 172;
+      if (type === "stoch") return 158;
       return 150;
     });
 
@@ -461,9 +466,10 @@
       const el = paneLabelEls.get(type);
       if (!el) return;
 
-      el.textContent = PANE_LABELS[type] || type.toUpperCase();
-      el.style.display = "inline-flex";
-      el.style.top = (top + 12) + "px";
+      el.textContent = el.dataset.paneLabelText || PANE_LABELS[type] || type.toUpperCase();
+      if (el.dataset.paneLabelColor) el.style.setProperty("--label-color", el.dataset.paneLabelColor);
+      el.style.setProperty("display", "inline-flex", "important");
+      el.style.top = (top + 8) + "px";
       top += paneHeights[index] || 120;
     });
   }
@@ -480,6 +486,7 @@
       if (type === "volume") return 118;
       if (type === "rsi") return 158;
       if (type === "macd") return 172;
+      if (type === "stoch") return 158;
       return 150;
     });
 
@@ -526,18 +533,41 @@
     return ensurePaneLabel(fixed, label || PANE_LABELS[fixed]);
   }
 
+  function getPaneScaleMargins(type) {
+    const fixed = normalizePaneType(type);
+    if (fixed === "volume") return { top: 0.18, bottom: 0.02 };
+    if (fixed === "macd") return { top: 0.24, bottom: 0.08 };
+    if (fixed === "rsi") return { top: 0.22, bottom: 0.08 };
+    if (fixed === "stoch") return { top: 0.22, bottom: 0.08 };
+    return { top: 0.18, bottom: 0.08 };
+  }
+
+  function applyPaneScaleMargins(series, type) {
+    if (!series || !series.priceScale) return series;
+
+    try {
+      series.priceScale().applyOptions({
+        scaleMargins: getPaneScaleMargins(type),
+      });
+    } catch (e) {}
+
+    return series;
+  }
+
   function addPaneLineSeries(type, options) {
     const fixed = normalizePaneType(type);
     if (!fixed) return addLineSeries(options || {});
     ensureIndicatorPane(fixed, PANE_LABELS[fixed]);
 
-    return addSeries("LineSeries", Object.assign({
+    const series = addSeries("LineSeries", Object.assign({
       color: "#2563eb",
       lineWidth: 2,
       priceLineVisible: false,
       lastValueVisible: false,
       priceFormat: { type: "price", precision: 2, minMove: 0.01 },
     }, options || {}), getPaneIndex(fixed));
+
+    return applyPaneScaleMargins(series, fixed);
   }
 
   function addPaneHistogramSeries(type, options) {
@@ -545,11 +575,13 @@
     if (!fixed) return addHistogramSeries(options || {});
     ensureIndicatorPane(fixed, PANE_LABELS[fixed]);
 
-    return addSeries("HistogramSeries", Object.assign({
+    const series = addSeries("HistogramSeries", Object.assign({
       priceFormat: { type: "volume" },
       priceLineVisible: false,
       lastValueVisible: false,
     }, options || {}), getPaneIndex(fixed));
+
+    return applyPaneScaleMargins(series, fixed);
   }
 
   function syncPaneTimeScales() {
@@ -1149,7 +1181,12 @@
   }
 
   function drawingStorageKey() {
-    return "bitgak:drawings:" + code + ":" + state.interval;
+    // 드로잉은 종목 기준으로 저장한다. interval별 저장이면 일봉에서 그린 피보나치가 1시간봉에서 사라진다.
+    return "bitgak:drawings:" + code;
+  }
+
+  function drawingLegacyStorageKey(interval) {
+    return "bitgak:drawings:" + code + ":" + interval;
   }
 
   function saveDrawingsToStorage() {
@@ -1159,12 +1196,33 @@
   }
 
   function loadDrawingsFromStorage() {
-    try {
-      const saved = JSON.parse(localStorage.getItem(drawingStorageKey()) || "[]");
-      if (Array.isArray(saved)) state.drawings = saved.map(normalizeDrawing).filter(Boolean);
-    } catch (e) {
-      state.drawings = [];
+    const collected = [];
+    const seen = new Set();
+
+    function appendSavedList(raw) {
+      if (!raw) return;
+
+      try {
+        const saved = JSON.parse(raw);
+        if (!Array.isArray(saved)) return;
+
+        saved.map(normalizeDrawing).filter(Boolean).forEach(function (drawing) {
+          if (!drawing || seen.has(drawing.id)) return;
+          seen.add(drawing.id);
+          collected.push(drawing);
+        });
+      } catch (e) {}
     }
+
+    appendSavedList(localStorage.getItem(drawingStorageKey()));
+
+    // 기존 interval별 저장 데이터를 새 공통 저장소로 자동 병합한다.
+    ["1d", "1w", "1mo", "1h", "2h", "3h", "4h", "60m"].forEach(function (interval) {
+      appendSavedList(localStorage.getItem(drawingLegacyStorageKey(interval)));
+    });
+
+    state.drawings = collected;
+    saveDrawingsToStorage();
   }
 
   function deleteSelectedDrawing() {
@@ -1236,6 +1294,133 @@
     return rows[index] ? rows[index].time : rows[0].time;
   }
 
+  function dateKeyFromAny(value) {
+    if (value === null || value === undefined || value === "") return "";
+
+    if (typeof value === "number") {
+      const parts = kstPartsFromTimestamp(value);
+      return `${String(parts.year).padStart(4, "0")}-${String(parts.month).padStart(2, "0")}-${String(parts.day).padStart(2, "0")}`;
+    }
+
+    if (typeof value === "object" && value.year && value.month && value.day) {
+      return `${String(value.year).padStart(4, "0")}-${String(value.month).padStart(2, "0")}-${String(value.day).padStart(2, "0")}`;
+    }
+
+    const text = String(value || "").trim();
+    const match = text.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (match) return `${match[1]}-${match[2]}-${match[3]}`;
+
+    return "";
+  }
+
+  function timeComparableValue(value) {
+    if (value === null || value === undefined || value === "") return null;
+
+    if (typeof value === "number") return value;
+
+    if (typeof value === "object" && value.year && value.month && value.day) {
+      return toKstTimestamp(value.year, value.month, value.day, value.hour || 0, value.minute || 0, value.second || 0);
+    }
+
+    const text = String(value || "").trim();
+
+    if (/^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}/.test(text)) {
+      const normalized = text.replace(" ", "T");
+      const hasTz = /([zZ]|[+\-]\d{2}:?\d{2})$/.test(normalized);
+      const date = new Date(hasTz ? normalized : normalized + "+09:00");
+      if (!Number.isNaN(date.getTime())) return Math.floor(date.getTime() / 1000);
+    }
+
+    if (/^\d{4}-\d{2}-\d{2}$/.test(text)) {
+      const parts = text.split("-").map(Number);
+      return toKstTimestamp(parts[0], parts[1], parts[2], 9, 0, 0);
+    }
+
+    return null;
+  }
+
+  function rowDateKey(row) {
+    if (!row) return "";
+    return dateKeyFromAny(row.source_time || row.display_time || row.time);
+  }
+
+  function rowComparableTime(row) {
+    if (!row) return null;
+    return timeComparableValue(row.source_time || row.display_time || row.time);
+  }
+
+  function rowAtLogical(logical) {
+    const rows = state.rows || [];
+    if (!rows.length || !Number.isFinite(Number(logical))) return null;
+    const index = Math.max(0, Math.min(rows.length - 1, Math.round(Number(logical))));
+    return rows[index] || null;
+  }
+
+  function closestRowByCoordinate(x) {
+    const rows = state.rows || [];
+    if (!rows.length) return null;
+
+    let best = null;
+    let bestDist = Infinity;
+
+    rows.forEach(function (row) {
+      const cx = chart.timeScale().timeToCoordinate(row.time);
+      if (cx === null || cx === undefined || !Number.isFinite(Number(cx))) return;
+
+      const dist = Math.abs(Number(cx) - Number(x));
+      if (dist < bestDist) {
+        best = row;
+        bestDist = dist;
+      }
+    });
+
+    return best;
+  }
+
+  function findBestRowForDrawingValue(value) {
+    const rows = state.rows || [];
+    if (!value || !rows.length) return null;
+
+    const sourceKey = String(value.source_time || "");
+    const displayKey = String(value.display_time || "");
+    const timeKey = String(normalizeTime(value.time));
+    const dateKey = value.date_key || dateKeyFromAny(value.source_time || value.display_time || value.time);
+    const targetComparable = timeComparableValue(value.source_time || value.display_time || value.time);
+
+    let row = rows.find(function (item) {
+      return String(item.source_time || "") === sourceKey ||
+        String(item.display_time || "") === displayKey ||
+        String(normalizeTime(item.time)) === timeKey;
+    });
+
+    if (row) return row;
+
+    if (dateKey) {
+      row = rows.find(function (item) { return rowDateKey(item) === dateKey; });
+      if (row) return row;
+    }
+
+    if (targetComparable !== null) {
+      let best = null;
+      let bestDist = Infinity;
+
+      rows.forEach(function (item) {
+        const comparable = rowComparableTime(item);
+        if (comparable === null) return;
+
+        const dist = Math.abs(comparable - targetComparable);
+        if (dist < bestDist) {
+          best = item;
+          bestDist = dist;
+        }
+      });
+
+      if (best) return best;
+    }
+
+    return null;
+  }
+
   function priceFromCoordinateSafe(y) {
     try {
       const price = candleSeries.coordinateToPrice(y);
@@ -1257,16 +1442,46 @@
     const logical = coordinateToLogicalSafe(point.x);
     const rawTime = ts.coordinateToTime(point.x);
     let time = normalizeTime(rawTime);
+    const row = rowAtLogical(logical) || (time ? findRowByTime(time) : null) || closestRowByCoordinate(point.x);
+
     if (!time && logical !== null) time = nearestTimeByLogical(logical);
+
     const price = priceFromCoordinateSafe(point.y);
-    if ((!time && logical === null) || price === null || price === undefined || Number.isNaN(Number(price))) return null;
-    return { time: time || nearestTimeByLogical(logical), logical: logical, price: Number(price) };
+
+    if ((!time && logical === null && !row) || price === null || price === undefined || Number.isNaN(Number(price))) return null;
+
+    const sourceTime = row ? (row.source_time || row.display_time || row.time) : (time || nearestTimeByLogical(logical));
+    const displayTime = row ? (row.display_time || normalizeTimeForDisplay(row.time)) : normalizeTimeForDisplay(time || nearestTimeByLogical(logical));
+
+    return {
+      time: row ? row.time : (time || nearestTimeByLogical(logical)),
+      source_time: sourceTime,
+      display_time: displayTime,
+      date_key: dateKeyFromAny(sourceTime || displayTime || time),
+      logical: logical,
+      interval: state.interval,
+      price: Number(price),
+    };
   }
 
   function valueToPoint(value) {
     if (!value) return null;
-    let x = logicalToCoordinateSafe(value.logical);
+
+    let x = null;
+    const sameInterval = !value.interval || value.interval === state.interval;
+
+    if (sameInterval && value.logical !== null && value.logical !== undefined) {
+      x = logicalToCoordinateSafe(value.logical);
+    }
+
+    if (x === null || x === undefined) {
+      const row = findBestRowForDrawingValue(value);
+      if (row) x = chart.timeScale().timeToCoordinate(row.time);
+    }
+
     if (x === null || x === undefined) x = chart.timeScale().timeToCoordinate(value.time);
+    if ((x === null || x === undefined) && value.logical !== null && value.logical !== undefined) x = logicalToCoordinateSafe(value.logical);
+
     const y = candleSeries.priceToCoordinate(value.price);
     if (x === null || x === undefined || y === null || y === undefined) return null;
     return { x, y };
@@ -2149,8 +2364,8 @@
       } else if (drawing.type === "vline") {
         const p = valueToPoint(original.start);
         if (p) {
-          const time = normalizeTime(chart.timeScale().coordinateToTime(p.x + dx));
-          if (time) drawing.start = Object.assign({}, drawing.start, { time });
+          const moved = pointToChartValue({ x: p.x + dx, y: p.y });
+          if (moved) drawing.start = Object.assign({}, drawing.start, moved, { price: drawing.start.price });
         }
       } else {
         moveOnePoint(role);
@@ -2161,8 +2376,8 @@
     } else if (drawing.type === "vline") {
       const p = valueToPoint(original.start);
       if (p) {
-        const time = normalizeTime(chart.timeScale().coordinateToTime(p.x + dx));
-        if (time) drawing.start = Object.assign({}, drawing.start, { time });
+        const moved = pointToChartValue({ x: p.x + dx, y: p.y });
+        if (moved) drawing.start = Object.assign({}, drawing.start, moved, { price: drawing.start.price });
       }
     } else {
       drawing.start = movedValueFromOriginal(original.start, dx, dy);
@@ -2232,7 +2447,18 @@
   function nudgeValue(value, timeStep, priceStep) {
     if (!value) return value;
     const next = Object.assign({}, value);
-    if (timeStep) next.time = shiftTimeByRows(next.time, timeStep);
+
+    if (timeStep) {
+      next.time = shiftTimeByRows(next.time, timeStep);
+      const row = findRowByTime(next.time) || findBestRowForDrawingValue(next);
+      if (row) {
+        next.source_time = row.source_time || row.display_time || row.time;
+        next.display_time = row.display_time || normalizeTimeForDisplay(row.time);
+        next.date_key = dateKeyFromAny(next.source_time || next.display_time || next.time);
+        next.interval = state.interval;
+      }
+    }
+
     if (priceStep) next.price = Number(next.price || 0) + priceStep;
     return next;
   }
@@ -3667,6 +3893,7 @@
     addPaneLineSeries,
     addPaneHistogramSeries,
     syncPaneTimeScales,
+    refreshPaneLabels: updatePaneLabels,
     setMainIndicatorLabels,
     setPaneLabel,
     addLineSeries,
@@ -3689,7 +3916,7 @@
 
   if (initialIntervalBtn) {
     state.interval = normalizeIntervalValue(initialIntervalBtn.dataset.interval || "1d");
-    if (!["1d", "1w", "1mo"].includes(state.interval)) state.interval = "1d";
+    if (!["1h", "2h", "3h", "4h", "1d", "1w", "1mo"].includes(state.interval)) state.interval = "1d";
     if (currentIntervalText) {
       currentIntervalText.textContent = initialIntervalBtn.dataset.label || getIntervalMeta(state.interval).label || initialIntervalBtn.textContent.trim();
     }

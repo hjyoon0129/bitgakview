@@ -803,3 +803,248 @@
   pointer-events: none !important;
   overflow: hidden !important;
 }
+
+/* =========================================================
+   Pane label cleanup fix
+   - display를 CSS !important로 강제하지 않는다.
+   - JS/core가 숨긴 라벨은 그대로 숨겨져야 한다.
+   ========================================================= */
+.bitgak-pane-label-layer,
+.bitgak-locked-pane-label,
+.bitgak-adaptive-pane-label {
+  display: none !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
+.bv-v5-pane-label,
+.bv-v5-pane-label.bitgak-safe-pane-label {
+  position: absolute !important;
+  left: 12px !important;
+  right: auto !important;
+  bottom: auto !important;
+  transform: none !important;
+  z-index: 34 !important;
+  align-items: center;
+  gap: 7px;
+  min-width: 74px;
+  max-width: 188px;
+  height: 28px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.20);
+  background: rgba(15, 23, 42, 0.82);
+  color: #ffffff;
+  box-shadow: 0 10px 22px rgba(15, 23, 42, 0.24);
+  backdrop-filter: blur(8px);
+  font-size: 12px;
+  font-weight: 1000;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none !important;
+}
+
+.bv-v5-pane-label::before,
+.bv-v5-pane-label.bitgak-safe-pane-label::before {
+  content: "";
+  width: 9px;
+  height: 9px;
+  flex: 0 0 auto;
+  border-radius: 999px;
+  background: var(--label-color, #64748b);
+  box-shadow: 0 0 10px rgba(96, 165, 250, 0.38);
+}
+
+.bv-v5-pane-label-volume::before { background: var(--label-color, #64748b); }
+.bv-v5-pane-label-rsi::before { background: var(--label-color, #ec4899); }
+.bv-v5-pane-label-macd::before { background: var(--label-color, #22c55e); }
+.bv-v5-pane-label-stoch::before { background: var(--label-color, #3b82f6); }
+
+/* Stochastic 설정창에서 항목이 많아져도 깨지지 않도록 보정 */
+.indicator-setting-section .indicator-toggle-grid,
+.indicator-setting-section .indicator-color-grid {
+  align-items: stretch;
+}
+
+.indicator-setting-section .indicator-color-grid .indicator-color-cell {
+  min-height: 66px;
+}
+
+/* =========================================================
+   Pane legend text mode
+   TradingView처럼 보조지표 이름과 값을 간단한 텍스트로 표시한다.
+   위치 계산은 core의 pane 계산을 그대로 사용하고, 모양만 단순화한다.
+   ========================================================= */
+.bv-v5-pane-label,
+.bv-v5-pane-label.bitgak-safe-pane-label {
+  min-width: 0 !important;
+  max-width: min(760px, calc(100% - 28px)) !important;
+  width: auto !important;
+  height: 22px !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  color: #0f172a !important;
+  font-size: 12px !important;
+  font-weight: 900 !important;
+  line-height: 22px !important;
+  letter-spacing: -0.02em !important;
+  text-shadow: 0 1px 0 rgba(255,255,255,0.72);
+  overflow: visible !important;
+  white-space: nowrap !important;
+  text-overflow: clip !important;
+}
+
+.bv-v5-pane-label::before,
+.bv-v5-pane-label.bitgak-safe-pane-label::before {
+  display: none !important;
+  content: none !important;
+}
+
+.bv-v5-pane-label-rsi { color: #6d28d9 !important; }
+.bv-v5-pane-label-macd { color: #064e3b !important; }
+.bv-v5-pane-label-stoch { color: #1d4ed8 !important; }
+.bv-v5-pane-label-volume { color: #334155 !important; }
+
+/* =========================================================
+   Pane legend follow top fix
+   - top 좌표는 bitgak_chart_core.js의 updatePaneLabels()가 pane 높이로 계산
+   - CSS는 top을 건드리지 않고 텍스트 모양만 담당
+   ========================================================= */
+.bv-v5-pane-label,
+.bv-v5-pane-label.bitgak-safe-pane-label {
+  top: auto;
+  margin-top: 0 !important;
+  transform: translateY(0) !important;
+}
+
+.bv-v5-pane-label {
+  pointer-events: none !important;
+}
+
+/* =========================================================
+   Pane legend canvas-follow fix
+   - 실제 Lightweight Charts canvas 위치를 JS가 읽어 top/left를 지정한다.
+   - CSS는 top/left를 고정하지 않는다.
+   ========================================================= */
+.bv-v5-pane-label,
+.bv-v5-pane-label.bitgak-safe-pane-label {
+  top: var(--unused-top);
+  margin-top: 0 !important;
+  transform: none !important;
+}
+
+/* =========================================================
+   Pane legend colored values
+   ========================================================= */
+.bv-v5-pane-label .bv-pane-legend-name {
+  color: #111827;
+  font-weight: 950;
+}
+
+.bv-v5-pane-label .bv-pane-legend-value {
+  display: inline-block;
+  margin-left: 2px;
+  font-weight: 1000;
+  text-shadow: 0 1px 0 rgba(255,255,255,0.68);
+}
+
+.bv-v5-pane-label .legend-volume-value {
+  color: #475569;
+}
+
+.bv-v5-pane-label .legend-rsi-value {
+  color: #8b5cf6;
+}
+
+.bv-v5-pane-label .legend-rsi-ma-value {
+  color: #facc15;
+}
+
+.bv-v5-pane-label .legend-macd-value {
+  color: #22c55e;
+}
+
+.bv-v5-pane-label .legend-signal-value {
+  color: #fb923c;
+}
+
+.bv-v5-pane-label .legend-hist-value {
+  color: #14b8a6;
+}
+
+.bv-v5-pane-label .legend-macd-rsi-value {
+  color: #a78bfa;
+}
+
+.bv-v5-pane-label .legend-stoch-k-value {
+  color: #3b82f6;
+}
+
+.bv-v5-pane-label .legend-stoch-d-value {
+  color: #fb923c;
+}
+
+/* =========================================================
+   Pane legend padding + compressed plot area
+   - 보조지표 텍스트는 pane 상단에서 살짝 아래로 배치
+   - 실제 차트 선/막대는 JS priceScale scaleMargins로 아래 영역에 압축됨
+   ========================================================= */
+.bv-v5-pane-label,
+.bv-v5-pane-label.bitgak-safe-pane-label {
+  height: 20px !important;
+  line-height: 20px !important;
+  padding: 0 !important;
+  margin-top: 0 !important;
+  background: rgba(255, 255, 255, 0.72) !important;
+  border-radius: 4px !important;
+  box-shadow: 0 1px 4px rgba(255,255,255,0.44) !important;
+  text-shadow: 0 1px 0 rgba(255,255,255,0.85) !important;
+}
+
+.bv-v5-pane-label .bv-pane-legend-name {
+  color: #111827;
+  font-weight: 950;
+  margin-right: 3px;
+}
+
+.bv-v5-pane-label .bv-pane-legend-value {
+  display: inline-block;
+  margin-left: 4px;
+  font-weight: 1000;
+  text-shadow: 0 1px 0 rgba(255,255,255,0.85);
+}
+
+.bv-v5-pane-label-volume {
+  top: auto;
+}
+
+.bv-v5-pane-label-rsi,
+.bv-v5-pane-label-macd,
+.bv-v5-pane-label-stoch {
+  top: auto;
+}
+
+/* =========================================================
+   Oscillator pane band fill
+   - Stoch 20~80 배경을 histogram series가 아닌 DOM band로 표시
+   - RSI 추가/삭제로 pane 수가 바뀌어도 실제 canvas 위치 기준으로 따라감
+   ========================================================= */
+.bitgak-pane-band-fill {
+  position: absolute !important;
+  z-index: 4 !important;
+  pointer-events: none !important;
+  box-sizing: border-box !important;
+  mix-blend-mode: multiply;
+}
+
+.bitgak-pane-band-fill-stoch {
+  background: rgba(59, 130, 246, 0.10);
+}
+
