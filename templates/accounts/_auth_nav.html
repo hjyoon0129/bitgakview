@@ -1,0 +1,22 @@
+<nav class="auth-nav-wrap" aria-label="BitgakView 계정 네비게이션">
+  <div class="auth-nav-card">
+    <a class="auth-brand-link" href="{% url 'stocks:search' %}">
+      <span class="auth-logo-mark">B</span>
+      <span class="auth-brand-text">
+        <span class="auth-brand-name">BitgakView</span>
+        <span class="auth-brand-sub">Korea Stock Chart</span>
+      </span>
+    </a>
+
+    <div class="auth-nav-links">
+      <a class="auth-nav-link" href="{% url 'stocks:search' %}">홈</a>
+      <a class="auth-nav-link" href="/stocks/features/">소개</a>
+      <a class="auth-nav-link" href="/stocks/pricing/">가격소개</a>
+      <a class="auth-nav-link" href="{% url 'stocks:detail' '005930' %}">차트</a>
+    </div>
+
+    <div class="auth-nav-actions">
+      <a class="auth-nav-link active" href="{% url 'bitgak_accounts:login' %}">로그인</a>
+    </div>
+  </div>
+</nav>

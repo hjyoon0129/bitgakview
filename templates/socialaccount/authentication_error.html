@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}소셜 로그인 오류 - BitgakView{% endblock %}
+{% block body_class %}bitgak-auth-body{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'accounts/css/auth.css' %}?v=20260516-auth-namespace-fixed">
+{% endblock %}
+
+{% block content %}
+<section class="auth-shell">
+  {% include "accounts/_auth_nav.html" %}
+
+  <div class="auth-card-wrap">
+    <div class="auth-card">
+      <div class="auth-icon">⚠️</div>
+      <div class="auth-heading">
+        <p class="auth-eyebrow">SOCIAL ERROR</p>
+        <h1>소셜 로그인에 실패했습니다</h1>
+        <p>소셜 앱 설정, Redirect URI, Client ID/Secret 값을 확인해주세요.</p>
+      </div>
+      <div class="auth-bottom">
+        <a href="{% url 'bitgak_accounts:login' %}">로그인으로 돌아가기</a>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}

@@ -1,0 +1,515 @@
+{% extends "base.html" %}
+
+{% block title %}가격소개 - BitgakView{% endblock %}
+{% block body_class %}landing-body{% endblock %}
+
+{% block extra_css %}
+<style>
+  .landing-body {
+    background:
+      radial-gradient(circle at top left, rgba(45, 212, 191, 0.12), transparent 27%),
+      radial-gradient(circle at top right, rgba(59, 130, 246, 0.12), transparent 27%),
+      linear-gradient(180deg, #07101d 0%, #07101d 42%, #091322 100%) !important;
+    color: #eaf2ff;
+  }
+
+  .landing-body > header,
+  .landing-body .site-header,
+  .landing-body .global-header,
+  .landing-body .main-header,
+  .landing-body .top-navbar,
+  .landing-body .navbar:not(.home-nav-card),
+  .landing-body .app-header:not(.home-nav-card) {
+    display: none !important;
+  }
+
+  .landing-shell {
+    width: min(1500px, calc(100vw - 40px));
+    margin: 0 auto;
+    padding: 22px 0 56px;
+  }
+
+  .home-nav-wrap {
+    position: sticky;
+    top: 12px;
+    z-index: 9999;
+    width: min(1500px, calc(100vw - 40px));
+    margin: 0 auto 20px;
+  }
+
+  .home-nav-card {
+    min-height: 66px;
+    padding: 10px 12px;
+    border-radius: 22px;
+    border: 1px solid rgba(96, 165, 250, 0.20);
+    background:
+      radial-gradient(circle at 16% 0%, rgba(45, 212, 191, 0.10), transparent 34%),
+      linear-gradient(180deg, rgba(10, 18, 32, 0.92), rgba(5, 11, 21, 0.94));
+    box-shadow:
+      0 22px 60px rgba(0, 0, 0, 0.26),
+      inset 0 1px 0 rgba(255,255,255,0.05);
+    backdrop-filter: blur(14px);
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: 16px;
+    align-items: center;
+  }
+
+  .home-brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 156px;
+    color: #ffffff;
+    text-decoration: none;
+  }
+
+  .home-logo {
+    width: 34px;
+    height: 34px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #2dd4bf, #38bdf8);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: #03111d;
+    font-size: 15px;
+    font-weight: 1000;
+    box-shadow: 0 12px 28px rgba(45, 212, 191, 0.24);
+  }
+
+  .home-brand-text {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.05;
+  }
+
+  .home-brand-name {
+    color: #ffffff;
+    font-size: 15px;
+    font-weight: 1000;
+    letter-spacing: -0.04em;
+  }
+
+  .home-brand-sub {
+    margin-top: 4px;
+    color: #7dd3fc;
+    font-size: 10px;
+    font-weight: 900;
+    letter-spacing: -0.02em;
+  }
+
+  .home-nav-links {
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+  }
+
+  .home-nav-link {
+    height: 38px;
+    padding: 0 13px;
+    border-radius: 13px;
+    color: #a8c2e8;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    font-weight: 1000;
+    text-decoration: none;
+    white-space: nowrap;
+    transition: 0.16s ease;
+  }
+
+  .home-nav-link:hover,
+  .home-nav-link.active {
+    color: #ffffff;
+    background: rgba(56, 189, 248, 0.10);
+  }
+
+  .home-nav-actions {
+    display: inline-flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+  }
+
+  .home-login-btn,
+  .home-start-btn {
+    height: 40px;
+    padding: 0 15px;
+    border-radius: 14px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: #dbeafe;
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 1000;
+    white-space: nowrap;
+  }
+
+  .home-login-btn {
+    border: 1px solid rgba(96, 165, 250, 0.24);
+    background: rgba(15, 23, 42, 0.60);
+  }
+
+  .home-start-btn {
+    border: 1px solid rgba(125, 211, 252, 0.42);
+    background: linear-gradient(135deg, #2563eb, #0ea5e9);
+    color: #ffffff;
+    box-shadow: 0 14px 30px rgba(37, 99, 235, 0.24);
+  }
+
+  .home-login-btn:hover,
+  .home-start-btn:hover {
+    transform: translateY(-1px);
+    filter: brightness(1.06);
+  }
+
+  .landing-hero,
+  .pricing-card {
+    background: linear-gradient(180deg, rgba(13, 22, 39, 0.92), rgba(10, 18, 32, 0.96));
+    border: 1px solid rgba(148, 163, 184, 0.14);
+    border-radius: 26px;
+    box-shadow: 0 24px 80px rgba(0, 0, 0, 0.28);
+  }
+
+  .landing-hero {
+    padding: 42px;
+    margin-bottom: 18px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .landing-hero::before {
+    content: "";
+    position: absolute;
+    top: -120px;
+    right: -80px;
+    width: 380px;
+    height: 380px;
+    border-radius: 999px;
+    background: radial-gradient(circle, rgba(56, 189, 248, 0.22), rgba(56, 189, 248, 0.04) 58%, transparent 72%);
+    pointer-events: none;
+  }
+
+  .eyebrow {
+    position: relative;
+    z-index: 2;
+    display: inline-flex;
+    align-items: center;
+    padding: 8px 12px;
+    border-radius: 999px;
+    background: rgba(56, 189, 248, 0.09);
+    color: #bae6fd;
+    border: 1px solid rgba(56, 189, 248, 0.24);
+    font-size: 12px;
+    font-weight: 1000;
+    margin-bottom: 18px;
+  }
+
+  .landing-title {
+    position: relative;
+    z-index: 2;
+    margin: 0;
+    color: #ffffff;
+    font-size: clamp(40px, 4.2vw, 68px);
+    line-height: 1.03;
+    letter-spacing: -0.07em;
+    font-weight: 1000;
+  }
+
+  .landing-title span {
+    color: #38bdf8;
+    text-shadow: 0 0 22px rgba(56, 189, 248, 0.18);
+  }
+
+  .landing-desc {
+    position: relative;
+    z-index: 2;
+    margin: 16px 0 0;
+    max-width: 860px;
+    color: #b8c7dd;
+    font-size: 15px;
+    line-height: 1.75;
+    font-weight: 740;
+  }
+
+  .pricing-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 16px;
+  }
+
+  .pricing-card {
+    padding: 22px;
+    min-height: 260px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .pricing-card.recommended {
+    border-color: rgba(56, 189, 248, 0.42);
+    box-shadow:
+      0 24px 70px rgba(14, 165, 233, 0.16),
+      inset 0 1px 0 rgba(255,255,255,0.05);
+  }
+
+  .pricing-card.hot {
+    border-color: rgba(45, 212, 191, 0.48);
+    background:
+      radial-gradient(circle at top right, rgba(45, 212, 191, 0.13), transparent 38%),
+      linear-gradient(180deg, rgba(13, 22, 39, 0.94), rgba(10, 18, 32, 0.98));
+    box-shadow:
+      0 30px 90px rgba(45, 212, 191, 0.12),
+      inset 0 1px 0 rgba(255,255,255,0.06);
+  }
+
+  .pricing-badge {
+    position: absolute;
+    top: 18px;
+    right: 18px;
+    height: 30px;
+    padding: 0 11px;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(45, 212, 191, 0.12);
+    color: #67e8f9;
+    border: 1px solid rgba(45, 212, 191, 0.24);
+    font-size: 11px;
+    font-weight: 1000;
+  }
+
+  .pricing-card h3 {
+    margin: 0;
+    color: #ffffff;
+    font-size: 19px;
+    font-weight: 1000;
+    letter-spacing: -0.04em;
+  }
+
+  .pricing-price {
+    margin-top: 14px;
+    color: #38bdf8;
+    font-size: 32px;
+    font-weight: 1000;
+    letter-spacing: -0.05em;
+  }
+
+  .pricing-card.hot .pricing-price {
+    color: #22d3ee;
+  }
+
+  .pricing-price small {
+    color: #94a3b8;
+    font-size: 12px;
+    font-weight: 900;
+  }
+
+  .pricing-save {
+    margin-top: 7px;
+    color: #67e8f9;
+    font-size: 13px;
+    font-weight: 1000;
+  }
+
+  .pricing-card p {
+    margin: 12px 0 0;
+    color: #a8bfdc;
+    font-size: 14px;
+    line-height: 1.65;
+    font-weight: 760;
+  }
+
+  .pricing-card ul {
+    margin: 18px 0 0;
+    padding: 0;
+    list-style: none;
+    display: grid;
+    gap: 10px;
+  }
+
+  .pricing-card li {
+    color: #b8c7dd;
+    font-size: 13px;
+    font-weight: 820;
+  }
+
+  .pricing-card li::before {
+    content: "✓";
+    margin-right: 8px;
+    color: #22d3ee;
+    font-weight: 1000;
+  }
+
+  .landing-cta-row {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-top: 26px;
+  }
+
+  .landing-cta {
+    min-height: 44px;
+    padding: 0 18px;
+    border-radius: 15px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+    color: #ffffff;
+    font-size: 14px;
+    font-weight: 1000;
+    background: linear-gradient(135deg, #2563eb, #0ea5e9);
+    border: 1px solid rgba(125, 211, 252, 0.42);
+  }
+
+  .landing-cta.secondary {
+    background: rgba(15, 23, 42, 0.68);
+    border-color: rgba(96, 165, 250, 0.24);
+    color: #dbeafe;
+  }
+
+  @media (max-width: 1180px) {
+    .landing-shell {
+      width: min(100%, calc(100vw - 28px));
+      padding-top: 18px;
+    }
+
+    .pricing-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  @media (max-width: 980px) {
+    .home-nav-wrap {
+      top: 8px;
+      width: min(100%, calc(100vw - 20px));
+      margin-bottom: 14px;
+    }
+
+    .home-nav-card {
+      grid-template-columns: 1fr auto;
+      gap: 10px;
+    }
+
+    .home-nav-links {
+      grid-column: 1 / -1;
+      justify-content: flex-start;
+      overflow-x: auto;
+      padding-top: 2px;
+    }
+
+    .home-brand {
+      min-width: 0;
+    }
+
+    .home-brand-sub,
+    .home-start-btn {
+      display: none;
+    }
+  }
+
+  @media (max-width: 720px) {
+    .landing-hero {
+      padding: 26px 18px;
+    }
+
+    .landing-title {
+      font-size: 38px;
+    }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="landing-shell">
+  <nav class="home-nav-wrap" aria-label="BitgakView 네비게이션">
+    <div class="home-nav-card">
+      <a class="home-brand" href="{% url 'stocks:search' %}">
+        <span class="home-logo">B</span>
+        <span class="home-brand-text">
+          <span class="home-brand-name">BitgakView</span>
+          <span class="home-brand-sub">Korea Stock Chart</span>
+        </span>
+      </a>
+
+      <div class="home-nav-links">
+        <a class="home-nav-link" href="{% url 'stocks:search' %}">홈</a>
+        <a class="home-nav-link" href="/stocks/features/">소개</a>
+        <a class="home-nav-link active" href="/stocks/pricing/">가격소개</a>
+        <a class="home-nav-link" href="{% url 'stocks:detail' '005930' %}">차트</a>
+      </div>
+
+      <div class="home-nav-actions">
+        <a class="home-login-btn" href="/accounts/login/">로그인</a>
+        <a class="home-start-btn" href="{% url 'stocks:detail' '005930' %}">무료로 시작</a>
+      </div>
+    </div>
+  </nav>
+
+  <section class="landing-hero">
+    <div class="eyebrow">BitgakView 가격소개</div>
+    <h1 class="landing-title">
+      지금은 무료 베타,<br>
+      <span>6개월은 월 12,000원으로 할인</span>
+    </h1>
+    <p class="landing-desc">
+      현재는 베타 기간으로 핵심 기능을 무료로 사용할 수 있습니다.
+      정식 오픈 후에는 1개월 이용권과 6개월 이용권 중심으로 제공할 계획이며,
+      6개월 이용권은 월 12,000원 기준으로 할인 적용됩니다.
+    </p>
+  </section>
+
+  <section class="pricing-grid">
+    <article class="pricing-card">
+      <h3>무료 베타</h3>
+      <div class="pricing-price">0원 <small>/ 현재 제공</small></div>
+      <p>정식 오픈 전까지 핵심 기능을 무료로 체험할 수 있는 베타 플랜입니다.</p>
+      <ul>
+        <li>종목 검색과 차트 보기</li>
+        <li>기본/보조지표 사용</li>
+        <li>평단가 계산기</li>
+        <li>브라우저 포트폴리오 저장</li>
+      </ul>
+    </article>
+
+    <article class="pricing-card recommended">
+      <h3>1개월 이용권</h3>
+      <div class="pricing-price">14,900원 <small>/ 월</small></div>
+      <p>필요할 때 한 달 단위로 가볍게 사용하는 월간 플랜입니다.</p>
+      <ul>
+        <li>차트와 보조지표 기능 전체</li>
+        <li>평단가 계산과 포트폴리오 관리</li>
+        <li>관심종목 그룹 관리</li>
+        <li>드로잉/지표 설정 저장 예정</li>
+      </ul>
+    </article>
+
+    <article class="pricing-card hot">
+      <div class="pricing-badge">6개월 할인</div>
+      <h3>6개월 이용권</h3>
+      <div class="pricing-price">72,000원 <small>/ 6개월</small></div>
+      <div class="pricing-save">월 12,000원 기준 · 1개월권 대비 총 17,400원 절약</div>
+      <p>장기간 포트폴리오와 차트 설정을 관리하려는 사용자를 위한 할인 플랜입니다.</p>
+      <ul>
+        <li>1개월 이용권 기능 전체 포함</li>
+        <li>포트폴리오 장기 관리에 적합</li>
+        <li>업종별/종목별 비중 관리</li>
+        <li>수익률 분석 기능 확장 예정</li>
+      </ul>
+    </article>
+  </section>
+
+  <div class="landing-cta-row">
+    <a class="landing-cta" href="{% url 'stocks:detail' '005930' %}">무료로 차트 시작하기</a>
+    <a class="landing-cta secondary" href="/stocks/features/">기능 소개 보기</a>
+  </div>
+</div>
+{% endblock %}

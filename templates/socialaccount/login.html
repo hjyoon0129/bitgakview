@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}소셜 로그인 - BitgakView{% endblock %}
+{% block body_class %}bitgak-auth-body{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'accounts/css/auth.css' %}?v=20260516-auth-namespace-fixed">
+{% endblock %}
+
+{% block content %}
+<section class="auth-shell">
+  {% include "accounts/_auth_nav.html" %}
+
+  <div class="auth-card-wrap">
+    <div class="auth-card">
+      <div class="auth-heading">
+        <p class="auth-eyebrow">SOCIAL LOGIN</p>
+        <h1>소셜 로그인 계속하기</h1>
+        <p>선택한 소셜 계정으로 BitgakView 로그인을 계속합니다.</p>
+      </div>
+      <form method="post" class="auth-form">
+        {% csrf_token %}
+        <button type="submit" class="auth-submit-btn">계속하기</button>
+      </form>
+      <div class="auth-bottom">
+        <a href="{% url 'bitgak_accounts:login' %}">로그인으로 돌아가기</a>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}

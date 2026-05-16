@@ -1451,3 +1451,19 @@ def api_market_temperature(request):
     except Exception as exc:
         payload = _default_market_temperature_payload(str(exc))
         return JsonResponse(payload, json_dumps_params={"ensure_ascii": False})
+
+# apps/stocks/views.py 에 추가
+
+from django.shortcuts import render
+
+
+def features_view(request):
+    return render(request, "stocks/features.html", {
+        "active_nav": "features",
+    })
+
+
+def pricing_view(request):
+    return render(request, "stocks/pricing.html", {
+        "active_nav": "pricing",
+    })

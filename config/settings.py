@@ -5,6 +5,7 @@ Django settings for BitgakView project.
 - Neon PostgreSQL / DATABASE_URL 필수
 - SQLite fallback 없음
 - django-allauth 기반 Google / Naver / Kakao 소셜 로그인 준비
+- custom accounts는 INSTALLED_APPS에 등록하지 않고 URL/View 전용으로 사용
 - templates 폴더는 BASE_DIR / "templates" 사용
 """
 
@@ -84,10 +85,8 @@ INSTALLED_APPS = [
     "allauth.socialaccount.providers.kakao",
 
     # BitgakView apps
-    "apps.stocks",
-
+    "apps.stocks.apps.StocksConfig",
 ]
-
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
@@ -97,6 +96,8 @@ MIDDLEWARE = [
     "django.middleware.csrf.CsrfViewMiddleware",
 
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+
+    # django-allauth 필수 middleware
     "allauth.account.middleware.AccountMiddleware",
 
     "django.contrib.messages.middleware.MessageMiddleware",
@@ -120,6 +121,7 @@ TEMPLATES = [
 
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
+
                 "apps.stocks.context_processors.stock_search_payload",
             ],
         },
@@ -231,9 +233,10 @@ AUTHENTICATION_BACKENDS = [
 ACCOUNT_EMAIL_SUBJECT_PREFIX = ""
 
 # 최신 allauth 방식
-ACCOUNT_LOGIN_METHODS = {"email"}
+ACCOUNT_LOGIN_METHODS = {"username", "email"}
 ACCOUNT_SIGNUP_FIELDS = [
     "email*",
+    "username*",
     "password1*",
     "password2*",
 ]
@@ -244,7 +247,8 @@ ACCOUNT_EMAIL_UNKNOWN_ACCOUNTS = False
 
 ACCOUNT_SESSION_REMEMBER = None
 
-SOCIALACCOUNT_LOGIN_ON_GET = True
+# 소셜 로그인은 POST 버튼 방식 기본
+SOCIALACCOUNT_LOGIN_ON_GET = env_bool("SOCIALACCOUNT_LOGIN_ON_GET", False)
 SOCIALACCOUNT_AUTO_SIGNUP = True
 SOCIALACCOUNT_RAISE_EXCEPTIONS = DEBUG
 
@@ -274,7 +278,6 @@ SOCIALACCOUNT_PROVIDERS = {
         ],
     },
     "kakao": {
-        # 카카오는 이메일 권한이 없을 수 있어서 profile 중심으로 둔다.
         "SCOPE": [
             "profile_nickname",
             "profile_image",
