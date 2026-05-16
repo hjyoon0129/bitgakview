@@ -5,7 +5,7 @@
 {% block body_class %}bitgak-chart-body{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'stocks/css/bitgak_chart.css' %}?v=20260516-yfinance-drawing-share-v1">
+<link rel="stylesheet" href="{% static 'stocks/css/bitgak_chart.css' %}?v=20260516-portfolio-smooth-toggle-v1">
 {% endblock %}
 
 {% block content %}
@@ -14,6 +14,7 @@
   data-code="{{ stock.code }}"
   data-name="{{ stock.name }}"
   data-market="{{ stock.market }}"
+  data-sector="{{ stock.sector|default_if_none:'' }}"
   data-api-url="{% url 'stocks:api_ohlcv' stock.code %}"
   data-search-url="{% url 'stocks:search' %}"
 >
@@ -36,13 +37,32 @@
       <div id="stockSearchPanel" class="stock-search-panel"></div>
     </div>
 
+    <div class="bv-drawer-actions" aria-label="투자 도구">
+      <button id="openAvgDrawerBtn" class="bv-drawer-action-btn" type="button" data-drawer-open="avg">평단가 계산기</button>
+      <button id="openPortfolioDrawerBtn" class="bv-drawer-action-btn" type="button" data-drawer-open="portfolio">포트폴리오</button>
+    </div>
+
     <div class="bv-header-actions">
       <a class="bv-login-link" href="#">로그인</a>
     </div>
   </header>
 
   <main class="bv-layout bv-layout-full">
-    <aside class="bv-left-panel" aria-label="평단가 계산기">
+    <aside id="bvToolDrawer" class="bv-left-panel bv-tool-drawer" aria-label="투자 도구" aria-hidden="true">
+      <div class="bv-tool-drawer-head">
+        <div>
+          <strong id="bvToolDrawerTitle">평단가 계산기</strong>
+          <span id="bvToolDrawerSubtitle">필요할 때만 열어 차트 공간을 확보합니다.</span>
+        </div>
+        <button id="closeToolDrawerBtn" class="bv-tool-drawer-close" type="button" aria-label="패널 닫기">×</button>
+      </div>
+
+      <div class="bv-tool-drawer-tabs" role="tablist" aria-label="투자 도구 전환">
+        <button id="avgDrawerTab" class="bv-tool-tab active" type="button" data-drawer-tab="avg">평단가</button>
+        <button id="portfolioDrawerTab" class="bv-tool-tab" type="button" data-drawer-tab="portfolio">포트폴리오</button>
+      </div>
+
+      <div id="avgDrawerView" class="bv-drawer-view active" data-drawer-view="avg">
       <section class="avg-calc-card" aria-label="평단가 계산기">
         <div class="avg-calc-headline">
           <strong>평단가 계산기</strong>
@@ -88,6 +108,78 @@
         </div>
 
         <button id="avgCalcReset" class="avg-calc-reset" type="button">초기화</button>
+
+        <div class="avg-portfolio-save-box">
+          <button id="avgSavePortfolioBtn" class="avg-save-portfolio-btn" type="button">포트폴리오에 저장</button>
+          <p id="avgPortfolioMessage" class="avg-portfolio-message">현재 계산값을 내 포트폴리오에 반영합니다.</p>
+        </div>
+      </section>
+      </div>
+
+      <section id="portfolioDrawerView" class="bv-drawer-view portfolio-panel" data-drawer-view="portfolio" aria-label="포트폴리오">
+        <div class="portfolio-card portfolio-capital-card">
+          <div class="portfolio-section-head">
+            <div>
+              <strong>투자 원금</strong>
+              <span>기본값은 10,000,000원입니다.</span>
+            </div>
+          </div>
+          <div class="portfolio-capital-row">
+            <input id="portfolioCapitalInput" type="number" min="0" step="10000" placeholder="10000000">
+            <button id="portfolioSaveCapitalBtn" type="button">설정</button>
+          </div>
+          <div id="portfolioAlert" class="portfolio-alert" hidden></div>
+          <div id="portfolioFixActions" class="portfolio-fix-actions" hidden>
+            <button id="portfolioIncreaseCapitalBtn" type="button">금액 늘리기</button>
+            <button id="portfolioResetTradesBtn" type="button">매수/매도 초기화</button>
+          </div>
+        </div>
+
+        <div class="portfolio-summary-grid">
+          <div class="portfolio-summary-card">
+            <span>총 자산</span>
+            <strong id="portfolioTotalAsset">-</strong>
+          </div>
+          <div class="portfolio-summary-card">
+            <span>사용 금액</span>
+            <strong id="portfolioInvested">-</strong>
+          </div>
+          <div class="portfolio-summary-card">
+            <span>남은 현금</span>
+            <strong id="portfolioCash">-</strong>
+          </div>
+          <div class="portfolio-summary-card">
+            <span>원금 대비 수익률</span>
+            <strong id="portfolioProfit">-</strong>
+          </div>
+        </div>
+
+        <div class="portfolio-card portfolio-chart-card">
+          <div class="portfolio-section-head">
+            <div>
+              <strong>비중 차트</strong>
+              <span>종목별 또는 업종별로 확인합니다.</span>
+            </div>
+            <div class="portfolio-view-tabs">
+              <button class="portfolio-view-tab active" type="button" data-portfolio-view="stock">종목별</button>
+              <button class="portfolio-view-tab" type="button" data-portfolio-view="sector">업종별</button>
+            </div>
+          </div>
+          <div class="portfolio-donut-wrap">
+            <div id="portfolioDonut" class="portfolio-donut" aria-label="포트폴리오 비중 차트"><span>현금</span></div>
+            <div id="portfolioLegend" class="portfolio-legend"></div>
+          </div>
+        </div>
+
+        <div class="portfolio-card portfolio-holdings-card">
+          <div class="portfolio-section-head">
+            <div>
+              <strong>보유 종목</strong>
+              <span>종목을 누르면 해당 차트로 이동합니다.</span>
+            </div>
+          </div>
+          <div id="portfolioHoldingList" class="portfolio-holding-list"></div>
+        </div>
       </section>
     </aside>
 
@@ -579,8 +671,9 @@
 {% block extra_js %}
 <script src="https://unpkg.com/lightweight-charts@5.0.8/dist/lightweight-charts.standalone.production.js"></script>
 
-<script src="{% static 'stocks/js/bitgak_chart_core.js' %}?v=20260516-yfinance-drawing-share-v1"></script>
-<script src="{% static 'stocks/js/bitgak_groups.js' %}?v=20260516-yfinance-drawing-share-v1"></script>
-<script src="{% static 'stocks/js/bitgak_indicators.js' %}?v=20260516-yfinance-drawing-share-v1"></script>
-<script src="{% static 'stocks/js/bitgak_search.js' %}?v=20260516-yfinance-drawing-share-v1"></script>
+<script src="{% static 'stocks/js/bitgak_chart_core.js' %}?v=20260516-portfolio-smooth-toggle-v1"></script>
+<script src="{% static 'stocks/js/bitgak_groups.js' %}?v=20260516-portfolio-smooth-toggle-v1"></script>
+<script src="{% static 'stocks/js/bitgak_portfolio.js' %}?v=20260516-portfolio-smooth-toggle-v1"></script>
+<script src="{% static 'stocks/js/bitgak_indicators.js' %}?v=20260516-portfolio-smooth-toggle-v1"></script>
+<script src="{% static 'stocks/js/bitgak_search.js' %}?v=20260516-portfolio-smooth-toggle-v1"></script>
 {% endblock %}

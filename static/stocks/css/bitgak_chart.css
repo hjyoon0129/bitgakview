@@ -1671,26 +1671,882 @@
 }
 
 /* =========================================================
-   Hourly interval dropdown safety - yfinance hourly v1
+   Portfolio drawer + on-demand average calculator
    ========================================================= */
-.bitgak-chart-body .tv-interval-menu {
-  max-height: min(520px, calc(100vh - 120px));
+.bitgak-chart-body .bv-header {
+  gap: 12px;
+}
+
+.bitgak-chart-body .bv-drawer-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+}
+
+.bitgak-chart-body .bv-drawer-action-btn {
+  height: 38px;
+  padding: 0 14px;
+  border: 1px solid rgba(96, 165, 250, 0.32);
+  border-radius: 13px;
+  background: rgba(15, 23, 42, 0.72);
+  color: #dbeafe;
+  font-size: 13px;
+  font-weight: 1000;
+  letter-spacing: -0.04em;
+  cursor: pointer;
+  transition: .18s ease;
+}
+
+.bitgak-chart-body .bv-drawer-action-btn:hover,
+.bitgak-chart-body .bv-drawer-action-btn.active {
+  background: linear-gradient(135deg, #2563eb, #0ea5e9);
+  border-color: rgba(147, 197, 253, 0.7);
+  color: #ffffff;
+  box-shadow: 0 10px 24px rgba(37, 99, 235, 0.24);
+}
+
+.bitgak-chart-body .bv-layout,
+.bitgak-chart-body .bv-layout-full {
+  grid-template-columns: minmax(620px, 1fr) 320px !important;
+  transition: grid-template-columns .24s ease;
+}
+
+.bitgak-chart-body .bv-layout.bv-drawer-open,
+.bitgak-chart-body .bv-layout-full.bv-drawer-open {
+  grid-template-columns: 450px minmax(520px, 1fr) 320px !important;
+}
+
+.bitgak-chart-body .bv-left-panel.bv-tool-drawer {
+  display: flex !important;
+  min-width: 0 !important;
+  width: auto !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateX(-18px);
+  transition: opacity .22s ease, transform .22s ease;
+}
+
+.bitgak-chart-body .bv-layout.bv-drawer-open .bv-left-panel.bv-tool-drawer,
+.bitgak-chart-body .bv-layout-full.bv-drawer-open .bv-left-panel.bv-tool-drawer {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateX(0);
+}
+
+.bitgak-chart-body .bv-tool-drawer {
+  border-radius: 20px;
+  border: 1px solid rgba(96, 165, 250, 0.24);
+  background:
+    radial-gradient(circle at 20% 0%, rgba(59, 130, 246, 0.16), transparent 34%),
+    linear-gradient(180deg, #0f1b31, #06101f);
+  box-shadow: 0 22px 54px rgba(2, 6, 23, .42);
+  color: #ffffff;
+}
+
+.bitgak-chart-body .bv-tool-drawer-head {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 14px 12px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.14);
+}
+
+.bitgak-chart-body .bv-tool-drawer-head strong {
+  display: block;
+  color: #ffffff;
+  font-size: 18px;
+  font-weight: 1000;
+  letter-spacing: -0.05em;
+}
+
+.bitgak-chart-body .bv-tool-drawer-head span {
+  display: block;
+  margin-top: 4px;
+  color: #9fb4d1;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.bitgak-chart-body .bv-tool-drawer-close {
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 12px;
+  background: rgba(148, 163, 184, 0.14);
+  color: #dbeafe;
+  font-size: 22px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.bitgak-chart-body .bv-tool-drawer-tabs {
+  flex: 0 0 auto;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  padding: 12px 14px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+}
+
+.bitgak-chart-body .bv-tool-tab {
+  height: 36px;
+  border: 1px solid rgba(96, 165, 250, 0.22);
+  border-radius: 13px;
+  background: rgba(2, 6, 23, 0.34);
+  color: #9fc5ff;
+  font-size: 13px;
+  font-weight: 1000;
+  cursor: pointer;
+}
+
+.bitgak-chart-body .bv-tool-tab.active {
+  background: rgba(37, 99, 235, 0.94);
+  color: #ffffff;
+  border-color: rgba(147, 197, 253, 0.64);
+}
+
+.bitgak-chart-body .bv-drawer-view {
+  display: none;
+  min-height: 0;
+  overflow: auto;
+  padding: 14px;
+}
+
+.bitgak-chart-body .bv-drawer-view.active {
+  display: block;
+}
+
+.bitgak-chart-body .bv-drawer-view .avg-calc-card {
+  margin: 0;
+}
+
+.bitgak-chart-body .avg-portfolio-save-box {
+  margin-top: 10px;
+  padding: 12px;
+  border-radius: 16px;
+  border: 1px solid rgba(96, 165, 250, 0.20);
+  background: rgba(2, 6, 23, 0.28);
+}
+
+.bitgak-chart-body .avg-save-portfolio-btn {
+  width: 100%;
+  height: 42px;
+  border: 0;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #2563eb, #14b8a6);
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 1000;
+  cursor: pointer;
+  box-shadow: 0 12px 26px rgba(20, 184, 166, 0.20);
+}
+
+.bitgak-chart-body .avg-portfolio-message {
+  margin: 9px 0 0;
+  color: #9fb4d1;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+.bitgak-chart-body .avg-portfolio-message.ok { color: #67e8f9; }
+.bitgak-chart-body .avg-portfolio-message.warn { color: #fde68a; }
+.bitgak-chart-body .avg-portfolio-message.error { color: #fda4af; }
+
+.bitgak-chart-body .portfolio-panel {
+  color: #ffffff;
+}
+
+.bitgak-chart-body .portfolio-card {
+  padding: 14px;
+  border-radius: 18px;
+  border: 1px solid rgba(96, 165, 250, 0.20);
+  background: rgba(2, 6, 23, 0.34);
+  margin-bottom: 12px;
+}
+
+.bitgak-chart-body .portfolio-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.bitgak-chart-body .portfolio-section-head strong {
+  display: block;
+  color: #ffffff;
+  font-size: 15px;
+  font-weight: 1000;
+  letter-spacing: -0.04em;
+}
+
+.bitgak-chart-body .portfolio-section-head span {
+  display: block;
+  margin-top: 4px;
+  color: #8aa3c7;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.bitgak-chart-body .portfolio-capital-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 74px;
+  gap: 8px;
+}
+
+.bitgak-chart-body .portfolio-capital-row input {
+  min-width: 0;
+  height: 42px;
+  padding: 0 12px;
+  border-radius: 13px;
+  border: 1px solid rgba(96, 165, 250, 0.28);
+  background: rgba(2, 6, 23, 0.56);
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 900;
+  outline: none;
+}
+
+.bitgak-chart-body .portfolio-capital-row button,
+.bitgak-chart-body .portfolio-fix-actions button,
+.bitgak-chart-body .portfolio-view-tab {
+  height: 42px;
+  border: 1px solid rgba(96, 165, 250, 0.28);
+  border-radius: 13px;
+  background: rgba(37, 99, 235, 0.18);
+  color: #dbeafe;
+  font-size: 13px;
+  font-weight: 1000;
+  cursor: pointer;
+}
+
+.bitgak-chart-body .portfolio-capital-row button {
+  background: #2563eb;
+  color: #ffffff;
+}
+
+.bitgak-chart-body .portfolio-alert {
+  margin-top: 10px;
+  padding: 10px 11px;
+  border-radius: 13px;
+  background: rgba(239, 68, 68, 0.14);
+  border: 1px solid rgba(248, 113, 113, 0.26);
+  color: #fecaca;
+  font-size: 12px;
+  font-weight: 900;
+  line-height: 1.35;
+}
+
+.bitgak-chart-body .portfolio-fix-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.bitgak-chart-body .portfolio-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.bitgak-chart-body .portfolio-summary-card {
+  min-width: 0;
+  padding: 14px;
+  border-radius: 17px;
+  border: 1px solid rgba(96, 165, 250, 0.18);
+  background: rgba(15, 23, 42, 0.50);
+}
+
+.bitgak-chart-body .portfolio-summary-card span {
+  display: block;
+  color: #8aa3c7;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.bitgak-chart-body .portfolio-summary-card strong {
+  display: block;
+  margin-top: 7px;
+  color: #ffffff;
+  font-size: 17px;
+  font-weight: 1000;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.bitgak-chart-body .portfolio-summary-card strong.positive { color: #22d3ee; }
+.bitgak-chart-body .portfolio-summary-card strong.negative { color: #fb7185; }
+
+.bitgak-chart-body .portfolio-view-tabs {
+  display: inline-flex;
+  gap: 6px;
+  flex: 0 0 auto;
+}
+
+.bitgak-chart-body .portfolio-view-tab {
+  height: 32px;
+  padding: 0 10px;
+  font-size: 12px;
+}
+
+.bitgak-chart-body .portfolio-view-tab.active {
+  background: #2563eb;
+  color: #ffffff;
+}
+
+.bitgak-chart-body .portfolio-donut-wrap {
+  display: grid;
+  grid-template-columns: 142px minmax(0, 1fr);
+  gap: 14px;
+  align-items: center;
+}
+
+.bitgak-chart-body .portfolio-donut {
+  width: 142px;
+  height: 142px;
+  border-radius: 50%;
+  position: relative;
+  background: conic-gradient(#334155 0deg 360deg);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.10), 0 14px 26px rgba(2,6,23,0.34);
+}
+
+.bitgak-chart-body .portfolio-donut::after {
+  content: "";
+  position: absolute;
+  inset: 28px;
+  border-radius: 50%;
+  background: #0b1424;
+  box-shadow: inset 0 0 0 1px rgba(148, 163, 184, 0.12);
+}
+
+.bitgak-chart-body .portfolio-donut span {
+  position: absolute;
+  inset: 38px;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 1000;
+  line-height: 1.15;
+}
+
+.bitgak-chart-body .portfolio-donut small {
+  margin-top: 4px;
+  color: #8aa3c7;
+  font-size: 10px;
+  font-weight: 900;
+}
+
+.bitgak-chart-body .portfolio-legend {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  min-width: 0;
+}
+
+.bitgak-chart-body .portfolio-legend-row {
+  display: grid;
+  grid-template-columns: 10px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  color: #dbeafe;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.bitgak-chart-body .portfolio-legend-row i {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--legend-color);
+}
+
+.bitgak-chart-body .portfolio-legend-row span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bitgak-chart-body .portfolio-legend-row b {
+  color: #ffffff;
+}
+
+.bitgak-chart-body .portfolio-holding-list {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.bitgak-chart-body .portfolio-holding-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  padding: 12px;
+  border-radius: 15px;
+  border: 1px solid rgba(96, 165, 250, 0.16);
+  background: rgba(15, 23, 42, 0.42);
+  text-decoration: none;
+}
+
+.bitgak-chart-body .portfolio-holding-main strong {
+  display: block;
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 1000;
+}
+
+.bitgak-chart-body .portfolio-holding-main span {
+  display: block;
+  margin-top: 4px;
+  color: #8aa3c7;
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.bitgak-chart-body .portfolio-holding-values {
+  text-align: right;
+}
+
+.bitgak-chart-body .portfolio-holding-values b {
+  display: block;
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 1000;
+}
+
+.bitgak-chart-body .portfolio-holding-values em {
+  display: block;
+  margin-top: 4px;
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 1000;
+}
+
+.bitgak-chart-body .portfolio-holding-values em.positive { color: #22d3ee; }
+.bitgak-chart-body .portfolio-holding-values em.negative { color: #fb7185; }
+
+.bitgak-chart-body .portfolio-empty {
+  padding: 14px;
+  border-radius: 14px;
+  background: rgba(15, 23, 42, 0.44);
+  color: #8aa3c7;
+  font-size: 12px;
+  font-weight: 900;
+  line-height: 1.45;
+}
+
+@media (max-width: 1450px) {
+  .bitgak-chart-body .bv-layout,
+  .bitgak-chart-body .bv-layout-full {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .bitgak-chart-body .bv-layout.bv-drawer-open,
+  .bitgak-chart-body .bv-layout-full.bv-drawer-open {
+    grid-template-columns: 430px minmax(0, 1fr) !important;
+  }
+
+  .bitgak-chart-body .bv-symbol-panel {
+    display: none !important;
+  }
+}
+
+@media (max-width: 1120px) {
+  .bitgak-chart-body .bv-layout.bv-drawer-open,
+  .bitgak-chart-body .bv-layout-full.bv-drawer-open,
+  .bitgak-chart-body .bv-layout,
+  .bitgak-chart-body .bv-layout-full {
+    grid-template-columns: 1fr !important;
+  }
+
+  .bitgak-chart-body .bv-left-panel.bv-tool-drawer {
+    position: fixed;
+    left: 10px;
+    top: 86px;
+    bottom: 12px;
+    width: min(430px, calc(100vw - 20px)) !important;
+    z-index: 9000;
+  }
+
+  .bitgak-chart-body .bv-left-panel.bv-tool-drawer:not(.open) {
+    display: none !important;
+  }
+
+  .bitgak-chart-body .bv-drawer-actions {
+    width: 100%;
+    order: 4;
+  }
+
+  .bitgak-chart-body .bv-drawer-action-btn {
+    flex: 1 1 0;
+  }
+}
+
+
+
+/* =========================================================
+   Drawer close layout hard fix v2
+   - 닫힌 상태에서 drawer가 grid item으로 남아 차트/오른쪽 패널이 밀리는 문제 방지
+   - 원인: .bv-left-panel.bv-tool-drawer가 display:flex !important 상태로 남아 grid 첫 칸을 계속 차지함
+   ========================================================= */
+.bitgak-chart-body .bv-layout:not(.bv-drawer-open),
+.bitgak-chart-body .bv-layout-full:not(.bv-drawer-open) {
+  grid-template-columns: minmax(0, 1fr) 320px !important;
+  grid-template-rows: minmax(0, 1fr) !important;
+  align-items: stretch !important;
+}
+
+.bitgak-chart-body .bv-layout:not(.bv-drawer-open) > .bv-left-panel.bv-tool-drawer,
+.bitgak-chart-body .bv-layout-full:not(.bv-drawer-open) > .bv-left-panel.bv-tool-drawer {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  transform: translateX(-18px) !important;
+}
+
+.bitgak-chart-body .bv-layout:not(.bv-drawer-open) > .bv-main,
+.bitgak-chart-body .bv-layout-full:not(.bv-drawer-open) > .bv-main {
+  grid-column: 1 / 2 !important;
+  grid-row: 1 / 2 !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  height: 100% !important;
+  padding: 14px 8px 14px 14px !important;
+}
+
+.bitgak-chart-body .bv-layout:not(.bv-drawer-open) > .bv-symbol-panel,
+.bitgak-chart-body .bv-layout-full:not(.bv-drawer-open) > .bv-symbol-panel {
+  grid-column: 2 / 3 !important;
+  grid-row: 1 / 2 !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  height: 100% !important;
+  display: grid !important;
+}
+
+.bitgak-chart-body .bv-layout.bv-drawer-open,
+.bitgak-chart-body .bv-layout-full.bv-drawer-open {
+  grid-template-columns: 450px minmax(520px, 1fr) 320px !important;
+  grid-template-rows: minmax(0, 1fr) !important;
+}
+
+.bitgak-chart-body .bv-layout.bv-drawer-open > .bv-left-panel.bv-tool-drawer,
+.bitgak-chart-body .bv-layout-full.bv-drawer-open > .bv-left-panel.bv-tool-drawer {
+  display: flex !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  pointer-events: auto !important;
+  transform: translateX(0) !important;
+  grid-column: 1 / 2 !important;
+  grid-row: 1 / 2 !important;
+  min-height: 0 !important;
+  height: 100% !important;
+}
+
+.bitgak-chart-body .bv-layout.bv-drawer-open > .bv-main,
+.bitgak-chart-body .bv-layout-full.bv-drawer-open > .bv-main {
+  grid-column: 2 / 3 !important;
+  grid-row: 1 / 2 !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  height: 100% !important;
+  padding: 14px 8px 14px 0 !important;
+}
+
+.bitgak-chart-body .bv-layout.bv-drawer-open > .bv-symbol-panel,
+.bitgak-chart-body .bv-layout-full.bv-drawer-open > .bv-symbol-panel {
+  grid-column: 3 / 4 !important;
+  grid-row: 1 / 2 !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  height: 100% !important;
+  display: grid !important;
+}
+
+@media (max-width: 1450px) {
+  .bitgak-chart-body .bv-layout:not(.bv-drawer-open),
+  .bitgak-chart-body .bv-layout-full:not(.bv-drawer-open) {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .bitgak-chart-body .bv-layout:not(.bv-drawer-open) > .bv-main,
+  .bitgak-chart-body .bv-layout-full:not(.bv-drawer-open) > .bv-main {
+    grid-column: 1 / 2 !important;
+    padding: 14px !important;
+  }
+
+  .bitgak-chart-body .bv-layout:not(.bv-drawer-open) > .bv-symbol-panel,
+  .bitgak-chart-body .bv-layout-full:not(.bv-drawer-open) > .bv-symbol-panel {
+    display: none !important;
+  }
+
+  .bitgak-chart-body .bv-layout.bv-drawer-open,
+  .bitgak-chart-body .bv-layout-full.bv-drawer-open {
+    grid-template-columns: 430px minmax(0, 1fr) !important;
+  }
+
+  .bitgak-chart-body .bv-layout.bv-drawer-open > .bv-main,
+  .bitgak-chart-body .bv-layout-full.bv-drawer-open > .bv-main {
+    grid-column: 2 / 3 !important;
+    padding: 14px 14px 14px 0 !important;
+  }
+
+  .bitgak-chart-body .bv-layout.bv-drawer-open > .bv-symbol-panel,
+  .bitgak-chart-body .bv-layout-full.bv-drawer-open > .bv-symbol-panel {
+    display: none !important;
+  }
+}
+
+@media (max-width: 1120px) {
+  .bitgak-chart-body .bv-layout,
+  .bitgak-chart-body .bv-layout-full,
+  .bitgak-chart-body .bv-layout.bv-drawer-open,
+  .bitgak-chart-body .bv-layout-full.bv-drawer-open {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .bitgak-chart-body .bv-layout > .bv-main,
+  .bitgak-chart-body .bv-layout-full > .bv-main,
+  .bitgak-chart-body .bv-layout.bv-drawer-open > .bv-main,
+  .bitgak-chart-body .bv-layout-full.bv-drawer-open > .bv-main {
+    grid-column: 1 / 2 !important;
+    padding: 10px !important;
+  }
+
+  .bitgak-chart-body .bv-layout > .bv-symbol-panel,
+  .bitgak-chart-body .bv-layout-full > .bv-symbol-panel {
+    display: none !important;
+  }
+
+  .bitgak-chart-body .bv-left-panel.bv-tool-drawer {
+    position: fixed !important;
+    left: 10px !important;
+    top: 86px !important;
+    bottom: 12px !important;
+    width: min(430px, calc(100vw - 20px)) !important;
+    z-index: 9000 !important;
+  }
+
+  .bitgak-chart-body .bv-left-panel.bv-tool-drawer:not(.open) {
+    display: none !important;
+  }
+}
+
+/* =========================================================
+   Portfolio drawer smooth toggle v3
+   - 닫기 버튼뿐 아니라 상단 평단가/포트폴리오 버튼 재클릭 시 닫힘
+   - drawer는 display:none으로 즉시 사라지지 않고 0px column으로 부드럽게 접힘
+   - 보유종목 목록은 길어지면 내부 스크롤
+   ========================================================= */
+.bitgak-chart-body .bv-layout,
+.bitgak-chart-body .bv-layout-full {
+  display: grid !important;
+  grid-template-columns: 0 minmax(0, 1fr) 320px !important;
+  grid-template-rows: minmax(0, 1fr) !important;
+  column-gap: 0 !important;
+  transition:
+    grid-template-columns 520ms cubic-bezier(.22, .72, .18, 1),
+    column-gap 520ms cubic-bezier(.22, .72, .18, 1) !important;
+  will-change: grid-template-columns;
+}
+
+.bitgak-chart-body .bv-layout.bv-drawer-open,
+.bitgak-chart-body .bv-layout-full.bv-drawer-open {
+  grid-template-columns: 450px minmax(520px, 1fr) 320px !important;
+  column-gap: 12px !important;
+}
+
+.bitgak-chart-body .bv-layout > .bv-left-panel.bv-tool-drawer,
+.bitgak-chart-body .bv-layout-full > .bv-left-panel.bv-tool-drawer {
+  display: flex !important;
+  grid-column: 1 / 2 !important;
+  grid-row: 1 / 2 !important;
+  min-width: 0 !important;
+  width: 100% !important;
+  max-width: 450px !important;
+  height: 100% !important;
+  min-height: 0 !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+  transform: translateX(-34px) scaleX(.985) !important;
+  transform-origin: left center !important;
+  transition:
+    opacity 440ms ease,
+    transform 520ms cubic-bezier(.22, .72, .18, 1),
+    visibility 0s linear 520ms !important;
+  will-change: opacity, transform;
+}
+
+.bitgak-chart-body .bv-layout.bv-drawer-open > .bv-left-panel.bv-tool-drawer,
+.bitgak-chart-body .bv-layout-full.bv-drawer-open > .bv-left-panel.bv-tool-drawer,
+.bitgak-chart-body .bv-left-panel.bv-tool-drawer.open {
+  opacity: 1 !important;
+  visibility: visible !important;
+  pointer-events: auto !important;
+  transform: translateX(0) scaleX(1) !important;
+  transition:
+    opacity 460ms ease,
+    transform 520ms cubic-bezier(.22, .72, .18, 1),
+    visibility 0s linear 0s !important;
+}
+
+.bitgak-chart-body .bv-layout > .bv-main,
+.bitgak-chart-body .bv-layout-full > .bv-main {
+  grid-column: 2 / 3 !important;
+  grid-row: 1 / 2 !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  height: 100% !important;
+  padding: 14px 8px 14px 14px !important;
+  transition: padding 520ms cubic-bezier(.22, .72, .18, 1) !important;
+}
+
+.bitgak-chart-body .bv-layout.bv-drawer-open > .bv-main,
+.bitgak-chart-body .bv-layout-full.bv-drawer-open > .bv-main {
+  padding: 14px 8px 14px 0 !important;
+}
+
+.bitgak-chart-body .bv-layout > .bv-symbol-panel,
+.bitgak-chart-body .bv-layout-full > .bv-symbol-panel {
+  grid-column: 3 / 4 !important;
+  grid-row: 1 / 2 !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  height: 100% !important;
+  display: grid !important;
+}
+
+.bitgak-chart-body .bv-tool-drawer {
+  flex-direction: column !important;
+  max-height: 100% !important;
+}
+
+.bitgak-chart-body .bv-drawer-view {
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  overflow-y: auto !important;
+  overscroll-behavior: contain !important;
+  scrollbar-gutter: stable;
+}
+
+.bitgak-chart-body .portfolio-panel.active {
+  display: flex !important;
+  flex-direction: column !important;
+  min-height: 0 !important;
+}
+
+.bitgak-chart-body .portfolio-summary-card strong#portfolioProfit {
+  font-size: 20px;
+  letter-spacing: -0.04em;
+}
+
+.bitgak-chart-body .portfolio-holdings-card {
+  flex: 1 1 auto;
+  min-height: 180px;
+  display: flex;
+  flex-direction: column;
+}
+
+.bitgak-chart-body .portfolio-holding-list {
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: min(330px, 32vh);
   overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 4px;
   overscroll-behavior: contain;
 }
 
-.bitgak-chart-body .tv-interval-section-sub {
-  margin-top: 6px;
+.bitgak-chart-body .portfolio-holding-list::-webkit-scrollbar,
+.bitgak-chart-body .bv-drawer-view::-webkit-scrollbar {
+  width: 8px;
 }
 
-.bitgak-chart-body .tv-interval-item[data-interval="1h"],
-.bitgak-chart-body .tv-interval-item[data-interval="2h"],
-.bitgak-chart-body .tv-interval-item[data-interval="3h"],
-.bitgak-chart-body .tv-interval-item[data-interval="4h"] {
-  display: flex;
+.bitgak-chart-body .portfolio-holding-list::-webkit-scrollbar-thumb,
+.bitgak-chart-body .bv-drawer-view::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: rgba(148, 163, 184, .38);
 }
 
-.bitgak-chart-body .tv-interval-item[hidden] {
-  display: none !important;
+.bitgak-chart-body .portfolio-holding-list::-webkit-scrollbar-track,
+.bitgak-chart-body .bv-drawer-view::-webkit-scrollbar-track {
+  background: rgba(2, 6, 23, .16);
+  border-radius: 999px;
+}
+
+@media (max-width: 1450px) {
+  .bitgak-chart-body .bv-layout,
+  .bitgak-chart-body .bv-layout-full {
+    grid-template-columns: 0 minmax(0, 1fr) !important;
+    column-gap: 0 !important;
+  }
+
+  .bitgak-chart-body .bv-layout.bv-drawer-open,
+  .bitgak-chart-body .bv-layout-full.bv-drawer-open {
+    grid-template-columns: 430px minmax(0, 1fr) !important;
+    column-gap: 12px !important;
+  }
+
+  .bitgak-chart-body .bv-layout > .bv-symbol-panel,
+  .bitgak-chart-body .bv-layout-full > .bv-symbol-panel {
+    display: none !important;
+  }
+
+  .bitgak-chart-body .bv-layout > .bv-main,
+  .bitgak-chart-body .bv-layout-full > .bv-main {
+    grid-column: 2 / 3 !important;
+    padding: 14px !important;
+  }
+
+  .bitgak-chart-body .bv-layout.bv-drawer-open > .bv-main,
+  .bitgak-chart-body .bv-layout-full.bv-drawer-open > .bv-main {
+    padding: 14px 14px 14px 0 !important;
+  }
+}
+
+@media (max-width: 1120px) {
+  .bitgak-chart-body .bv-layout,
+  .bitgak-chart-body .bv-layout-full,
+  .bitgak-chart-body .bv-layout.bv-drawer-open,
+  .bitgak-chart-body .bv-layout-full.bv-drawer-open {
+    grid-template-columns: minmax(0, 1fr) !important;
+    column-gap: 0 !important;
+  }
+
+  .bitgak-chart-body .bv-layout > .bv-main,
+  .bitgak-chart-body .bv-layout-full > .bv-main,
+  .bitgak-chart-body .bv-layout.bv-drawer-open > .bv-main,
+  .bitgak-chart-body .bv-layout-full.bv-drawer-open > .bv-main {
+    grid-column: 1 / 2 !important;
+    padding: 10px !important;
+  }
+
+  .bitgak-chart-body .bv-left-panel.bv-tool-drawer {
+    position: fixed !important;
+    left: 10px !important;
+    top: 86px !important;
+    bottom: 12px !important;
+    width: min(430px, calc(100vw - 20px)) !important;
+    max-width: min(430px, calc(100vw - 20px)) !important;
+    z-index: 9000 !important;
+  }
 }
 
