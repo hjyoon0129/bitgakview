@@ -74,7 +74,7 @@
 
   const PANE_LABELS = {
     rsi: "RSI",
-    macd: "MACD",
+    macd: "MACD+RSI",
     volume: "거래량",
   };
 
@@ -858,6 +858,7 @@
 
       layoutPanes();
       fitOrKeepVisibleRange(true);
+      loadDrawingsFromStorage();
       renderDrawings();
 
       document.dispatchEvent(new CustomEvent("bitgak:chart-data-loaded", {
@@ -986,36 +987,300 @@
     return state.rows.find(function (row) { return sameTime(row.time, time); });
   }
 
+  const DRAWING_PALETTE_COLORS = [
+    "#ff4568", "#ff9f1c", "#55d400", "#19aeca", "#3b82f6", "#7c64d8",
+    "#ec4899", "#ff6b2c", "#2db84d", "#3aa0cf", "#466bd3", "#9b5de5",
+    "#e12ab3", "#dc5f2d", "#36b37e", "#14b8a6", "#5b61b2", "#c13ee4",
+    "#fb9aaa", "#ffd19a", "#9be66d", "#7ed3e3", "#93c5fd", "#b8abe3",
+    "#ffffff", "#eaf2ff", "#d1d5db", "#9ca3af", "#6b7280", "#374151", "#111827", "#000000"
+  ];
+
+  const DRAWING_TOOL_ALIASES = {
+    cursor: "cursor", select: "cursor", pointer: "cursor", crosshair: "cursor",
+    trend: "trend", line: "trend", segment: "trend",
+    extend: "extend", ray: "extend", extended: "extend",
+    hline: "hline", horizontal: "hline", horizontal_line: "hline",
+    vline: "vline", vertical: "vline", vertical_line: "vline",
+    fibo: "fibo", fib: "fibo", fib_channel: "fibo", fibonacci: "fibo",
+    undo: "undo", clear: "clear", trash: "clear", delete: "clear"
+  };
+
+  const DRAWING_TOOL_TITLES = {
+    cursor: "십자 선택",
+    trend: "라인",
+    extend: "연장선",
+    hline: "수평선",
+    vline: "수직선",
+    fibo: "피보나치 채널",
+    undo: "되돌리기",
+    clear: "전체삭제"
+  };
+
+  const DEFAULT_FIBO_LEVELS = [
+    { value: -1, enabled: true, color: "#1d4ed8" },
+    { value: -0.5, enabled: true, color: "#1d4ed8" },
+    { value: 0, enabled: true, color: "#1d4ed8" },
+    { value: 0.5, enabled: true, color: "#1d4ed8" },
+    { value: 1, enabled: true, color: "#1d4ed8" },
+    { value: 1.272, enabled: false, color: "#fdba74" },
+    { value: 1.618, enabled: false, color: "#93c5fd" },
+    { value: 2, enabled: false, color: "#5eead4" },
+    { value: 2.618, enabled: false, color: "#f472b6" },
+    { value: 4.236, enabled: false, color: "#c084fc" }
+  ];
+
+  function cloneDefaultFiboLevels() {
+    return DEFAULT_FIBO_LEVELS.map(function (item) {
+      return { value: item.value, enabled: !!item.enabled, color: item.color };
+    });
+  }
+
+  function normalizeFiboLevels(drawing, fallbackColor) {
+    const source = Array.isArray(drawing && drawing.fiboLevels) && drawing.fiboLevels.length
+      ? drawing.fiboLevels
+      : (Array.isArray(drawing && drawing.levels) && drawing.levels.length
+        ? drawing.levels.map(function (value, index) {
+            return { value: Number(value), enabled: true, color: fallbackColor || "#1d4ed8" };
+          })
+        : cloneDefaultFiboLevels());
+
+    return source.map(function (item, index) {
+      if (typeof item === "number") {
+        return { value: item, enabled: true, color: fallbackColor || "#1d4ed8" };
+      }
+      const defaultItem = DEFAULT_FIBO_LEVELS[index] || DEFAULT_FIBO_LEVELS[0];
+      const value = Number(item && item.value);
+      return {
+        value: Number.isFinite(value) ? value : defaultItem.value,
+        enabled: item && item.enabled !== false,
+        color: normalizeDrawingColor(item && item.color, fallbackColor || defaultItem.color || "#1d4ed8")
+      };
+    }).filter(function (item) {
+      return Number.isFinite(Number(item.value));
+    });
+  }
+
+  function getEnabledFiboLevels(drawing) {
+    const levels = normalizeFiboLevels(drawing, drawing && drawing.color);
+    const enabled = levels.filter(function (item) { return item.enabled !== false; });
+    return (enabled.length ? enabled : levels.slice(0, 1)).sort(function (a, b) {
+      return Number(a.value) - Number(b.value);
+    });
+  }
+
+  const DRAWING_DEFAULTS = {
+    trend: { color: "#1d4ed8", width: 2, extendLeft: false, extendRight: false, dash: "" },
+    extend: { color: "#1d4ed8", width: 2, extendLeft: true, extendRight: true, dash: "" },
+    hline: { color: "#8b5cf6", width: 2, dash: "" },
+    vline: { color: "#64748b", width: 2, dash: "" },
+    fibo: {
+      color: "#1d4ed8",
+      width: 2,
+      extendLeft: true,
+      extendRight: true,
+      dash: "",
+      levels: [-1, -0.5, 0, 0.5, 1],
+      fiboLevels: cloneDefaultFiboLevels(),
+      fill: true,
+      fillColor: "rgba(37, 99, 235, 0.14)",
+      opacity: 0.14
+    }
+  };
+
+  let drawingHistory = [];
+  let drawingDrag = null;
+  let drawingSettingsModal = null;
+  let suppressClickAfterDrag = false;
+  let drawingPassThrough = null;
+
+  state.selectedDrawingId = state.selectedDrawingId || null;
+  state.hoverDrawingId = null;
+  state.crosshairValue = null;
+  state.crosshairPoint = null;
+  state.fiboStage = 0;
+
+  function normalizeDrawingTool(tool) {
+    const key = String(tool || "cursor").trim();
+    return DRAWING_TOOL_ALIASES[key] || DRAWING_TOOL_ALIASES[key.toLowerCase()] || key;
+  }
+
+  function escapeDrawingHtml(value) {
+    return String(value || "")
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#039;");
+  }
+
+  function makeDrawingId(type) {
+    return "drawing_" + type + "_" + Date.now() + "_" + Math.floor(Math.random() * 100000);
+  }
+
+  function cloneDrawing(drawing) {
+    return JSON.parse(JSON.stringify(drawing));
+  }
+
+  function normalizeDrawingColor(value, fallback) {
+    const text = String(value || "").trim();
+    if (/^#[0-9a-fA-F]{6}$/.test(text)) return text.toLowerCase();
+    if (/^rgba?\(/.test(text)) return text;
+    return fallback || "#1d4ed8";
+  }
+
+  function normalizeDrawing(drawing) {
+    if (!drawing) return null;
+    const type = normalizeDrawingTool(drawing.type || "trend");
+    const defaults = DRAWING_DEFAULTS[type] || DRAWING_DEFAULTS.trend;
+    return Object.assign({}, defaults, drawing, {
+      id: drawing.id || makeDrawingId(type),
+      type,
+      color: normalizeDrawingColor(drawing.color, defaults.color),
+      width: Math.min(6, Math.max(1, Number(drawing.width || defaults.width || 2))),
+      extendLeft: !!(drawing.extendLeft !== undefined ? drawing.extendLeft : defaults.extendLeft),
+      extendRight: !!(drawing.extendRight !== undefined ? drawing.extendRight : defaults.extendRight),
+      levels: Array.isArray(drawing.levels) && drawing.levels.length ? drawing.levels : (defaults.levels || []),
+      fiboLevels: type === "fibo" ? normalizeFiboLevels(drawing, drawing.color || defaults.color).slice(0, 10) : [],
+      fill: drawing.fill !== undefined ? !!drawing.fill : !!defaults.fill,
+      opacity: Math.min(0.85, Math.max(0.02, Number(drawing.opacity || defaults.opacity || 0.14))),
+    });
+  }
+
+  function drawingStorageKey() {
+    return "bitgak:drawings:" + code + ":" + state.interval;
+  }
+
+  function saveDrawingsToStorage() {
+    try {
+      localStorage.setItem(drawingStorageKey(), JSON.stringify(state.drawings || []));
+    } catch (e) {}
+  }
+
+  function loadDrawingsFromStorage() {
+    try {
+      const saved = JSON.parse(localStorage.getItem(drawingStorageKey()) || "[]");
+      if (Array.isArray(saved)) state.drawings = saved.map(normalizeDrawing).filter(Boolean);
+    } catch (e) {
+      state.drawings = [];
+    }
+  }
+
+  function deleteSelectedDrawing() {
+    if (!state.selectedDrawingId) return false;
+    pushDrawingHistory();
+    state.drawings = (state.drawings || []).filter(function (item) { return item.id !== state.selectedDrawingId; });
+    state.selectedDrawingId = null;
+    state.tempDrawing = null;
+    state.isDrawing = false;
+    state.fiboStage = 0;
+    saveDrawingsToStorage();
+    renderDrawings();
+    return true;
+  }
+
+  function pushDrawingHistory() {
+    try {
+      drawingHistory.push(JSON.stringify(state.drawings || []));
+      if (drawingHistory.length > 80) drawingHistory.shift();
+    } catch (e) {}
+  }
+
+  function undoDrawing() {
+    const last = drawingHistory.pop();
+    if (!last) return;
+    try {
+      state.drawings = JSON.parse(last) || [];
+      saveDrawingsToStorage();
+      state.tempDrawing = null;
+      state.isDrawing = false;
+      state.startPoint = null;
+      state.selectedDrawingId = null;
+      state.fiboStage = 0;
+      renderDrawings();
+    } catch (e) {}
+  }
+
   function getLocalPoint(event) {
-    const rect = drawingLayer.getBoundingClientRect();
+    const rect = chartEl.getBoundingClientRect();
     return { x: event.clientX - rect.left, y: event.clientY - rect.top };
   }
 
-  function pointToChartValue(point) {
-    const time = normalizeTime(chart.timeScale().coordinateToTime(point.x));
-    const price = candleSeries.coordinateToPrice(point.y);
+  function coordinateToLogicalSafe(x) {
+    try {
+      const ts = chart.timeScale();
+      if (ts && typeof ts.coordinateToLogical === "function") {
+        const logical = ts.coordinateToLogical(x);
+        return Number.isFinite(Number(logical)) ? Number(logical) : null;
+      }
+    } catch (e) {}
+    return null;
+  }
 
-    if (!time || price === null || price === undefined) return null;
-    return { time, price: Number(price) };
+  function logicalToCoordinateSafe(logical) {
+    try {
+      const ts = chart.timeScale();
+      if (ts && typeof ts.logicalToCoordinate === "function" && Number.isFinite(Number(logical))) {
+        const x = ts.logicalToCoordinate(Number(logical));
+        return Number.isFinite(Number(x)) ? Number(x) : null;
+      }
+    } catch (e) {}
+    return null;
+  }
+
+  function nearestTimeByLogical(logical) {
+    const rows = state.rows || [];
+    if (!rows.length) return null;
+    const index = Math.max(0, Math.min(rows.length - 1, Math.round(Number(logical || 0))));
+    return rows[index] ? rows[index].time : rows[0].time;
+  }
+
+  function priceFromCoordinateSafe(y) {
+    try {
+      const price = candleSeries.coordinateToPrice(y);
+      if (price !== null && price !== undefined && !Number.isNaN(Number(price))) return Number(price);
+    } catch (e) {}
+
+    try {
+      const p1 = candleSeries.coordinateToPrice(0);
+      const p2 = candleSeries.coordinateToPrice(100);
+      if (p1 !== null && p2 !== null && Number.isFinite(Number(p1)) && Number.isFinite(Number(p2))) {
+        return Number(p1) + (Number(p2) - Number(p1)) * (Number(y) / 100);
+      }
+    } catch (e) {}
+    return null;
+  }
+
+  function pointToChartValue(point) {
+    const ts = chart.timeScale();
+    const logical = coordinateToLogicalSafe(point.x);
+    const rawTime = ts.coordinateToTime(point.x);
+    let time = normalizeTime(rawTime);
+    if (!time && logical !== null) time = nearestTimeByLogical(logical);
+    const price = priceFromCoordinateSafe(point.y);
+    if ((!time && logical === null) || price === null || price === undefined || Number.isNaN(Number(price))) return null;
+    return { time: time || nearestTimeByLogical(logical), logical: logical, price: Number(price) };
   }
 
   function valueToPoint(value) {
     if (!value) return null;
-
-    const x = chart.timeScale().timeToCoordinate(value.time);
+    let x = logicalToCoordinateSafe(value.logical);
+    if (x === null || x === undefined) x = chart.timeScale().timeToCoordinate(value.time);
     const y = candleSeries.priceToCoordinate(value.price);
-
     if (x === null || x === undefined || y === null || y === undefined) return null;
     return { x, y };
   }
 
+  function pointFromEvent(event) {
+    const point = getLocalPoint(event);
+    const value = pointToChartValue(point);
+    return value ? { point, value } : null;
+  }
+
   function svgEl(tag, attrs) {
     const el = document.createElementNS("http://www.w3.org/2000/svg", tag);
-
     Object.entries(attrs || {}).forEach(function ([key, value]) {
       if (value !== null && value !== undefined) el.setAttribute(key, value);
     });
-
     return el;
   }
 
@@ -1023,239 +1288,1398 @@
     while (drawingLayer.firstChild) drawingLayer.removeChild(drawingLayer.firstChild);
   }
 
-  function drawLine(p1, p2, options) {
-    options = options || {};
-
-    drawingLayer.appendChild(
-      svgEl("line", {
-        x1: p1.x,
-        y1: p1.y,
-        x2: p2.x,
-        y2: p2.y,
-        stroke: options.stroke || "#2563eb",
-        "stroke-width": options.width || 2,
-        "stroke-dasharray": options.dash || "",
-        "stroke-linecap": "round",
-      })
-    );
+  function appendSvg(tag, attrs, parent) {
+    const el = svgEl(tag, attrs || {});
+    (parent || drawingLayer).appendChild(el);
+    return el;
   }
 
-  function drawText(text, x, y, options) {
-    options = options || {};
+  function getLayerSize() {
+    return {
+      width: Number(drawingLayer.getAttribute("width")) || drawingLayer.clientWidth || chartEl.clientWidth || chartWrap.clientWidth || 1,
+      height: Number(drawingLayer.getAttribute("height")) || drawingLayer.clientHeight || chartEl.clientHeight || chartWrap.clientHeight || 1,
+    };
+  }
 
-    const label = svgEl("text", {
-      x,
-      y,
+  function drawLineSvg(p1, p2, options, parent) {
+    options = options || {};
+    return appendSvg("line", {
+      x1: p1.x, y1: p1.y, x2: p2.x, y2: p2.y,
+      stroke: options.stroke || options.color || "#2563eb",
+      "stroke-width": options.width || 2,
+      "stroke-dasharray": options.dash || "",
+      "stroke-linecap": "round",
+      "vector-effect": "non-scaling-stroke",
+      class: options.className || "",
+      "data-drawing-id": options.id || null,
+      "data-drawing-role": options.role || null,
+    }, parent);
+  }
+
+  function drawHitLine(p1, p2, id, role, parent) {
+    return drawLineSvg(p1, p2, {
+      stroke: "transparent",
+      width: 18,
+      className: "bv-drawing-hit",
+      id,
+      role: role || "body",
+    }, parent);
+  }
+
+  function drawTextSvg(text, x, y, options, parent) {
+    options = options || {};
+    const label = appendSvg("text", {
+      x, y,
       fill: options.fill || "#2563eb",
       "font-size": options.size || 11,
-      "font-weight": "800",
-      "dominant-baseline": "middle",
-    });
-
+      "font-weight": options.weight || "850",
+      "dominant-baseline": options.baseline || "middle",
+      "text-anchor": options.anchor || "start",
+      class: options.className || "",
+      "data-drawing-id": options.id || null,
+      "data-drawing-role": options.role || null,
+    }, parent);
     label.textContent = text;
-    drawingLayer.appendChild(label);
+    return label;
   }
 
-  function drawTrend(drawing) {
-    const p1 = valueToPoint(drawing.start);
-    const p2 = valueToPoint(drawing.end);
-    if (!p1 || !p2) return;
-    drawLine(p1, p2, { stroke: "#2563eb", width: 2 });
+  function drawRectSvg(x, y, w, h, options, parent) {
+    options = options || {};
+    return appendSvg("rect", {
+      x, y, width: w, height: h,
+      rx: options.rx === undefined ? 4 : options.rx,
+      fill: options.fill || "#ffffff",
+      stroke: options.stroke || "#2563eb",
+      "stroke-width": options.width || 1,
+      class: options.className || "",
+      "data-drawing-id": options.id || null,
+      "data-drawing-role": options.role || null,
+    }, parent);
   }
 
-  function drawExtended(drawing) {
-    const p1 = valueToPoint(drawing.start);
-    const p2 = valueToPoint(drawing.end);
-    if (!p1 || !p2) return;
-
-    const width = drawingLayer.clientWidth || chartEl.clientWidth;
-
-    if (Math.abs(p2.x - p1.x) < 1) {
-      drawLine({ x: p1.x, y: 0 }, { x: p1.x, y: drawingLayer.clientHeight }, { stroke: "#7c3aed", width: 2 });
-      return;
-    }
-
-    const slope = (p2.y - p1.y) / (p2.x - p1.x);
-
-    drawLine(
-      { x: 0, y: p1.y + slope * (0 - p1.x) },
-      { x: width, y: p1.y + slope * (width - p1.x) },
-      { stroke: "#7c3aed", width: 2 }
-    );
+  function drawHandle(point, parent, drawingId, role) {
+    if (!point) return;
+    drawRectSvg(point.x - 5.2, point.y - 5.2, 10.4, 10.4, {
+      rx: 2.2,
+      fill: "#ffffff",
+      stroke: "#2563eb",
+      width: 2,
+      className: "bv-drawing-handle",
+      id: drawingId || null,
+      role: role || "handle",
+    }, parent);
   }
 
-  function drawHorizontal(drawing) {
-    const p = valueToPoint(drawing.start);
-    if (!p) return;
+  function drawAxisBadge(text, x, y, options, parent) {
+    options = options || {};
+    const paddingX = 8;
+    const width = Math.max(options.minWidth || 64, String(text).length * 7 + paddingX * 2);
+    const height = options.height || 22;
+    const rectX = options.anchor === "right" ? x - width : options.anchor === "middle" ? x - width / 2 : x;
+    const rectY = y - height / 2;
 
-    drawLine({ x: 0, y: p.y }, { x: drawingLayer.clientWidth || chartEl.clientWidth, y: p.y }, { stroke: "#ef4444", width: 1.5, dash: "4 4" });
-    drawText(formatNumber(Math.round(drawing.start.price)), 8, p.y - 9, { fill: "#ef4444" });
+    drawRectSvg(rectX, rectY, width, height, {
+      rx: 6,
+      fill: options.bg || "#111827",
+      stroke: options.bg || "#111827",
+      width: 1,
+      className: "bv-drawing-axis-badge",
+    }, parent);
+
+    drawTextSvg(text, rectX + width / 2, y + 0.5, {
+      fill: "#ffffff",
+      size: 11,
+      weight: "900",
+      anchor: "middle",
+      className: "bv-drawing-axis-badge-text",
+    }, parent);
   }
 
-  function drawVertical(drawing) {
-    const p = valueToPoint(drawing.start);
-    if (!p) return;
-
-    drawLine({ x: p.x, y: 0 }, { x: p.x, y: drawingLayer.clientHeight || chartEl.clientHeight }, { stroke: "#64748b", width: 1.5, dash: "4 4" });
-    drawText(normalizeTimeForDisplay(drawing.start.time), p.x + 6, 16, { fill: "#64748b" });
-  }
-
-  function drawFibo(drawing) {
-    const p1 = valueToPoint(drawing.start);
-    const p2 = valueToPoint(drawing.end);
-    if (!p1 || !p2) return;
-
-    const levels = [
-      { label: "0", value: 0 },
-      { label: "0.236", value: 0.236 },
-      { label: "0.382", value: 0.382 },
-      { label: "0.5", value: 0.5 },
-      { label: "0.618", value: 0.618 },
-      { label: "1", value: 1 },
-    ];
+  function extendTwoPoints(p1, p2, options) {
+    const size = getLayerSize();
+    const style = options || {};
+    const extendLeft = !!style.extendLeft;
+    const extendRight = !!style.extendRight;
+    if (!extendLeft && !extendRight) return { a: p1, b: p2 };
 
     const dx = p2.x - p1.x;
     const dy = p2.y - p1.y;
+    const length = Math.sqrt(dx * dx + dy * dy);
+    if (!length) return { a: p1, b: p2 };
 
-    levels.forEach(function (level) {
-      const offset = dy * level.value;
-      const a = { x: p1.x, y: p1.y + offset };
-      const b = { x: p1.x + dx, y: p1.y + offset + dy };
+    const ux = dx / length;
+    const uy = dy / length;
+    const far = Math.max(size.width, size.height) * 2.6;
+    return {
+      a: extendLeft ? { x: p1.x - ux * far, y: p1.y - uy * far } : p1,
+      b: extendRight ? { x: p2.x + ux * far, y: p2.y + uy * far } : p2,
+    };
+  }
 
-      drawLine(a, b, {
-        stroke: level.value === 0 || level.value === 1 ? "#0f766e" : "#14b8a6",
-        width: level.value === 0 || level.value === 1 ? 2 : 1.2,
-        dash: level.value === 0 || level.value === 1 ? "" : "3 3",
-      });
+  function getDrawingById(id) {
+    return (state.drawings || []).find(function (item) { return item && item.id === id; });
+  }
 
-      drawText(level.label, b.x + 6, b.y, { fill: "#0f766e" });
+  function drawingTitle(type) {
+    return DRAWING_TOOL_TITLES[normalizeDrawingTool(type)] || "도구";
+  }
+
+  function buildGroup(drawing, isTemp) {
+    return appendSvg("g", {
+      class: "bv-drawing-group bv-drawing-" + drawing.type + (isTemp ? " is-temp" : "") + (state.selectedDrawingId === drawing.id ? " is-selected" : ""),
+      "data-drawing-id": drawing.id || null,
+      "data-drawing-type": drawing.type || null,
     });
   }
 
-  function renderOneDrawing(drawing) {
+  function drawTrend(drawing, isTemp) {
+    drawing = normalizeDrawing(drawing);
+    const p1 = valueToPoint(drawing.start);
+    const p2 = valueToPoint(drawing.end);
+    if (!p1 || !p2) return;
+
+    const group = buildGroup(drawing, isTemp);
+    const ext = drawing.type === "extend" || drawing.extendLeft || drawing.extendRight
+      ? extendTwoPoints(p1, p2, drawing)
+      : { a: p1, b: p2 };
+
+    if (!isTemp) drawHitLine(ext.a, ext.b, drawing.id, "body", group);
+    drawLineSvg(ext.a, ext.b, {
+      stroke: drawing.color,
+      width: drawing.width,
+      dash: drawing.dash,
+      id: drawing.id,
+      className: isTemp ? "bv-drawing-preview" : "bv-drawing-line",
+    }, group);
+
+    if (isTemp || state.selectedDrawingId === drawing.id) {
+      drawHandle(p1, group, drawing.id, "start");
+      drawHandle(p2, group, drawing.id, "end");
+    }
+  }
+
+  function drawHorizontal(drawing, isTemp) {
+    drawing = normalizeDrawing(drawing);
+    const p = valueToPoint(drawing.start);
+    if (!p) return;
+
+    const size = getLayerSize();
+    const group = buildGroup(drawing, isTemp);
+    const left = { x: 0, y: p.y };
+    const right = { x: size.width, y: p.y };
+
+    if (!isTemp) drawHitLine(left, right, drawing.id, "body", group);
+    drawLineSvg(left, right, { stroke: drawing.color, width: drawing.width, dash: drawing.dash, id: drawing.id }, group);
+    drawAxisBadge(formatNumber(Math.round(drawing.start.price)), size.width - 4, p.y, { anchor: "right", bg: drawing.color || "#1d4ed8" }, group);
+    if (isTemp || state.selectedDrawingId === drawing.id) drawHandle({ x: 28, y: p.y }, group, drawing.id, "start");
+  }
+
+  function drawVertical(drawing, isTemp) {
+    drawing = normalizeDrawing(drawing);
+    const p = valueToPoint(drawing.start);
+    if (!p) return;
+
+    const size = getLayerSize();
+    const group = buildGroup(drawing, isTemp);
+    const top = { x: p.x, y: 0 };
+    const bottom = { x: p.x, y: size.height };
+
+    if (!isTemp) drawHitLine(top, bottom, drawing.id, "body", group);
+    drawLineSvg(top, bottom, { stroke: drawing.color, width: drawing.width, dash: drawing.dash, id: drawing.id }, group);
+    drawAxisBadge(normalizeTimeForDisplay(drawing.start.time), p.x, size.height - 12, { anchor: "middle", bg: drawing.color || "#1d4ed8", minWidth: 90 }, group);
+    if (isTemp || state.selectedDrawingId === drawing.id) drawHandle({ x: p.x, y: 28 }, group, drawing.id, "start");
+  }
+
+  function getFiboGeometry(drawing) {
+    const p1 = valueToPoint(drawing.start);
+    const p2 = valueToPoint(drawing.end);
+    const p3 = valueToPoint(drawing.third);
+    if (!p1 || !p2) return null;
+    const dx = p2.x - p1.x;
+    const dy = p2.y - p1.y;
+    const len = Math.sqrt(dx * dx + dy * dy);
+    if (!len) return null;
+    const nx = -dy / len;
+    const ny = dx / len;
+    const distance = p3 ? ((p3.x - p1.x) * nx + (p3.y - p1.y) * ny) : 0;
+    return { p1, p2, p3, nx, ny, distance };
+  }
+
+  function drawFibo(drawing, isTemp) {
+    drawing = normalizeDrawing(drawing);
+    const geo = getFiboGeometry(drawing);
+    if (!geo) return;
+    const group = buildGroup(drawing, isTemp);
+    const levelItems = getEnabledFiboLevels(drawing);
+    const levels = levelItems.map(function (item) { return Number(item.value); });
+
+    if (!geo.p3) {
+      const ext = extendTwoPoints(geo.p1, geo.p2, drawing);
+      drawLineSvg(ext.a, ext.b, { stroke: drawing.color, width: drawing.width, dash: drawing.dash, className: "bv-drawing-preview" }, group);
+      drawHandle(geo.p1, group, drawing.id, "start");
+      drawHandle(geo.p2, group, drawing.id, "end");
+      return;
+    }
+
+    if (drawing.fill !== false) {
+      for (let i = 0; i < levels.length - 1; i++) {
+        const lv1 = levels[i];
+        const lv2 = levels[i + 1];
+        const a1 = { x: geo.p1.x + geo.nx * geo.distance * lv1, y: geo.p1.y + geo.ny * geo.distance * lv1 };
+        const b1 = { x: geo.p2.x + geo.nx * geo.distance * lv1, y: geo.p2.y + geo.ny * geo.distance * lv1 };
+        const a2 = { x: geo.p1.x + geo.nx * geo.distance * lv2, y: geo.p1.y + geo.ny * geo.distance * lv2 };
+        const b2 = { x: geo.p2.x + geo.nx * geo.distance * lv2, y: geo.p2.y + geo.ny * geo.distance * lv2 };
+        const e1 = extendTwoPoints(a1, b1, drawing);
+        const e2 = extendTwoPoints(a2, b2, drawing);
+        appendSvg("path", {
+          d: "M " + e1.a.x + " " + e1.a.y + " L " + e1.b.x + " " + e1.b.y + " L " + e2.b.x + " " + e2.b.y + " L " + e2.a.x + " " + e2.a.y + " Z",
+          fill: "rgba(37, 99, 235, " + (drawing.opacity || 0.14) + ")",
+          class: "bv-drawing-fill",
+        }, group);
+      }
+    }
+
+    levelItems.forEach(function (levelItem) {
+      const level = Number(levelItem.value);
+      const lineColor = normalizeDrawingColor(levelItem.color, drawing.color);
+      const start = { x: geo.p1.x + geo.nx * geo.distance * level, y: geo.p1.y + geo.ny * geo.distance * level };
+      const end = { x: geo.p2.x + geo.nx * geo.distance * level, y: geo.p2.y + geo.ny * geo.distance * level };
+      const ext = extendTwoPoints(start, end, drawing);
+      if (!isTemp) drawHitLine(ext.a, ext.b, drawing.id, "body", group);
+      drawLineSvg(ext.a, ext.b, {
+        stroke: lineColor,
+        width: level === 0 ? Math.max(2, drawing.width) : drawing.width,
+        dash: drawing.dash,
+        id: drawing.id,
+        className: isTemp ? "bv-drawing-preview" : "bv-drawing-line",
+      }, group);
+      drawTextSvg(String(level), ext.b.x + 6, ext.b.y, { fill: lineColor, size: 11, weight: "850", id: drawing.id }, group);
+    });
+
+    if (isTemp || state.selectedDrawingId === drawing.id) {
+      drawHandle(geo.p1, group, drawing.id, "start");
+      drawHandle(geo.p2, group, drawing.id, "end");
+      drawHandle(geo.p3, group, drawing.id, "third");
+    }
+  }
+
+  function drawCrosshairGuide() {
+    if (!state.crosshairValue || !state.crosshairPoint) return;
+
+    const size = getLayerSize();
+    const p = state.crosshairPoint;
+    const color = "#2563eb";
+    const group = appendSvg("g", { class: "bv-drawing-crosshair-guide" });
+    drawLineSvg({ x: 0, y: p.y }, { x: size.width, y: p.y }, { stroke: "rgba(37,99,235,.38)", width: 1, dash: "4 4" }, group);
+    drawLineSvg({ x: p.x, y: 0 }, { x: p.x, y: size.height }, { stroke: "rgba(37,99,235,.38)", width: 1, dash: "4 4" }, group);
+    drawAxisBadge(formatNumber(Math.round(state.crosshairValue.price)), size.width - 4, p.y, { anchor: "right", bg: color }, group);
+    drawAxisBadge(normalizeTimeForDisplay(state.crosshairValue.time), p.x, size.height - 12, { anchor: "middle", bg: color, minWidth: 90 }, group);
+  }
+
+  function renderOneDrawing(drawing, isTemp) {
+    drawing = normalizeDrawing(drawing);
     if (!drawing) return;
-    if (drawing.type === "trend") drawTrend(drawing);
-    if (drawing.type === "extend") drawExtended(drawing);
-    if (drawing.type === "hline") drawHorizontal(drawing);
-    if (drawing.type === "vline") drawVertical(drawing);
-    if (drawing.type === "fibo") drawFibo(drawing);
+    if (drawing.type === "trend" || drawing.type === "extend") drawTrend(drawing, isTemp);
+    if (drawing.type === "hline") drawHorizontal(drawing, isTemp);
+    if (drawing.type === "vline") drawVertical(drawing, isTemp);
+    if (drawing.type === "fibo") drawFibo(drawing, isTemp);
   }
 
   function renderDrawings() {
+    drawingLayer.classList.toggle("has-drawings", !!((state.drawings || []).length || state.tempDrawing));
     clearSvg();
-    state.drawings.forEach(renderOneDrawing);
-    if (state.tempDrawing) renderOneDrawing(state.tempDrawing);
+    (state.drawings || []).forEach(function (drawing) { renderOneDrawing(drawing, false); });
+    if (state.tempDrawing) renderOneDrawing(state.tempDrawing, true);
+    drawCrosshairGuide();
   }
 
-  function startDrawing(event) {
-    if (state.activeTool === "cursor") return;
-
-    event.preventDefault();
-
-    const point = getLocalPoint(event);
-    const value = pointToChartValue(point);
-    if (!value) return;
-
-    if (state.activeTool === "hline") {
-      state.drawings.push({ type: "hline", start: value });
-      renderDrawings();
-      return;
-    }
-
-    if (state.activeTool === "vline") {
-      state.drawings.push({ type: "vline", start: value });
-      renderDrawings();
-      return;
-    }
-
-    state.isDrawing = true;
-    state.startPoint = value;
-    state.tempDrawing = { type: state.activeTool, start: value, end: value };
-
-    try { drawingLayer.setPointerCapture(event.pointerId); } catch (e) {}
-
-    renderDrawings();
-  }
-
-  function moveDrawing(event) {
-    if (!state.isDrawing || !state.tempDrawing) return;
-
-    event.preventDefault();
-
-    const point = getLocalPoint(event);
-    const value = pointToChartValue(point);
-    if (!value) return;
-
-    state.tempDrawing.end = value;
-    renderDrawings();
-  }
-
-  function endDrawing(event) {
-    if (!state.isDrawing || !state.tempDrawing) return;
-
-    event.preventDefault();
-
-    const point = getLocalPoint(event);
-    const value = pointToChartValue(point);
-
-    if (value) state.tempDrawing.end = value;
-
-    const p1 = valueToPoint(state.tempDrawing.start);
-    const p2 = valueToPoint(state.tempDrawing.end);
-
-    if (p1 && p2) {
-      const distance = Math.hypot(p2.x - p1.x, p2.y - p1.y);
-      if (distance > 8) state.drawings.push(Object.assign({}, state.tempDrawing));
-    }
-
+  function completeDrawing(drawing) {
+    if (!drawing) return;
+    const fixed = normalizeDrawing(drawing);
+    if (!fixed) return;
+    pushDrawingHistory();
+    state.drawings.push(fixed);
+    saveDrawingsToStorage();
+    state.selectedDrawingId = fixed.id;
+    state.tempDrawing = null;
     state.isDrawing = false;
     state.startPoint = null;
-    state.tempDrawing = null;
+    state.fiboStage = 0;
+    setDrawingTool("cursor", { keepSelection: true });
+  }
 
-    try { drawingLayer.releasePointerCapture(event.pointerId); } catch (e) {}
+  let drawingPointerCandidate = null;
+  let suppressNextDrawingClick = false;
+  let lastDrawingClick = { id: null, time: 0 };
+  let crosshairRaf = null;
+
+  function getDrawingEventTarget(event) {
+    if (!event) return null;
+    const selector = ".bv-drawing-handle[data-drawing-id], .bv-drawing-hit[data-drawing-id], [data-drawing-id]";
+
+    if (event.target && event.target.closest) {
+      const direct = event.target.closest(selector);
+      if (direct) return direct;
+    }
+
+    if (typeof event.composedPath === "function") {
+      const path = event.composedPath();
+      for (let i = 0; i < path.length; i++) {
+        const node = path[i];
+        if (node && node.matches && node.matches(selector)) return node;
+        if (node && node.closest) {
+          const found = node.closest(selector);
+          if (found) return found;
+        }
+      }
+    }
+
+    return null;
+  }
+
+
+  function distanceToSegment(point, a, b) {
+    if (!point || !a || !b) return Infinity;
+    const vx = b.x - a.x;
+    const vy = b.y - a.y;
+    const wx = point.x - a.x;
+    const wy = point.y - a.y;
+    const len2 = vx * vx + vy * vy;
+    if (!len2) return Math.hypot(point.x - a.x, point.y - a.y);
+    const t = Math.max(0, Math.min(1, (wx * vx + wy * vy) / len2));
+    const px = a.x + t * vx;
+    const py = a.y + t * vy;
+    return Math.hypot(point.x - px, point.y - py);
+  }
+
+  function distanceToInfiniteLine(point, a, b) {
+    if (!point || !a || !b) return Infinity;
+    const vx = b.x - a.x;
+    const vy = b.y - a.y;
+    const len = Math.hypot(vx, vy);
+    if (!len) return Math.hypot(point.x - a.x, point.y - a.y);
+    return Math.abs((point.x - a.x) * vy - (point.y - a.y) * vx) / len;
+  }
+
+  function getExtendedLinePointsForHit(p1, p2, drawing) {
+    if (!p1 || !p2) return null;
+    if (drawing && (drawing.type === "extend" || drawing.extendLeft || drawing.extendRight)) {
+      return extendTwoPoints(p1, p2, drawing);
+    }
+    return { a: p1, b: p2 };
+  }
+
+  function drawingHandleHit(point, drawing) {
+    if (!point || !drawing || state.selectedDrawingId !== drawing.id) return null;
+    const threshold = 13;
+
+    if (drawing.type === "hline") {
+      const p = valueToPoint(drawing.start);
+      if (p && Math.hypot(point.x - 28, point.y - p.y) <= threshold) return "start";
+      return null;
+    }
+
+    if (drawing.type === "vline") {
+      const p = valueToPoint(drawing.start);
+      if (p && Math.hypot(point.x - p.x, point.y - 28) <= threshold) return "start";
+      return null;
+    }
+
+    const candidates = [
+      { role: "start", point: valueToPoint(drawing.start) },
+      { role: "end", point: valueToPoint(drawing.end) },
+      { role: "third", point: valueToPoint(drawing.third) },
+    ];
+
+    for (let i = 0; i < candidates.length; i++) {
+      const item = candidates[i];
+      if (!item.point) continue;
+      if (Math.hypot(point.x - item.point.x, point.y - item.point.y) <= threshold) return item.role;
+    }
+
+    return null;
+  }
+
+  function hitTestDrawingAtPoint(point) {
+    if (!point) return null;
+    const drawings = (state.drawings || []).slice().reverse();
+    const hitDistance = 10;
+
+    for (let i = 0; i < drawings.length; i++) {
+      const drawing = normalizeDrawing(drawings[i]);
+      if (!drawing) continue;
+
+      const handleRole = drawingHandleHit(point, drawing);
+      if (handleRole) return { id: drawing.id, role: handleRole, drawing: drawing, isHandle: true };
+
+      if (drawing.type === "hline") {
+        const p = valueToPoint(drawing.start);
+        if (p && Math.abs(point.y - p.y) <= hitDistance) return { id: drawing.id, role: "body", drawing: drawing };
+        continue;
+      }
+
+      if (drawing.type === "vline") {
+        const p = valueToPoint(drawing.start);
+        if (p && Math.abs(point.x - p.x) <= hitDistance) return { id: drawing.id, role: "body", drawing: drawing };
+        continue;
+      }
+
+      if (drawing.type === "trend" || drawing.type === "extend") {
+        const p1 = valueToPoint(drawing.start);
+        const p2 = valueToPoint(drawing.end);
+        const ext = getExtendedLinePointsForHit(p1, p2, drawing);
+        if (ext && distanceToSegment(point, ext.a, ext.b) <= hitDistance) {
+          return { id: drawing.id, role: "body", drawing: drawing };
+        }
+        continue;
+      }
+
+      if (drawing.type === "fibo") {
+        const geo = getFiboGeometry(drawing);
+        if (!geo) continue;
+
+        if (!geo.p3) {
+          const ext = extendTwoPoints(geo.p1, geo.p2, drawing);
+          if (distanceToSegment(point, ext.a, ext.b) <= hitDistance) return { id: drawing.id, role: "body", drawing: drawing };
+          continue;
+        }
+
+        const levelItems = getEnabledFiboLevels(drawing);
+        for (let j = 0; j < levelItems.length; j++) {
+          const level = Number(levelItems[j].value);
+          const start = { x: geo.p1.x + geo.nx * geo.distance * level, y: geo.p1.y + geo.ny * geo.distance * level };
+          const end = { x: geo.p2.x + geo.nx * geo.distance * level, y: geo.p2.y + geo.ny * geo.distance * level };
+          const ext = extendTwoPoints(start, end, drawing);
+          if (distanceToSegment(point, ext.a, ext.b) <= hitDistance) return { id: drawing.id, role: "body", drawing: drawing };
+        }
+      }
+    }
+
+    return null;
+  }
+
+  function hitTestDrawingEvent(event) {
+    if (!event) return null;
+
+    const target = getDrawingEventTarget(event);
+    if (target && target.getAttribute("data-drawing-id")) {
+      return {
+        id: target.getAttribute("data-drawing-id"),
+        role: target.getAttribute("data-drawing-role") || "body",
+        drawing: getDrawingById(target.getAttribute("data-drawing-id")),
+        isHandle: target.classList && target.classList.contains("bv-drawing-handle"),
+      };
+    }
+
+    return hitTestDrawingAtPoint(getLocalPoint(event));
+  }
+
+  function beginDrawingDrag(event, hit) {
+    if (!hit || !hit.id) return false;
+    const drawing = getDrawingById(hit.id);
+    if (!drawing) return false;
+
+    event.preventDefault();
+    event.stopPropagation();
+
+    pushDrawingHistory();
+    state.selectedDrawingId = hit.id;
+
+    drawingDrag = {
+      id: hit.id,
+      role: hit.role || "body",
+      pointerId: event.pointerId,
+      startClientX: event.clientX,
+      startClientY: event.clientY,
+      original: cloneDrawing(drawing),
+      moved: false,
+    };
+
+    chart.applyOptions({ handleScroll: false, handleScale: false });
+    try {
+      if (event.currentTarget && event.currentTarget.setPointerCapture) event.currentTarget.setPointerCapture(event.pointerId);
+      else drawingLayer.setPointerCapture(event.pointerId);
+    } catch (e) {}
+
+    renderDrawings();
+    return true;
+  }
+
+  function handleChartWrapDrawingPointerDown(event) {
+    if (normalizeDrawingTool(state.activeTool) !== "cursor") return;
+    if (event.target && event.target.closest && event.target.closest(".bv-drawing-settings-modal, .bv-drawing-color-palette, [data-tool], .indicator-panel, .group-panel, .my-stock-panel")) return;
+
+    const hit = hitTestDrawingAtPoint(getLocalPoint(event));
+    if (!hit) return;
+
+    beginDrawingDrag(event, hit);
+  }
+
+  function handleChartWrapDrawingClick(event) {
+    if (normalizeDrawingTool(state.activeTool) !== "cursor") return;
+    if (suppressClickAfterDrag) {
+      suppressClickAfterDrag = false;
+      return;
+    }
+
+    const hit = hitTestDrawingAtPoint(getLocalPoint(event));
+    if (!hit) {
+      state.selectedDrawingId = null;
+      renderDrawings();
+      return;
+    }
+
+    const drawing = getDrawingById(hit.id);
+    if (!drawing) return;
+
+    const now = Date.now();
+    const isDoubleTap = lastDrawingClick.id === hit.id && (now - lastDrawingClick.time) < 430;
+
+    event.preventDefault();
+    event.stopPropagation();
+
+    state.selectedDrawingId = hit.id;
+    renderDrawings();
+
+    if ((event.detail >= 2 || isDoubleTap) && drawing) {
+      lastDrawingClick = { id: null, time: 0 };
+      openDrawingSettings(drawing);
+      return;
+    }
+
+    lastDrawingClick = { id: hit.id, time: now };
+  }
+
+  function handleChartWrapDrawingDoubleClick(event) {
+    if (normalizeDrawingTool(state.activeTool) !== "cursor") return;
+
+    const hit = hitTestDrawingAtPoint(getLocalPoint(event));
+    if (!hit) return;
+
+    const drawing = getDrawingById(hit.id);
+    if (!drawing) return;
+
+    event.preventDefault();
+    event.stopPropagation();
+
+    state.selectedDrawingId = hit.id;
+    renderDrawings();
+    openDrawingSettings(drawing);
+  }
+
+  function handleChartWrapDrawingContextMenu(event) {
+    if (normalizeDrawingTool(state.activeTool) !== "cursor") return;
+
+    const hit = hitTestDrawingAtPoint(getLocalPoint(event));
+    if (!hit) return;
+
+    const drawing = getDrawingById(hit.id);
+    if (!drawing) return;
+
+    event.preventDefault();
+    event.stopPropagation();
+
+    state.selectedDrawingId = hit.id;
+    renderDrawings();
+    openDrawingSettings(drawing);
+  }
+
+  function updateDrawingCrosshairFromPointer(event) {
+    if (!event || drawingDrag) return;
+    const resolved = pointFromEvent(event);
+    if (!resolved) return;
+
+    state.crosshairPoint = resolved.point;
+    state.crosshairValue = resolved.value;
+
+    if (crosshairRaf) return;
+    crosshairRaf = requestAnimationFrame(function () {
+      crosshairRaf = null;
+      renderDrawings();
+    });
+  }
+
+  function processDrawingToolTap(event) {
+    const active = normalizeDrawingTool(state.activeTool);
+    if (active === "cursor") return false;
+
+    const resolved = pointFromEvent(event);
+    if (!resolved) return false;
+    const value = resolved.value;
+
+    event.preventDefault();
+    event.stopPropagation();
+
+    if (active === "hline") {
+      completeDrawing({ id: makeDrawingId("hline"), type: "hline", start: value });
+      return true;
+    }
+
+    if (active === "vline") {
+      completeDrawing({ id: makeDrawingId("vline"), type: "vline", start: value });
+      return true;
+    }
+
+    if (active === "trend" || active === "extend") {
+      if (!state.tempDrawing || state.tempDrawing.type !== active) {
+        state.tempDrawing = normalizeDrawing({ id: makeDrawingId(active), type: active, start: value, end: value });
+        state.isDrawing = true;
+        state.startPoint = value;
+        renderDrawings();
+        return true;
+      }
+
+      state.tempDrawing.end = value;
+      completeDrawing(state.tempDrawing);
+      return true;
+    }
+
+    if (active === "fibo") {
+      if (!state.tempDrawing || state.tempDrawing.type !== "fibo") {
+        state.tempDrawing = normalizeDrawing({ id: makeDrawingId("fibo"), type: "fibo", start: value, end: value, third: null });
+        state.fiboStage = 1;
+        state.isDrawing = true;
+        state.startPoint = value;
+        renderDrawings();
+        return true;
+      }
+
+      if (state.fiboStage === 1) {
+        state.tempDrawing.end = value;
+        state.fiboStage = 2;
+        renderDrawings();
+        return true;
+      }
+
+      state.tempDrawing.third = value;
+      completeDrawing(state.tempDrawing);
+      return true;
+    }
+
+    return false;
+  }
+
+  function clonePointerEventForChart(event, type) {
+    const common = {
+      bubbles: true,
+      cancelable: true,
+      composed: true,
+      pointerId: event.pointerId,
+      pointerType: event.pointerType || "mouse",
+      isPrimary: event.isPrimary !== false,
+      clientX: event.clientX,
+      clientY: event.clientY,
+      screenX: event.screenX,
+      screenY: event.screenY,
+      pageX: event.pageX,
+      pageY: event.pageY,
+      button: event.button,
+      buttons: event.buttons,
+      ctrlKey: event.ctrlKey,
+      shiftKey: event.shiftKey,
+      altKey: event.altKey,
+      metaKey: event.metaKey,
+      pressure: event.pressure || 0,
+      width: event.width || 1,
+      height: event.height || 1,
+    };
+    try { return new PointerEvent(type || event.type, common); }
+    catch (e) { return new MouseEvent(type || event.type.replace("pointer", "mouse"), common); }
+  }
+
+  function cleanupDrawingPassThrough() {
+    if (!drawingPassThrough) return;
+    drawingLayer.style.pointerEvents = drawingPassThrough.previousPointerEvents || "";
+    drawingPassThrough = null;
+    window.removeEventListener("pointerup", cleanupDrawingPassThrough, true);
+    window.removeEventListener("pointercancel", cleanupDrawingPassThrough, true);
+  }
+
+  function startChartPassThrough(event) {
+    if (drawingPassThrough || normalizeDrawingTool(state.activeTool) !== "cursor") return false;
+
+    const previousPointerEvents = drawingLayer.style.pointerEvents;
+    drawingLayer.style.pointerEvents = "none";
+
+    const target = document.elementFromPoint(event.clientX, event.clientY);
+    if (!target || target === drawingLayer || drawingLayer.contains(target)) {
+      drawingLayer.style.pointerEvents = previousPointerEvents;
+      return false;
+    }
+
+    drawingPassThrough = { previousPointerEvents: previousPointerEvents };
+    window.addEventListener("pointerup", cleanupDrawingPassThrough, true);
+    window.addEventListener("pointercancel", cleanupDrawingPassThrough, true);
+
+    try { target.dispatchEvent(clonePointerEventForChart(event, "pointerdown")); } catch (e) {}
+    event.preventDefault();
+    event.stopPropagation();
+    return true;
+  }
+
+  function handleDrawingClick(event) {
+    if (suppressClickAfterDrag) {
+      suppressClickAfterDrag = false;
+      return;
+    }
+    if (suppressNextDrawingClick) {
+      suppressNextDrawingClick = false;
+      return;
+    }
+
+    const active = normalizeDrawingTool(state.activeTool);
+    const target = getDrawingEventTarget(event);
+
+    if (active !== "cursor") {
+      processDrawingToolTap(event);
+      return;
+    }
+
+    if (target && target.getAttribute("data-drawing-id")) {
+      const id = target.getAttribute("data-drawing-id");
+      const drawing = getDrawingById(id);
+      const now = Date.now();
+      const isDoubleTap = lastDrawingClick.id === id && (now - lastDrawingClick.time) < 430;
+
+      state.selectedDrawingId = id;
+      renderDrawings();
+
+      event.preventDefault();
+      event.stopPropagation();
+
+      if ((event.detail >= 2 || isDoubleTap) && drawing) {
+        lastDrawingClick = { id: null, time: 0 };
+        openDrawingSettings(drawing);
+        return;
+      }
+
+      lastDrawingClick = { id: id, time: now };
+      return;
+    }
+
+    state.selectedDrawingId = null;
+    renderDrawings();
+  }
+
+  function handleDrawingMove(event) {
+    const active = normalizeDrawingTool(state.activeTool);
+    const target = getDrawingEventTarget(event);
+    state.hoverDrawingId = target ? target.getAttribute("data-drawing-id") : null;
+
+    const resolved = pointFromEvent(event);
+    if (resolved) {
+      state.crosshairPoint = resolved.point;
+      state.crosshairValue = resolved.value;
+    }
+
+    if (state.hoverDrawingId && active === "cursor") {
+      drawingLayer.style.cursor = "move";
+    } else {
+      drawingLayer.style.cursor = "crosshair";
+    }
+
+    if (drawingDrag) return;
+
+    if (state.tempDrawing && resolved) {
+      if (state.tempDrawing.type === "fibo" && state.fiboStage === 2) state.tempDrawing.third = resolved.value;
+      else state.tempDrawing.end = resolved.value;
+      renderDrawings();
+      return;
+    }
+
+    if (["hline", "vline", "trend", "extend", "fibo"].includes(active)) {
+      renderDrawings();
+    }
+  }
+
+  function handleDrawingPointerDown(event) {
+    const active = normalizeDrawingTool(state.activeTool);
+
+    if (active !== "cursor") {
+      drawingPointerCandidate = {
+        pointerId: event.pointerId,
+        startClientX: event.clientX,
+        startClientY: event.clientY,
+      };
+      try { drawingLayer.setPointerCapture(event.pointerId); } catch (e) {}
+      event.preventDefault();
+      event.stopPropagation();
+      return;
+    }
+
+    const hit = hitTestDrawingEvent(event);
+    if (!hit || !hit.id) return;
+
+    beginDrawingDrag(event, hit);
+  }
+
+  function movedValueFromOriginal(value, dx, dy) {
+    const p = valueToPoint(value);
+    if (!p) return value;
+    const moved = pointToChartValue({ x: p.x + dx, y: p.y + dy });
+    return moved || value;
+  }
+
+  function handleDrawingDragMove(event) {
+    if (!drawingDrag) return;
+    event.preventDefault();
+    event.stopPropagation();
+
+    const drawing = getDrawingById(drawingDrag.id);
+    if (!drawing) return;
+
+    const dx = event.clientX - drawingDrag.startClientX;
+    const dy = event.clientY - drawingDrag.startClientY;
+    if (Math.abs(dx) > 1 || Math.abs(dy) > 1) drawingDrag.moved = true;
+
+    const original = drawingDrag.original;
+    const role = drawingDrag.role || "body";
+
+    function moveOnePoint(key) {
+      if (!original[key]) return;
+      drawing[key] = movedValueFromOriginal(original[key], dx, dy);
+    }
+
+    if (role === "start" || role === "end" || role === "third") {
+      if (drawing.type === "hline") {
+        const p = valueToPoint(original.start);
+        if (p) drawing.start = Object.assign({}, drawing.start, { price: candleSeries.coordinateToPrice(p.y + dy) || drawing.start.price });
+      } else if (drawing.type === "vline") {
+        const p = valueToPoint(original.start);
+        if (p) {
+          const time = normalizeTime(chart.timeScale().coordinateToTime(p.x + dx));
+          if (time) drawing.start = Object.assign({}, drawing.start, { time });
+        }
+      } else {
+        moveOnePoint(role);
+      }
+    } else if (drawing.type === "hline") {
+      const p = valueToPoint(original.start);
+      if (p) drawing.start = Object.assign({}, drawing.start, { price: candleSeries.coordinateToPrice(p.y + dy) || drawing.start.price });
+    } else if (drawing.type === "vline") {
+      const p = valueToPoint(original.start);
+      if (p) {
+        const time = normalizeTime(chart.timeScale().coordinateToTime(p.x + dx));
+        if (time) drawing.start = Object.assign({}, drawing.start, { time });
+      }
+    } else {
+      drawing.start = movedValueFromOriginal(original.start, dx, dy);
+      drawing.end = movedValueFromOriginal(original.end, dx, dy);
+      if (original.third) drawing.third = movedValueFromOriginal(original.third, dx, dy);
+    }
 
     renderDrawings();
   }
 
-  drawingLayer.addEventListener("pointerdown", startDrawing);
-  drawingLayer.addEventListener("pointermove", moveDrawing);
-  drawingLayer.addEventListener("pointerup", endDrawing);
-  drawingLayer.addEventListener("pointercancel", endDrawing);
+  function handleDrawingPointerUp(event) {
+    if (!drawingDrag && drawingPointerCandidate && normalizeDrawingTool(state.activeTool) !== "cursor") {
+      const dx = event.clientX - drawingPointerCandidate.startClientX;
+      const dy = event.clientY - drawingPointerCandidate.startClientY;
+      const isTap = Math.hypot(dx, dy) < 12;
+      try { drawingLayer.releasePointerCapture(drawingPointerCandidate.pointerId); } catch (e) {}
+      drawingPointerCandidate = null;
+      if (isTap) {
+        suppressNextDrawingClick = true;
+        processDrawingToolTap(event);
+      }
+      return;
+    }
+
+    if (!drawingDrag) return;
+    event.preventDefault();
+    event.stopPropagation();
+    try { drawingLayer.releasePointerCapture(drawingDrag.pointerId); } catch (e) {}
+    try { chartWrap.releasePointerCapture(drawingDrag.pointerId); } catch (e) {}
+    suppressClickAfterDrag = !!drawingDrag.moved;
+    drawingDrag = null;
+    saveDrawingsToStorage();
+    if (normalizeDrawingTool(state.activeTool) === "cursor") chart.applyOptions({ handleScroll: true, handleScale: true });
+    renderDrawings();
+  }
+
+  function rowIndexByTime(time) {
+    const rows = state.rows || [];
+    const key = String(normalizeTime(time));
+    let found = rows.findIndex(function (row) { return String(normalizeTime(row.time)) === key; });
+    if (found >= 0) return found;
+    const x = chart.timeScale().timeToCoordinate(time);
+    if (x === null || x === undefined) return -1;
+    let best = -1;
+    let bestDist = Infinity;
+    rows.forEach(function (row, index) {
+      const rx = chart.timeScale().timeToCoordinate(row.time);
+      if (rx === null || rx === undefined) return;
+      const dist = Math.abs(rx - x);
+      if (dist < bestDist) {
+        bestDist = dist;
+        best = index;
+      }
+    });
+    return best;
+  }
+
+  function shiftTimeByRows(time, step) {
+    const rows = state.rows || [];
+    if (!rows.length) return time;
+    const index = rowIndexByTime(time);
+    if (index < 0) return time;
+    const next = Math.max(0, Math.min(rows.length - 1, index + step));
+    return rows[next].time;
+  }
+
+  function nudgeValue(value, timeStep, priceStep) {
+    if (!value) return value;
+    const next = Object.assign({}, value);
+    if (timeStep) next.time = shiftTimeByRows(next.time, timeStep);
+    if (priceStep) next.price = Number(next.price || 0) + priceStep;
+    return next;
+  }
+
+  function nudgeSelectedDrawing(key) {
+    if (!state.selectedDrawingId) return false;
+    const drawing = getDrawingById(state.selectedDrawingId);
+    if (!drawing) return false;
+
+    let timeStep = 0;
+    let priceStep = 0;
+    if (key === "ArrowLeft") timeStep = -1;
+    if (key === "ArrowRight") timeStep = 1;
+    if (key === "ArrowUp") priceStep = 0.5;
+    if (key === "ArrowDown") priceStep = -0.5;
+    if (!timeStep && !priceStep) return false;
+
+    pushDrawingHistory();
+
+    if (drawing.type === "hline") {
+      if (priceStep) drawing.start = nudgeValue(drawing.start, 0, priceStep);
+    } else if (drawing.type === "vline") {
+      if (timeStep) drawing.start = nudgeValue(drawing.start, timeStep, 0);
+    } else {
+      drawing.start = nudgeValue(drawing.start, timeStep, priceStep);
+      drawing.end = nudgeValue(drawing.end, timeStep, priceStep);
+      if (drawing.third) drawing.third = nudgeValue(drawing.third, timeStep, priceStep);
+    }
+
+    saveDrawingsToStorage();
+    renderDrawings();
+    return true;
+  }
+
+  function handleDrawingContextMenu(event) {
+    const target = getDrawingEventTarget(event);
+    const id = target ? target.getAttribute("data-drawing-id") : null;
+    if (!id) return;
+
+    const drawing = getDrawingById(id);
+    if (!drawing) return;
+
+    event.preventDefault();
+    event.stopPropagation();
+    state.selectedDrawingId = id;
+    renderDrawings();
+    openDrawingSettings(drawing);
+  }
+
+  function handleDrawingDoubleClick(event) {
+    const target = getDrawingEventTarget(event);
+    const id = target ? target.getAttribute("data-drawing-id") : state.selectedDrawingId;
+    if (!id) return;
+
+    const drawing = getDrawingById(id);
+    if (!drawing) return;
+
+    event.preventDefault();
+    event.stopPropagation();
+    state.selectedDrawingId = id;
+    lastDrawingClick = { id: null, time: 0 };
+    renderDrawings();
+    openDrawingSettings(drawing);
+  }
+
+  function drawingColorButton(id, label, value) {
+    const color = normalizeDrawingColor(value, "#1d4ed8");
+    return `
+      <div class="bv-drawing-setting-field">
+        <span>${escapeDrawingHtml(label)}</span>
+        <button type="button" class="bv-drawing-color-button" data-drawing-color-button data-target="${escapeDrawingHtml(id)}" style="--draw-color:${escapeDrawingHtml(color)}"></button>
+        <input id="${escapeDrawingHtml(id)}" type="hidden" value="${escapeDrawingHtml(color)}">
+      </div>`;
+  }
+
+  function fiboLevelRowHtml(item, index) {
+    const id = "drawFiboColor_" + index;
+    const color = normalizeDrawingColor(item.color, "#1d4ed8");
+    return `
+      <div class="bv-fibo-level-row" data-fibo-level-row>
+        <input class="bv-fibo-level-check" type="checkbox" data-fibo-enabled ${item.enabled !== false ? "checked" : ""} title="표시">
+        <input class="bv-fibo-level-value" type="number" step="0.5" data-fibo-value value="${escapeDrawingHtml(item.value)}" title="레벨 값">
+        <button type="button" class="bv-fibo-level-color" data-drawing-color-button data-target="${escapeDrawingHtml(id)}" style="--draw-color:${escapeDrawingHtml(color)}" title="색상 선택"></button>
+        <input id="${escapeDrawingHtml(id)}" data-fibo-color type="hidden" value="${escapeDrawingHtml(color)}">
+      </div>`;
+  }
+
+  function openDrawingPalette(button) {
+    closeDrawingPalette();
+    const targetId = button.dataset.target;
+    const input = document.getElementById(targetId);
+    if (!input) return;
+
+    const palette = document.createElement("div");
+    palette.className = "bv-drawing-color-palette";
+    palette.innerHTML = `
+      <strong>색상 선택</strong>
+      <div class="bv-drawing-color-grid">
+        ${DRAWING_PALETTE_COLORS.map(function (color) {
+          const active = String(input.value).toLowerCase() === color.toLowerCase();
+          return `<button type="button" class="bv-drawing-color-dot ${active ? "active" : ""}" data-color="${escapeDrawingHtml(color)}" style="--dot-color:${escapeDrawingHtml(color)}"></button>`;
+        }).join("")}
+      </div>`;
+    document.body.appendChild(palette);
+
+    const rect = button.getBoundingClientRect();
+    const width = 360;
+    const left = Math.min(window.innerWidth - width - 12, Math.max(12, rect.left - 20));
+    const top = Math.min(window.innerHeight - 360, Math.max(70, rect.bottom + 10));
+    palette.style.left = left + "px";
+    palette.style.top = top + "px";
+
+    palette.addEventListener("click", function (event) {
+      const dot = event.target.closest("[data-color]");
+      if (!dot) return;
+      input.value = dot.dataset.color;
+      button.style.setProperty("--draw-color", dot.dataset.color);
+      closeDrawingPalette();
+    });
+  }
+
+  function closeDrawingPalette() {
+    document.querySelectorAll(".bv-drawing-color-palette").forEach(function (el) { el.remove(); });
+  }
+
+  document.addEventListener("pointerdown", function (event) {
+    if (event.target && event.target.closest && (event.target.closest(".bv-drawing-color-palette") || event.target.closest("[data-drawing-color-button]"))) return;
+    closeDrawingPalette();
+  }, true);
+
+  function ensureDrawingSettingsModal() {
+    if (drawingSettingsModal) return drawingSettingsModal;
+
+    drawingSettingsModal = document.createElement("div");
+    drawingSettingsModal.className = "bv-drawing-settings-modal";
+    drawingSettingsModal.innerHTML = `
+      <div class="bv-drawing-settings-panel">
+        <div class="bv-drawing-settings-head">
+          <strong id="drawingSettingsTitle">도구 설정</strong>
+          <button type="button" data-close-drawing-settings>×</button>
+        </div>
+        <div class="bv-drawing-settings-body" id="drawingSettingsBody"></div>
+        <div class="bv-drawing-settings-foot">
+          <button type="button" class="ghost" data-close-drawing-settings>취소</button>
+          <button type="button" class="primary" id="saveDrawingSettings">확인</button>
+        </div>
+      </div>`;
+    document.body.appendChild(drawingSettingsModal);
+
+    drawingSettingsModal.addEventListener("click", function (event) {
+      if (event.target === drawingSettingsModal || event.target.closest("[data-close-drawing-settings]")) {
+        closeDrawingSettings();
+        return;
+      }
+      const colorBtn = event.target.closest("[data-drawing-color-button]");
+      if (colorBtn) {
+        event.preventDefault();
+        event.stopPropagation();
+        openDrawingPalette(colorBtn);
+      }
+    });
+
+    drawingSettingsModal.querySelector("#saveDrawingSettings").addEventListener("click", applyDrawingSettings);
+    return drawingSettingsModal;
+  }
+
+  function openDrawingSettings(drawing) {
+    drawing = normalizeDrawing(drawing);
+    const modal = ensureDrawingSettingsModal();
+    const body = modal.querySelector("#drawingSettingsBody");
+    const type = drawing.type;
+    modal.querySelector("#drawingSettingsTitle").textContent = drawingTitle(type) + " 설정";
+    body.dataset.drawingId = drawing.id;
+
+    const extendFields = (type === "trend" || type === "extend" || type === "fibo") ? `
+      <section class="bv-drawing-extend-section">
+        <div class="bv-drawing-extend-head">
+          <strong>익스텐드</strong>
+          <span>선이 차트 밖까지 이어지는 방향</span>
+        </div>
+        <div class="bv-drawing-extend-grid">
+          <label class="bv-drawing-extend-card ${drawing.extendLeft ? "checked" : ""}">
+            <input id="drawExtendLeft" type="checkbox" ${drawing.extendLeft ? "checked" : ""}>
+            <span class="bv-extend-icon left" aria-hidden="true"></span>
+            <b>왼쪽</b>
+          </label>
+          <label class="bv-drawing-extend-card ${drawing.extendRight ? "checked" : ""}">
+            <input id="drawExtendRight" type="checkbox" ${drawing.extendRight ? "checked" : ""}>
+            <span class="bv-extend-icon right" aria-hidden="true"></span>
+            <b>오른쪽</b>
+          </label>
+        </div>
+      </section>` : "";
+
+    const fiboRows = type === "fibo" ? normalizeFiboLevels(drawing, drawing.color).slice(0, 10) : [];
+    const fiboFields = type === "fibo" ? `
+      <section class="bv-fibo-level-section">
+        <div class="bv-fibo-level-head">
+          <strong>피보나치 레벨</strong>
+          <span>표시 · 수치 · 색상</span>
+        </div>
+        <div class="bv-fibo-level-list">
+          ${fiboRows.map(function (item, index) { return fiboLevelRowHtml(item, index); }).join("")}
+        </div>
+      </section>
+      <label class="bv-drawing-setting-field"><span>배경 채우기</span><input id="drawFill" type="checkbox" ${drawing.fill !== false ? "checked" : ""}></label>
+      <label class="bv-drawing-setting-field"><span>배경 투명도</span><input id="drawOpacity" type="number" min="0.02" max="0.85" step="0.01" value="${escapeDrawingHtml(drawing.opacity || 0.14)}"></label>` : "";
+
+    body.innerHTML = `
+      <div class="bv-drawing-setting-grid">
+        ${drawingColorButton("drawColor", "색상", drawing.color)}
+        <label class="bv-drawing-setting-field"><span>선 굵기</span><select id="drawWidth"><option value="1">1px</option><option value="2">2px</option><option value="3">3px</option><option value="4">4px</option><option value="5">5px</option><option value="6">6px</option></select></label>
+        ${extendFields}
+        ${fiboFields}
+      </div>`;
+
+    const widthEl = body.querySelector("#drawWidth");
+    if (widthEl) widthEl.value = String(drawing.width || 2);
+    modal.classList.add("open");
+  }
+
+  function closeDrawingSettings() {
+    closeDrawingPalette();
+    if (drawingSettingsModal) drawingSettingsModal.classList.remove("open");
+  }
+
+  function applyDrawingSettings() {
+    const modal = ensureDrawingSettingsModal();
+    const body = modal.querySelector("#drawingSettingsBody");
+    const drawing = getDrawingById(body.dataset.drawingId);
+    if (!drawing) return;
+
+    pushDrawingHistory();
+    drawing.color = normalizeDrawingColor((body.querySelector("#drawColor") || {}).value, drawing.color);
+    drawing.width = Math.min(6, Math.max(1, Number((body.querySelector("#drawWidth") || {}).value || drawing.width || 2)));
+
+    const extendLeft = body.querySelector("#drawExtendLeft");
+    const extendRight = body.querySelector("#drawExtendRight");
+    if (extendLeft) drawing.extendLeft = !!extendLeft.checked;
+    if (extendRight) drawing.extendRight = !!extendRight.checked;
+
+    const fiboRows = body.querySelectorAll("[data-fibo-level-row]");
+    if (fiboRows && fiboRows.length) {
+      const fiboLevels = Array.from(fiboRows).map(function (row) {
+        const value = Number((row.querySelector("[data-fibo-value]") || {}).value);
+        const color = (row.querySelector("[data-fibo-color]") || {}).value || drawing.color;
+        const enabled = !!((row.querySelector("[data-fibo-enabled]") || {}).checked);
+        return Number.isFinite(value) ? { value: value, enabled: enabled, color: normalizeDrawingColor(color, drawing.color) } : null;
+      }).filter(Boolean);
+      drawing.fiboLevels = fiboLevels.length ? fiboLevels : cloneDefaultFiboLevels();
+      drawing.levels = drawing.fiboLevels.filter(function (item) { return item.enabled !== false; }).map(function (item) { return item.value; });
+    }
+
+    const fillEl = body.querySelector("#drawFill");
+    const opacityEl = body.querySelector("#drawOpacity");
+    if (fillEl) drawing.fill = !!fillEl.checked;
+    if (opacityEl) drawing.opacity = Math.min(0.85, Math.max(0.02, Number(opacityEl.value || 0.14)));
+
+    saveDrawingsToStorage();
+    renderDrawings();
+    closeDrawingSettings();
+  }
+
+  function svgIcon(name) {
+    const icons = {
+      cursor: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v18M3 12h18" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/><circle cx="12" cy="12" r="3.2" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>',
+      trend: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 18 18 6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/><circle cx="4" cy="18" r="2.1" fill="currentColor"/><circle cx="18" cy="6" r="2.1" fill="currentColor"/></svg>',
+      extend: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 19.5 20.5 4.5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/><path d="M17 4.5h3.5V8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M7 19.5H3.5V16" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+      hline: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12h18" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg>',
+      vline: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v18" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg>',
+      fibo: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 18 20 6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M3 13 19 1" stroke="currentColor" stroke-width="1.35" opacity=".48"/><path d="M6 22 22 10" stroke="currentColor" stroke-width="1.35" opacity=".48"/></svg>',
+      undo: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 7H4v5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 12c1.4-4.2 5-6.4 9-5.6 4 .8 6.8 4.4 6.4 8.5-.4 4-3.8 7.1-7.9 7.1-2.7 0-5.2-1.3-6.7-3.5" stroke="currentColor" stroke-width="2.2" fill="none" stroke-linecap="round"/></svg>',
+      clear: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M9 4h6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M7 7l1 13h8l1-13" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M10 11v5M14 11v5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
+    };
+    return icons[name] || icons.cursor;
+  }
+
+  function installDrawingUiSkin() {
+    if (!document.getElementById("bitgakDrawingUiStyle")) {
+      const style = document.createElement("style");
+      style.id = "bitgakDrawingUiStyle";
+      style.textContent = `
+        #chartWrap, #tvChart { cursor: crosshair; }
+        #drawingLayer { touch-action: none; pointer-events: none; overflow: visible; }
+        .drawing-mode #drawingLayer { pointer-events: auto; }
+        #drawingLayer.has-drawings .bv-drawing-hit { cursor: move; pointer-events: stroke; }
+        #drawingLayer.has-drawings .bv-drawing-handle { pointer-events: all; cursor: grab; filter: drop-shadow(0 1px 2px rgba(15,23,42,.24)); }
+        #drawingLayer.has-drawings .bv-drawing-handle:active { cursor: grabbing; }
+        #drawingLayer .bv-drawing-line, #drawingLayer .bv-drawing-preview, #drawingLayer .bv-drawing-fill, #drawingLayer .bv-drawing-axis-badge, #drawingLayer .bv-drawing-axis-badge-text, #drawingLayer .bv-drawing-crosshair-guide * { pointer-events: none; }
+        #drawingLayer .bv-drawing-preview { opacity: .94; }
+        #chartWrap, #tvChart { overflow: visible; }
+        .drawing-mode #drawingLayer { cursor: crosshair; }
+        .bv-drawing-settings-modal { position: fixed; inset: 0; z-index: 100000; display: none; place-items: center; background: rgba(15,23,42,.34); backdrop-filter: blur(6px); }
+        .bv-drawing-settings-modal.open { display: grid; }
+        .bv-drawing-settings-panel { width: min(560px, calc(100vw - 28px)); border-radius: 18px; background: #fff; color: #0f172a; box-shadow: 0 24px 80px rgba(2,6,23,.28); border: 1px solid rgba(148,163,184,.24); overflow: hidden; }
+        .bv-drawing-settings-head, .bv-drawing-settings-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 15px 17px; border-bottom: 1px solid #e2e8f0; }
+        .bv-drawing-settings-foot { justify-content: flex-end; border-top: 1px solid #e2e8f0; border-bottom: 0; }
+        .bv-drawing-settings-head strong { font-size: 19px; font-weight: 950; }
+        .bv-drawing-settings-head button { width: 34px; height: 34px; border: 0; border-radius: 10px; background: #f1f5f9; font-size: 24px; line-height: 1; color: #334155; }
+        .bv-drawing-settings-body { padding: 17px; }
+        .bv-drawing-setting-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+        .bv-drawing-setting-field { display: grid; gap: 7px; font-size: 12px; font-weight: 850; color: #475569; }
+        .bv-drawing-setting-field.wide { grid-column: 1 / -1; }
+        .bv-drawing-setting-field input[type='number'], .bv-drawing-setting-field input[type='text'], .bv-drawing-setting-field select { height: 40px; border: 1px solid #cbd5e1; border-radius: 11px; padding: 0 11px; font-size: 14px; font-weight: 750; background: #fff; color: #0f172a; }
+        .bv-drawing-extend-section { grid-column: 1 / -1; display: grid; gap: 11px; padding: 14px; border-radius: 18px; background: linear-gradient(180deg, #f8fbff, #f1f5f9); border: 1px solid #dbe5f1; }
+        .bv-drawing-extend-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+        .bv-drawing-extend-head strong { font-size: 14px; font-weight: 950; color: #0f172a; }
+        .bv-drawing-extend-head span { font-size: 11px; font-weight: 850; color: #64748b; }
+        .bv-drawing-extend-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+        .bv-drawing-extend-card { min-height: 54px; display: grid; grid-template-columns: 18px 38px minmax(0,1fr); align-items: center; gap: 10px; padding: 10px 12px; border-radius: 15px; background: rgba(255,255,255,.78); border: 1px solid rgba(203,213,225,.86); cursor: pointer; transition: .16s ease; }
+        .bv-drawing-extend-card:hover { border-color: rgba(37,99,235,.42); box-shadow: 0 8px 20px rgba(15,23,42,.06); }
+        .bv-drawing-extend-card:has(input:checked), .bv-drawing-extend-card.checked { background: rgba(37,99,235,.08); border-color: rgba(37,99,235,.52); }
+        .bv-drawing-extend-card input { width: 16px; height: 16px; accent-color: #2563eb; }
+        .bv-drawing-extend-card b { font-size: 13px; font-weight: 950; color: #1e293b; }
+        .bv-extend-icon { position: relative; width: 38px; height: 22px; border-radius: 999px; background: #eaf2ff; overflow: hidden; }
+        .bv-extend-icon::before { content: ''; position: absolute; left: 7px; right: 7px; top: 10px; height: 2px; background: #2563eb; border-radius: 99px; }
+        .bv-extend-icon::after { content: ''; position: absolute; top: 6px; width: 8px; height: 8px; border-top: 2px solid #2563eb; border-right: 2px solid #2563eb; }
+        .bv-extend-icon.left::after { left: 6px; transform: rotate(-135deg); }
+        .bv-extend-icon.right::after { right: 6px; transform: rotate(45deg); }
+        .bv-drawing-color-button { width: 42px; height: 42px; border: 0; border-radius: 999px; background: var(--draw-color); box-shadow: inset 0 0 0 1px rgba(255,255,255,.22), 0 0 0 4px rgba(148,163,184,.16); }
+        .bv-drawing-settings-foot button { height: 39px; min-width: 76px; border-radius: 11px; border: 1px solid #cbd5e1; background: #fff; color: #0f172a; font-weight: 850; }
+        .bv-drawing-settings-foot button.primary { border-color: #2563eb; background: #2563eb; color: #fff; }
+        .bv-drawing-color-palette { position: fixed; z-index: 100001; width: 360px; max-width: calc(100vw - 24px); padding: 20px; border-radius: 22px; background: rgba(8,17,31,.98); color: #fff; border: 1px solid rgba(96,165,250,.26); box-shadow: 0 28px 90px rgba(0,0,0,.48); backdrop-filter: blur(16px); }
+        .bv-drawing-color-palette strong { display: block; margin-bottom: 16px; font-size: 18px; font-weight: 950; }
+        .bv-drawing-color-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 14px; }
+        .bv-drawing-color-dot { width: 36px; height: 36px; border: 0; border-radius: 999px; background: var(--dot-color); box-shadow: inset 0 0 0 1px rgba(255,255,255,.18); }
+        .bv-drawing-color-dot:hover, .bv-drawing-color-dot.active { outline: 3px solid rgba(56,189,248,.36); outline-offset: 3px; }
+        .bv-fibo-level-section { grid-column: 1 / -1; display: grid; gap: 12px; padding: 14px; border-radius: 18px; background: linear-gradient(180deg, #f8fafc, #f1f5f9); border: 1px solid #dbe5f1; box-shadow: inset 0 1px 0 rgba(255,255,255,.72); }
+        .bv-fibo-level-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; color: #0f172a; }
+        .bv-fibo-level-head strong { font-size: 14px; font-weight: 950; letter-spacing: -0.03em; }
+        .bv-fibo-level-head span { font-size: 11px; font-weight: 850; color: #64748b; }
+        .bv-fibo-level-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px 12px; max-height: none; overflow: visible; padding-right: 0; }
+        .bv-fibo-level-row { min-width: 0; height: 42px; display: grid; grid-template-columns: 22px minmax(0, 1fr) 36px; align-items: center; gap: 8px; padding: 5px 7px; border-radius: 12px; background: rgba(255,255,255,.76); border: 1px solid rgba(203,213,225,.72); }
+        .bv-fibo-level-row input[type='checkbox'] { width: 16px; height: 16px; accent-color: #1d4ed8; }
+        .bv-fibo-level-value { width: 100%; height: 30px !important; border-radius: 9px !important; padding: 0 8px !important; font-size: 13px !important; border-color: transparent !important; background: transparent !important; }
+        .bv-fibo-level-value:focus { background:#fff !important; border-color:#60a5fa !important; outline: none; box-shadow:0 0 0 3px rgba(37,99,235,.12); }
+        .bv-fibo-level-color { width: 30px; height: 30px; border: 0; border-radius: 10px; background: var(--draw-color); box-shadow: inset 0 0 0 1px rgba(255,255,255,.28), 0 0 0 3px rgba(148,163,184,.16); }
+        [data-tool] svg { width: 18px; height: 18px; display: block; }
+      `;
+      document.head.appendChild(style);
+    }
+
+    document.querySelectorAll("[data-tool]").forEach(function (btn) {
+      const tool = normalizeDrawingTool(btn.dataset.tool);
+      if (!DRAWING_TOOL_TITLES[tool]) return;
+      btn.innerHTML = svgIcon(tool);
+      btn.title = DRAWING_TOOL_TITLES[tool];
+      btn.setAttribute("aria-label", DRAWING_TOOL_TITLES[tool]);
+      btn.classList.toggle("active", normalizeDrawingTool(state.activeTool) === tool);
+    });
+  }
+
+  function setDrawingTool(tool, options) {
+    options = options || {};
+    const fixed = normalizeDrawingTool(tool);
+    state.activeTool = fixed;
+    state.tempDrawing = null;
+    state.isDrawing = false;
+    state.startPoint = null;
+    state.fiboStage = 0;
+    if (!options.keepSelection && fixed !== "cursor") state.selectedDrawingId = null;
+
+    document.querySelectorAll("[data-tool]").forEach(function (node) {
+      node.classList.toggle("active", normalizeDrawingTool(node.dataset.tool) === fixed);
+    });
+
+    const drawingMode = fixed !== "cursor";
+    chartWrap.classList.toggle("drawing-mode", drawingMode);
+    drawingLayer.style.cursor = "crosshair";
+
+    chart.applyOptions({
+      handleScroll: !drawingMode,
+      handleScale: !drawingMode,
+    });
+
+    renderDrawings();
+  }
+
+  chartWrap.addEventListener("pointerdown", handleChartWrapDrawingPointerDown, true);
+  chartWrap.addEventListener("click", handleChartWrapDrawingClick, true);
+  chartWrap.addEventListener("dblclick", handleChartWrapDrawingDoubleClick, true);
+  chartWrap.addEventListener("contextmenu", handleChartWrapDrawingContextMenu, true);
+
+  drawingLayer.addEventListener("click", handleDrawingClick);
+  drawingLayer.addEventListener("pointermove", handleDrawingMove);
+  chartWrap.addEventListener("pointermove", updateDrawingCrosshairFromPointer, { passive: true });
+  chartEl.addEventListener("pointermove", updateDrawingCrosshairFromPointer, { passive: true });
+  drawingLayer.addEventListener("pointerdown", handleDrawingPointerDown);
+  drawingLayer.addEventListener("pointermove", handleDrawingDragMove);
+  drawingLayer.addEventListener("pointerup", handleDrawingPointerUp);
+  drawingLayer.addEventListener("pointercancel", handleDrawingPointerUp);
+  window.addEventListener("pointermove", handleDrawingDragMove, true);
+  window.addEventListener("pointerup", handleDrawingPointerUp, true);
+  window.addEventListener("pointercancel", handleDrawingPointerUp, true);
+  drawingLayer.addEventListener("contextmenu", handleDrawingContextMenu, true);
+  drawingLayer.addEventListener("dblclick", handleDrawingDoubleClick, true);
+  drawingLayer.addEventListener("wheel", function (event) {
+    if (normalizeDrawingTool(state.activeTool) !== "cursor" || drawingDrag) return;
+    const oldPointerEvents = drawingLayer.style.pointerEvents;
+    drawingLayer.style.pointerEvents = "none";
+    const target = document.elementFromPoint(event.clientX, event.clientY);
+    drawingLayer.style.pointerEvents = oldPointerEvents;
+    if (!target || target === drawingLayer || drawingLayer.contains(target)) return;
+    try {
+      target.dispatchEvent(new WheelEvent(event.type, event));
+      event.preventDefault();
+      event.stopPropagation();
+    } catch (e) {}
+  }, { passive: false });
 
   document.querySelectorAll("[data-tool]").forEach(function (btn) {
-    btn.addEventListener("click", function () {
-      const tool = btn.dataset.tool;
+    btn.addEventListener("click", function (event) {
+      event.preventDefault();
+      event.stopPropagation();
 
-      if (tool === "undo") {
-        state.drawings.pop();
-        renderDrawings();
-        return;
-      }
-
+      const tool = normalizeDrawingTool(btn.dataset.tool);
+      if (tool === "undo") { undoDrawing(); return; }
       if (tool === "clear") {
+        pushDrawingHistory();
         state.drawings = [];
         state.tempDrawing = null;
+        state.isDrawing = false;
+        state.startPoint = null;
+        state.selectedDrawingId = null;
+        state.fiboStage = 0;
+        saveDrawingsToStorage();
         renderDrawings();
         return;
       }
-
-      state.activeTool = tool;
-
-      document.querySelectorAll("[data-tool]").forEach(function (node) {
-        node.classList.toggle("active", node.dataset.tool === tool);
-      });
-
-      const drawingMode = tool !== "cursor";
-      chartWrap.classList.toggle("drawing-mode", drawingMode);
-
-      chart.applyOptions({
-        handleScroll: !drawingMode,
-        handleScale: !drawingMode,
-      });
+      setDrawingTool(tool);
     });
   });
 
+  installDrawingUiSkin();
+
   chart.subscribeCrosshairMove(function (param) {
+    if (param && param.time && param.point && Number.isFinite(param.point.x) && Number.isFinite(param.point.y)) {
+      const price = candleSeries.coordinateToPrice(param.point.y);
+      if (price !== null && price !== undefined && !Number.isNaN(Number(price))) {
+        state.crosshairPoint = { x: param.point.x, y: param.point.y };
+        state.crosshairValue = { time: normalizeTime(param.time), price: Number(price) };
+        renderDrawings();
+      }
+    } else if (!state.tempDrawing && !drawingDrag) {
+      state.crosshairPoint = null;
+      state.crosshairValue = null;
+      renderDrawings();
+    }
+
     if (!param || !param.time || !state.payload) return;
 
     const row = findRowByTime(param.time);
@@ -1335,10 +2759,31 @@
   });
 
   document.addEventListener("keydown", function (event) {
+    const tag = String(event.target && event.target.tagName || "").toLowerCase();
+    const typing = tag === "input" || tag === "textarea" || tag === "select" || (event.target && event.target.isContentEditable);
+
+    if (!typing && ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(event.key)) {
+      if (nudgeSelectedDrawing(event.key)) {
+        event.preventDefault();
+        event.stopPropagation();
+        return;
+      }
+    }
+
+    if (!typing && (event.key === "Delete" || event.key === "Backspace")) {
+      if (deleteSelectedDrawing()) {
+        event.preventDefault();
+        event.stopPropagation();
+        return;
+      }
+    }
+
     if (event.key === "Escape") {
       state.isDrawing = false;
       state.startPoint = null;
       state.tempDrawing = null;
+      state.fiboStage = 0;
+      setDrawingTool("cursor", { keepSelection: true });
       renderDrawings();
       closeIntervalDropdown();
     }
