@@ -181,6 +181,26 @@
     return catalog.find(function (item) { return item.type === fixedType; }) || catalog[0];
   }
 
+  function isBottomPaneIndicator(type) {
+    return ["volume", "rsi", "macd", "stoch"].includes(String(type || ""));
+  }
+
+  function getIndicatorPaneKey(indicator) {
+    if (!indicator || !isBottomPaneIndicator(indicator.type)) return "";
+    return String(indicator.type || "").toLowerCase() + ":" + String(indicator.id || "default").toLowerCase();
+  }
+
+  function getPaneBaseTypeFromKey(paneKey) {
+    return String(paneKey || "").toLowerCase().split(":")[0];
+  }
+
+  function getVisibleIndicatorByPaneKey(paneKey) {
+    const key = String(paneKey || "").toLowerCase();
+    return indicators.find(function (item) {
+      return item && item.visible !== false && getIndicatorPaneKey(item) === key;
+    }) || null;
+  }
+
   function readFavoriteTypes() {
     try {
       const saved = JSON.parse(localStorage.getItem(FAVORITE_KEY));
@@ -806,7 +826,7 @@
   }
 
   function getPaneScaleMargins(paneType) {
-    const type = String(paneType || "").toLowerCase();
+    const type = getPaneBaseTypeFromKey(paneType);
 
     // 트레이딩뷰처럼 보조지표명/값이 들어갈 상단 여백을 확보하고,
     // 실제 선/막대는 그 아래 영역에 압축해서 그린다.
@@ -963,13 +983,14 @@
   }
 
   function buildIndicatorLegendText(type, time) {
-    const indicator = getVisibleIndicatorByType(type);
+    const indicator = getVisibleIndicatorByPaneKey(type) || getVisibleIndicatorByType(type);
     if (!indicator || !indicator.__legendData) return null;
 
+    const baseType = indicator.type;
     const data = indicator.__legendData;
     const sourceLabel = optionLabel(SOURCE_OPTIONS, indicator.source || "close");
 
-    if (type === "volume") {
+    if (baseType === "volume") {
       const value = legendValueFromData(data.volume, time);
       const text = "거래량 " + formatCompactNumber(value);
       return {
@@ -979,7 +1000,7 @@
       };
     }
 
-    if (type === "rsi") {
+    if (baseType === "rsi") {
       const rsiValue = legendValueFromData(data.rsi, time);
       const maValue = legendValueFromData(data.ma, time);
       const rsiColor = indicator.color || "#8b5cf6";
@@ -995,7 +1016,7 @@
       };
     }
 
-    if (type === "macd") {
+    if (baseType === "macd") {
       const macdValue = legendValueFromData(data.macd, time);
       const signalValue = legendValueFromData(data.signal, time);
       const histValue = legendValueFromData(data.histogram, time);
@@ -1023,7 +1044,7 @@
       };
     }
 
-    if (type === "stoch") {
+    if (baseType === "stoch") {
       const kValue = legendValueFromData(data.k, time);
       const dValue = legendValueFromData(data.d, time);
       const kColor = indicator.color || "#3b82f6";
@@ -1176,10 +1197,11 @@
     const chartHeight = Math.max(360, (document.getElementById("tvChart") || root).clientHeight || root.clientHeight || 520);
 
     const preferred = activeTypes.map(function (paneType) {
-      if (paneType === "volume") return 118;
-      if (paneType === "rsi") return 158;
-      if (paneType === "macd") return 172;
-      if (paneType === "stoch") return 158;
+      const baseType = getPaneBaseTypeFromKey(paneType);
+      if (baseType === "volume") return 118;
+      if (baseType === "rsi") return 158;
+      if (baseType === "macd") return 172;
+      if (baseType === "stoch") return 158;
       return 150;
     });
 
@@ -1248,46 +1270,50 @@
 
     const activeSet = new Set(activeTypes || []);
 
-    paneBandEls.forEach(function (el, type) {
-      if (!activeSet.has(type)) el.style.display = "none";
+    paneBandEls.forEach(function (el, key) {
+      if (!activeSet.has(key)) el.style.display = "none";
     });
 
-    // 현재는 Stoch의 20~80 배경 밴드만 DOM으로 처리한다.
-    const stoch = getVisibleIndicatorByType("stoch");
-    if (!stoch || stoch.visible === false || stoch.showBackground === false || !activeSet.has("stoch")) {
-      const old = paneBandEls.get("stoch");
-      if (old) old.style.display = "none";
-      return;
-    }
+    (activeTypes || []).forEach(function (paneKey, index) {
+      const baseType = getPaneBaseTypeFromKey(paneKey);
+      if (baseType !== "stoch") return;
 
-    const index = activeTypes.indexOf("stoch");
-    const paneRect = paneRects[index + 1] || getFallbackPaneLabelRect("stoch", index, activeTypes);
-    if (!paneRect) return;
+      const stoch = getVisibleIndicatorByPaneKey(paneKey);
+      if (!stoch || stoch.visible === false || stoch.showBackground === false) {
+        const old = paneBandEls.get(paneKey);
+        if (old) old.style.display = "none";
+        return;
+      }
 
-    const plotRect = getPanePlotRectFromPaneRect(paneRect, "stoch");
-    const upper = Math.max(0, Math.min(100, Number(stoch.upper || 80)));
-    const lower = Math.max(0, Math.min(100, Number(stoch.lower || 20)));
-    const yTop = oscillatorY(plotRect, Math.max(upper, lower));
-    const yBottom = oscillatorY(plotRect, Math.min(upper, lower));
+      const paneRect = paneRects[index + 1] || getFallbackPaneLabelRect(paneKey, index, activeTypes);
+      if (!paneRect) return;
 
-    let el = paneBandEls.get("stoch");
-    if (!el) {
-      el = document.createElement("div");
-      el.className = "bitgak-pane-band-fill bitgak-pane-band-fill-stoch";
-      overlay.appendChild(el);
-      paneBandEls.set("stoch", el);
-    }
+      const plotRect = getPanePlotRectFromPaneRect(paneRect, "stoch");
+      const upper = Math.max(0, Math.min(100, Number(stoch.upper || 80)));
+      const lower = Math.max(0, Math.min(100, Number(stoch.lower || 20)));
+      const yTop = oscillatorY(plotRect, Math.max(upper, lower));
+      const yBottom = oscillatorY(plotRect, Math.min(upper, lower));
 
-    const backgroundColor = stoch.backgroundColor || "rgba(59, 130, 246, 0.12)";
+      let el = paneBandEls.get(paneKey);
+      if (!el) {
+        el = document.createElement("div");
+        el.className = "bitgak-pane-band-fill bitgak-pane-band-fill-stoch";
+        el.dataset.paneKey = paneKey;
+        overlay.appendChild(el);
+        paneBandEls.set(paneKey, el);
+      }
 
-    el.style.display = "block";
-    el.style.left = Math.round(paneRect.left - rootRect.left) + "px";
-    el.style.top = Math.round(yTop - rootRect.top) + "px";
-    el.style.width = Math.max(0, Math.round(paneRect.width)) + "px";
-    el.style.height = Math.max(2, Math.round(yBottom - yTop)) + "px";
-    el.style.background = backgroundColor;
-    el.style.borderTop = "1px dashed rgba(96, 165, 250, 0.28)";
-    el.style.borderBottom = "1px dashed rgba(96, 165, 250, 0.28)";
+      const backgroundColor = stoch.backgroundColor || "rgba(59, 130, 246, 0.12)";
+
+      el.style.display = "block";
+      el.style.left = Math.round(paneRect.left - rootRect.left) + "px";
+      el.style.top = Math.round(yTop - rootRect.top) + "px";
+      el.style.width = Math.max(0, Math.round(paneRect.width)) + "px";
+      el.style.height = Math.max(2, Math.round(yBottom - yTop)) + "px";
+      el.style.background = backgroundColor;
+      el.style.borderTop = "1px dashed rgba(96, 165, 250, 0.28)";
+      el.style.borderBottom = "1px dashed rgba(96, 165, 250, 0.28)";
+    });
   }
 
   function normalizePaneLabelDom() {
@@ -1304,8 +1330,7 @@
     updatePaneBandFills(activeTypes, paneRects, rootRect);
 
     document.querySelectorAll(".bv-v5-pane-label").forEach(function (el) {
-      const match = Array.from(el.classList || []).join(" ").match(/bv-v5-pane-label-([a-z0-9_-]+)/);
-      const paneType = match ? match[1] : "";
+      const paneType = String(el.dataset.paneType || "").toLowerCase();
       if (!paneType || !activeSet.has(paneType)) {
         el.style.setProperty("display", "none", "important");
         return;
@@ -1358,8 +1383,7 @@
     });
 
     document.querySelectorAll(".bv-v5-pane-label").forEach(function (el) {
-      const type = Array.from(el.classList || []).join(" ").match(/bv-v5-pane-label-([a-z0-9_-]+)/);
-      const paneType = type ? type[1] : "";
+      const paneType = String(el.dataset.paneType || "").toLowerCase();
       if (!paneType || !activeSet.has(paneType)) {
         el.style.setProperty("display", "none", "important");
         el.classList.remove("bitgak-safe-pane-label");
@@ -1570,9 +1594,10 @@
     }
 
     if (indicator.type === "volume") {
+      const paneKey = getIndicatorPaneKey(indicator);
       api.setVolumeVisible(false);
-      if (api.ensureIndicatorPane) api.ensureIndicatorPane("volume", "거래량");
-      const series = addPaneHistogram("volume", {
+      if (api.ensureIndicatorPane) api.ensureIndicatorPane(paneKey, "거래량");
+      const series = addPaneHistogram(paneKey, {
         priceFormat: { type: "volume" },
         priceLineVisible: false,
         lastValueVisible: false,
@@ -1580,7 +1605,7 @@
       const data = rowsToVolumeData(rows);
       series.setData(data);
       indicator.__legendData = { volume: data };
-      setAdaptivePaneLabel("volume", "거래량", indicator.color || "#64748b");
+      setAdaptivePaneLabel(paneKey, "거래량", indicator.color || "#64748b");
       indicator.series = [series];
       return;
     }
@@ -1669,13 +1694,14 @@
     }
 
     if (indicator.type === "rsi") {
-      if (api.ensureIndicatorPane) api.ensureIndicatorPane("rsi", "RSI");
+      const paneKey = getIndicatorPaneKey(indicator);
+      if (api.ensureIndicatorPane) api.ensureIndicatorPane(paneKey, "RSI");
       const created = [];
       const rsiData = calcRSI(rows, Number(indicator.period || 14), indicator.source || "close");
       let rsiMaData = [];
 
       if (indicator.showRsi !== false) {
-        const rsiSeries = addPaneLine("rsi", indicator.color || "#8b5cf6", indicator.width || 2, {
+        const rsiSeries = addPaneLine(paneKey, indicator.color || "#8b5cf6", indicator.width || 2, {
           priceFormat: { type: "price", precision: 2, minMove: 0.01 },
         });
         rsiSeries.setData(rsiData);
@@ -1685,7 +1711,7 @@
       if (indicator.showRsiMa !== false) {
         const maData = calcSeriesMA(rsiData, Number(indicator.maPeriod || 14));
         rsiMaData = maData;
-        const maSeries = addPaneLine("rsi", indicator.maColor || "#facc15", 1, {
+        const maSeries = addPaneLine(paneKey, indicator.maColor || "#facc15", 1, {
           priceFormat: { type: "price", precision: 2, minMove: 0.01 },
         });
         maSeries.setData(maData);
@@ -1693,7 +1719,7 @@
       }
 
       if (indicator.showUpper !== false) {
-        const upperLine = addPaneLine("rsi", indicator.upperColor || "rgba(148, 163, 184, 0.78)", 1, {
+        const upperLine = addPaneLine(paneKey, indicator.upperColor || "rgba(148, 163, 184, 0.78)", 1, {
           lineStyle: 2,
           priceFormat: { type: "price", precision: 2, minMove: 0.01 },
         });
@@ -1701,7 +1727,7 @@
         created.push(upperLine);
       }
       if (indicator.showMiddle !== false) {
-        const middleLine = addPaneLine("rsi", indicator.middleColor || "rgba(148, 163, 184, 0.48)", 1, {
+        const middleLine = addPaneLine(paneKey, indicator.middleColor || "rgba(148, 163, 184, 0.48)", 1, {
           lineStyle: 2,
           priceFormat: { type: "price", precision: 2, minMove: 0.01 },
         });
@@ -1709,7 +1735,7 @@
         created.push(middleLine);
       }
       if (indicator.showLower !== false) {
-        const lowerLine = addPaneLine("rsi", indicator.lowerColor || "rgba(148, 163, 184, 0.78)", 1, {
+        const lowerLine = addPaneLine(paneKey, indicator.lowerColor || "rgba(148, 163, 184, 0.78)", 1, {
           lineStyle: 2,
           priceFormat: { type: "price", precision: 2, minMove: 0.01 },
         });
@@ -1718,13 +1744,14 @@
       }
 
       indicator.__legendData = { rsi: rsiData, ma: rsiMaData };
-      setAdaptivePaneLabel("rsi", "RSI", indicator.color || "#8b5cf6");
+      setAdaptivePaneLabel(paneKey, "RSI", indicator.color || "#8b5cf6");
       indicator.series = created;
       return;
     }
 
     if (indicator.type === "stoch") {
-      if (api.ensureIndicatorPane) api.ensureIndicatorPane("stoch", "Stoch");
+      const paneKey = getIndicatorPaneKey(indicator);
+      if (api.ensureIndicatorPane) api.ensureIndicatorPane(paneKey, "Stoch");
       const created = [];
       const data = calcStochastic(
         rows,
@@ -1739,7 +1766,7 @@
       // 실제 위치 보정은 normalizePaneLabelDom() -> updatePaneBandFills()에서 처리한다.
 
       if (indicator.showK !== false) {
-        const kLine = addPaneLine("stoch", indicator.color || "#3b82f6", indicator.width || 2, {
+        const kLine = addPaneLine(paneKey, indicator.color || "#3b82f6", indicator.width || 2, {
           priceFormat: { type: "price", precision: 2, minMove: 0.01 },
           autoscaleInfoProvider: oscillatorAutoscaleInfo(),
         });
@@ -1748,7 +1775,7 @@
       }
 
       if (indicator.showD !== false) {
-        const dLine = addPaneLine("stoch", indicator.dColor || "#fb923c", 2, {
+        const dLine = addPaneLine(paneKey, indicator.dColor || "#fb923c", 2, {
           priceFormat: { type: "price", precision: 2, minMove: 0.01 },
           autoscaleInfoProvider: oscillatorAutoscaleInfo(),
         });
@@ -1757,7 +1784,7 @@
       }
 
       if (indicator.showUpper !== false) {
-        const upperLine = addPaneLine("stoch", indicator.upperColor || "rgba(100, 116, 139, 0.78)", 1, {
+        const upperLine = addPaneLine(paneKey, indicator.upperColor || "rgba(100, 116, 139, 0.78)", 1, {
           lineStyle: 2,
           priceFormat: { type: "price", precision: 2, minMove: 0.01 },
           autoscaleInfoProvider: oscillatorAutoscaleInfo(),
@@ -1767,7 +1794,7 @@
       }
 
       if (indicator.showMiddle !== false) {
-        const middleLine = addPaneLine("stoch", indicator.middleColor || "rgba(100, 116, 139, 0.42)", 1, {
+        const middleLine = addPaneLine(paneKey, indicator.middleColor || "rgba(100, 116, 139, 0.42)", 1, {
           lineStyle: 2,
           priceFormat: { type: "price", precision: 2, minMove: 0.01 },
           autoscaleInfoProvider: oscillatorAutoscaleInfo(),
@@ -1777,7 +1804,7 @@
       }
 
       if (indicator.showLower !== false) {
-        const lowerLine = addPaneLine("stoch", indicator.lowerColor || "rgba(100, 116, 139, 0.78)", 1, {
+        const lowerLine = addPaneLine(paneKey, indicator.lowerColor || "rgba(100, 116, 139, 0.78)", 1, {
           lineStyle: 2,
           priceFormat: { type: "price", precision: 2, minMove: 0.01 },
           autoscaleInfoProvider: oscillatorAutoscaleInfo(),
@@ -1787,13 +1814,14 @@
       }
 
       indicator.__legendData = { k: data.k, d: data.d };
-      setAdaptivePaneLabel("stoch", "Stoch", indicator.color || "#3b82f6");
+      setAdaptivePaneLabel(paneKey, "Stoch", indicator.color || "#3b82f6");
       indicator.series = created;
       return;
     }
 
     if (indicator.type === "macd") {
-      if (api.ensureIndicatorPane) api.ensureIndicatorPane("macd", "MACD+RSI");
+      const paneKey = getIndicatorPaneKey(indicator);
+      if (api.ensureIndicatorPane) api.ensureIndicatorPane(paneKey, "MACD+RSI");
       const created = [];
       const data = calcMACD(
         rows,
@@ -1808,7 +1836,7 @@
       });
 
       if (indicator.showHistogram !== false) {
-        const histogram = addPaneHistogram("macd", {
+        const histogram = addPaneHistogram(paneKey, {
           priceFormat: { type: "price", precision: 2, minMove: 0.01 },
           base: 0,
           priceLineVisible: false,
@@ -1818,21 +1846,21 @@
         created.push(histogram);
       }
       if (indicator.showMacd !== false) {
-        const macdLine = addPaneLine("macd", indicator.color || "#22c55e", indicator.width || 2, {
+        const macdLine = addPaneLine(paneKey, indicator.color || "#22c55e", indicator.width || 2, {
           priceFormat: { type: "price", precision: 2, minMove: 0.01 },
         });
         macdLine.setData(data.macd);
         created.push(macdLine);
       }
       if (indicator.showSignal !== false) {
-        const signalLine = addPaneLine("macd", indicator.signalColor || "#fb923c", 2, {
+        const signalLine = addPaneLine(paneKey, indicator.signalColor || "#fb923c", 2, {
           priceFormat: { type: "price", precision: 2, minMove: 0.01 },
         });
         signalLine.setData(data.signal);
         created.push(signalLine);
       }
       if (indicator.showRsi !== false) {
-        const rsiLine = addPaneLine("macd", indicator.rsiColor || "#a78bfa", 2, {
+        const rsiLine = addPaneLine(paneKey, indicator.rsiColor || "#a78bfa", 2, {
           priceFormat: { type: "price", precision: 2, minMove: 0.01 },
         });
         rsiLine.setData(rsiData);
@@ -1840,7 +1868,7 @@
       }
       if (indicator.showLevels !== false) {
         [-20, 0, 20].forEach(function (level) {
-          const line = addPaneLine("macd", indicator.levelColor || "rgba(148, 163, 184, 0.62)", 1, {
+          const line = addPaneLine(paneKey, indicator.levelColor || "rgba(148, 163, 184, 0.62)", 1, {
             lineStyle: level === 0 ? 2 : 3,
             priceFormat: { type: "price", precision: 2, minMove: 0.01 },
           });
@@ -1849,19 +1877,18 @@
         });
       }
       indicator.__legendData = { macd: data.macd, signal: data.signal, histogram: data.histogram, rsi: rsiData };
-      setAdaptivePaneLabel("macd", "MACD+RSI", indicator.color || "#22c55e");
+      setAdaptivePaneLabel(paneKey, "MACD+RSI", indicator.color || "#22c55e");
       indicator.series = created;
       return;
     }
   }
 
   function getActiveBottomPaneTypes() {
-    const visible = new Set();
-    indicators.forEach(function (indicator) {
-      if (!indicator.visible) return;
-      if (["volume", "rsi", "macd", "stoch"].includes(indicator.type)) visible.add(indicator.type);
-    });
-    return ["volume", "rsi", "macd", "stoch"].filter(function (type) { return visible.has(type); });
+    return indicators.filter(function (indicator) {
+      return indicator && indicator.visible !== false && isBottomPaneIndicator(indicator.type);
+    }).map(function (indicator) {
+      return getIndicatorPaneKey(indicator);
+    }).filter(Boolean);
   }
 
   function rebuildAll() {

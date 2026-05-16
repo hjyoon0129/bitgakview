@@ -334,9 +334,28 @@
     }, options || {}), 0);
   }
 
+  function getPaneBaseType(type) {
+    const key = String(type || "").toLowerCase();
+    const base = key.split(":")[0];
+    return PANE_LABELS[base] ? base : "";
+  }
+
   function normalizePaneType(type) {
     const key = String(type || "").toLowerCase();
-    return PANE_LABELS[key] ? key : "";
+    return getPaneBaseType(key) ? key : "";
+  }
+
+  function paneBaseType(type) {
+    return getPaneBaseType(type) || normalizePaneType(type);
+  }
+
+  function paneClassKey(type) {
+    return String(type || "").toLowerCase().replace(/[^a-z0-9_-]+/g, "-");
+  }
+
+  function paneDefaultLabel(type) {
+    const base = paneBaseType(type);
+    return PANE_LABELS[base] || String(type || "").toUpperCase();
   }
 
   function uniquePaneTypes(types) {
@@ -370,15 +389,18 @@
     const fixed = normalizePaneType(type);
     if (!fixed || !overlayEl) return null;
 
+    const base = paneBaseType(fixed);
     if (paneLabelEls.has(fixed)) {
       const el = paneLabelEls.get(fixed);
-      el.textContent = label || PANE_LABELS[fixed] || fixed.toUpperCase();
+      el.textContent = label || paneDefaultLabel(fixed);
       return el;
     }
 
     const el = document.createElement("div");
-    el.className = "bv-v5-pane-label bv-v5-pane-label-" + fixed;
-    el.textContent = label || PANE_LABELS[fixed] || fixed.toUpperCase();
+    el.className = "bv-v5-pane-label bv-v5-pane-label-" + base + " bv-v5-pane-label-key-" + paneClassKey(fixed);
+    el.dataset.paneType = fixed;
+    el.dataset.paneBaseType = base;
+    el.textContent = label || paneDefaultLabel(fixed);
     overlayEl.appendChild(el);
     paneLabelEls.set(fixed, el);
     return el;
@@ -389,7 +411,7 @@
     const fixed = normalizePaneType(type);
     if (!fixed) return;
 
-    const labelText = text || PANE_LABELS[fixed] || fixed.toUpperCase();
+    const labelText = text || paneDefaultLabel(fixed);
     const el = ensurePaneLabel(fixed, labelText);
     if (!el) return;
 
@@ -444,10 +466,11 @@
     if (!activeTypes.length) return;
 
     const preferredHeights = activeTypes.map(function (type) {
-      if (type === "volume") return 118;
-      if (type === "rsi") return 158;
-      if (type === "macd") return 172;
-      if (type === "stoch") return 158;
+      const base = paneBaseType(type);
+      if (base === "volume") return 118;
+      if (base === "rsi") return 158;
+      if (base === "macd") return 172;
+      if (base === "stoch") return 158;
       return 150;
     });
 
@@ -466,7 +489,7 @@
       const el = paneLabelEls.get(type);
       if (!el) return;
 
-      el.textContent = el.dataset.paneLabelText || PANE_LABELS[type] || type.toUpperCase();
+      el.textContent = el.dataset.paneLabelText || paneDefaultLabel(type);
       if (el.dataset.paneLabelColor) el.style.setProperty("--label-color", el.dataset.paneLabelColor);
       el.style.setProperty("display", "inline-flex", "important");
       el.style.top = (top + 8) + "px";
@@ -483,10 +506,11 @@
     const paneCount = Math.max(0, activeTypes.length);
 
     const preferredHeights = activeTypes.map(function (type) {
-      if (type === "volume") return 118;
-      if (type === "rsi") return 158;
-      if (type === "macd") return 172;
-      if (type === "stoch") return 158;
+      const base = paneBaseType(type);
+      if (base === "volume") return 118;
+      if (base === "rsi") return 158;
+      if (base === "macd") return 172;
+      if (base === "stoch") return 158;
       return 150;
     });
 
@@ -517,7 +541,7 @@
     rebuildPaneIndexMap(state.activePaneTypes);
 
     state.activePaneTypes.forEach(function (type) {
-      ensurePaneLabel(type, PANE_LABELS[type]);
+      ensurePaneLabel(type, paneDefaultLabel(type));
     });
 
     setTimeout(function () {
@@ -534,7 +558,7 @@
   }
 
   function getPaneScaleMargins(type) {
-    const fixed = normalizePaneType(type);
+    const fixed = paneBaseType(type);
     if (fixed === "volume") return { top: 0.18, bottom: 0.02 };
     if (fixed === "macd") return { top: 0.24, bottom: 0.08 };
     if (fixed === "rsi") return { top: 0.22, bottom: 0.08 };
@@ -557,7 +581,7 @@
   function addPaneLineSeries(type, options) {
     const fixed = normalizePaneType(type);
     if (!fixed) return addLineSeries(options || {});
-    ensureIndicatorPane(fixed, PANE_LABELS[fixed]);
+    ensureIndicatorPane(fixed, paneDefaultLabel(fixed));
 
     const series = addSeries("LineSeries", Object.assign({
       color: "#2563eb",
@@ -573,7 +597,7 @@
   function addPaneHistogramSeries(type, options) {
     const fixed = normalizePaneType(type);
     if (!fixed) return addHistogramSeries(options || {});
-    ensureIndicatorPane(fixed, PANE_LABELS[fixed]);
+    ensureIndicatorPane(fixed, paneDefaultLabel(fixed));
 
     const series = addSeries("HistogramSeries", Object.assign({
       priceFormat: { type: "volume" },

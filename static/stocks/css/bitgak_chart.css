@@ -2550,3 +2550,275 @@
   }
 }
 
+/* =========================================================
+   Drawer overlay motion v3 - chart stays fixed
+   - drawer는 grid column을 차지하지 않고 왼쪽에서 overlay로 열린다.
+   - 차트/오른쪽 패널은 토글 시 좌우로 밀리지 않는다.
+   - 느린 cubic-bezier로 스르륵 열린다.
+   ========================================================= */
+.bitgak-chart-body .bv-layout,
+.bitgak-chart-body .bv-layout-full {
+  position: relative !important;
+  grid-template-columns: minmax(620px, 1fr) 320px !important;
+  transition: none !important;
+  overflow: hidden !important;
+}
+
+.bitgak-chart-body .bv-layout.bv-drawer-open,
+.bitgak-chart-body .bv-layout-full.bv-drawer-open {
+  grid-template-columns: minmax(620px, 1fr) 320px !important;
+}
+
+.bitgak-chart-body .bv-left-panel.bv-tool-drawer {
+  position: absolute !important;
+  left: 0 !important;
+  top: 0 !important;
+  bottom: 0 !important;
+  z-index: 80 !important;
+  width: 450px !important;
+  max-width: min(450px, calc(100vw - 28px)) !important;
+  display: flex !important;
+  min-width: 0 !important;
+  padding: 0 !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+  transform: translateX(-108%) scale(0.992) !important;
+  filter: blur(2px);
+  will-change: transform, opacity, filter;
+  transition:
+    transform 980ms cubic-bezier(0.16, 1, 0.3, 1),
+    opacity 760ms ease,
+    filter 980ms ease,
+    visibility 0s linear 980ms !important;
+}
+
+.bitgak-chart-body .bv-layout.bv-drawer-open .bv-left-panel.bv-tool-drawer,
+.bitgak-chart-body .bv-layout-full.bv-drawer-open .bv-left-panel.bv-tool-drawer,
+.bitgak-chart-body .bv-left-panel.bv-tool-drawer.open,
+.bitgak-chart-body .bv-left-panel.bv-tool-drawer.bv-drawer-closing {
+  visibility: visible !important;
+}
+
+.bitgak-chart-body .bv-layout.bv-drawer-open .bv-left-panel.bv-tool-drawer,
+.bitgak-chart-body .bv-layout-full.bv-drawer-open .bv-left-panel.bv-tool-drawer,
+.bitgak-chart-body .bv-left-panel.bv-tool-drawer.open {
+  opacity: 1 !important;
+  pointer-events: auto !important;
+  transform: translateX(0) scale(1) !important;
+  filter: blur(0);
+  transition:
+    transform 980ms cubic-bezier(0.16, 1, 0.3, 1),
+    opacity 760ms ease,
+    filter 980ms ease,
+    visibility 0s !important;
+}
+
+.bitgak-chart-body .bv-left-panel.bv-tool-drawer.bv-drawer-closing {
+  opacity: 0 !important;
+  pointer-events: none !important;
+  transform: translateX(-108%) scale(0.992) !important;
+  filter: blur(2px);
+}
+
+@media (max-width: 1450px) {
+  .bitgak-chart-body .bv-layout,
+  .bitgak-chart-body .bv-layout-full,
+  .bitgak-chart-body .bv-layout.bv-drawer-open,
+  .bitgak-chart-body .bv-layout-full.bv-drawer-open {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .bitgak-chart-body .bv-symbol-panel {
+    display: none !important;
+  }
+}
+
+@media (max-width: 1120px) {
+  .bitgak-chart-body .bv-left-panel.bv-tool-drawer {
+    position: fixed !important;
+    left: 10px !important;
+    top: 86px !important;
+    bottom: 12px !important;
+    width: min(430px, calc(100vw - 20px)) !important;
+    z-index: 9000 !important;
+  }
+}
+
+/* =========================================================
+   Drawer final fix v4
+   - 이전 grid 3열 / 0px column 규칙을 최종 override
+   - drawer는 absolute overlay
+   - 메인 차트는 항상 1번 column, 오른쪽 패널은 2번 column
+   - drawer open 시 메인 차트의 왼쪽 padding만 천천히 늘어나서 오른쪽 기준은 유지됨
+   ========================================================= */
+.bitgak-chart-body {
+  --bv-drawer-width: 450px;
+  --bv-drawer-gap: 12px;
+  --bv-drawer-motion: 1450ms;
+  --bv-drawer-ease: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.bitgak-chart-body .bv-layout,
+.bitgak-chart-body .bv-layout-full {
+  position: relative !important;
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) 320px !important;
+  grid-template-rows: minmax(0, 1fr) !important;
+  column-gap: 12px !important;
+  overflow: hidden !important;
+  align-items: stretch !important;
+  transition: none !important;
+}
+
+/* drawer는 grid flow에서 완전히 빼서 차트/우측패널을 밀지 않게 한다 */
+.bitgak-chart-body .bv-layout > .bv-left-panel.bv-tool-drawer,
+.bitgak-chart-body .bv-layout-full > .bv-left-panel.bv-tool-drawer {
+  position: absolute !important;
+  left: 0 !important;
+  top: 0 !important;
+  bottom: 0 !important;
+  z-index: 90 !important;
+  grid-column: auto !important;
+  grid-row: auto !important;
+  width: var(--bv-drawer-width) !important;
+  max-width: min(var(--bv-drawer-width), calc(100vw - 28px)) !important;
+  height: 100% !important;
+  min-height: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+  transform: translateX(calc(-100% - 18px)) scale(0.985) !important;
+  filter: blur(2px);
+  transform-origin: left center !important;
+  will-change: transform, opacity, filter;
+  transition:
+    transform var(--bv-drawer-motion) var(--bv-drawer-ease),
+    opacity 1050ms ease,
+    filter var(--bv-drawer-motion) ease,
+    visibility 0s linear var(--bv-drawer-motion) !important;
+}
+
+.bitgak-chart-body .bv-layout.bv-drawer-open > .bv-left-panel.bv-tool-drawer,
+.bitgak-chart-body .bv-layout-full.bv-drawer-open > .bv-left-panel.bv-tool-drawer,
+.bitgak-chart-body .bv-left-panel.bv-tool-drawer.open {
+  opacity: 1 !important;
+  visibility: visible !important;
+  pointer-events: auto !important;
+  transform: translateX(0) scale(1) !important;
+  filter: blur(0);
+  transition:
+    transform var(--bv-drawer-motion) var(--bv-drawer-ease),
+    opacity 1050ms ease,
+    filter var(--bv-drawer-motion) ease,
+    visibility 0s linear 0s !important;
+}
+
+.bitgak-chart-body .bv-left-panel.bv-tool-drawer.bv-drawer-closing {
+  visibility: visible !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  transform: translateX(calc(-100% - 18px)) scale(0.985) !important;
+  filter: blur(2px);
+}
+
+/* 핵심: main은 항상 1번 column. 이전 CSS의 grid-column:2/3를 무력화 */
+.bitgak-chart-body .bv-layout > .bv-main,
+.bitgak-chart-body .bv-layout-full > .bv-main,
+.bitgak-chart-body .bv-layout.bv-drawer-open > .bv-main,
+.bitgak-chart-body .bv-layout-full.bv-drawer-open > .bv-main {
+  grid-column: 1 / 2 !important;
+  grid-row: 1 / 2 !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  height: 100% !important;
+  padding-top: 14px !important;
+  padding-right: 0 !important;
+  padding-bottom: 14px !important;
+  padding-left: 14px !important;
+  transition:
+    padding-left var(--bv-drawer-motion) var(--bv-drawer-ease),
+    padding-right var(--bv-drawer-motion) var(--bv-drawer-ease) !important;
+  will-change: padding-left;
+}
+
+/* 열렸을 때 오른쪽 기준은 유지하고 왼쪽 영역만 drawer 폭만큼 비워서 차트가 부드럽게 줄어든다 */
+.bitgak-chart-body .bv-layout.bv-drawer-open > .bv-main,
+.bitgak-chart-body .bv-layout-full.bv-drawer-open > .bv-main {
+  padding-left: calc(var(--bv-drawer-width) + var(--bv-drawer-gap)) !important;
+}
+
+/* 오른쪽 패널은 항상 2번 column */
+.bitgak-chart-body .bv-layout > .bv-symbol-panel,
+.bitgak-chart-body .bv-layout-full > .bv-symbol-panel,
+.bitgak-chart-body .bv-layout.bv-drawer-open > .bv-symbol-panel,
+.bitgak-chart-body .bv-layout-full.bv-drawer-open > .bv-symbol-panel {
+  grid-column: 2 / 3 !important;
+  grid-row: 1 / 2 !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  height: 100% !important;
+  display: grid !important;
+}
+
+/* drawer 내부 스크롤 안정화 */
+.bitgak-chart-body .bv-left-panel.bv-tool-drawer .bv-drawer-view {
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  overflow-y: auto !important;
+  overscroll-behavior: contain !important;
+  scrollbar-gutter: stable;
+}
+
+.bitgak-chart-body .portfolio-holding-list {
+  max-height: min(330px, 32vh) !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  overscroll-behavior: contain !important;
+}
+
+/* 중간 화면에서는 오른쪽 패널을 숨기고 차트만 유지 */
+@media (max-width: 1450px) {
+  .bitgak-chart-body {
+    --bv-drawer-width: 430px;
+  }
+
+  .bitgak-chart-body .bv-layout,
+  .bitgak-chart-body .bv-layout-full,
+  .bitgak-chart-body .bv-layout.bv-drawer-open,
+  .bitgak-chart-body .bv-layout-full.bv-drawer-open {
+    grid-template-columns: minmax(0, 1fr) !important;
+    column-gap: 0 !important;
+  }
+
+  .bitgak-chart-body .bv-layout > .bv-symbol-panel,
+  .bitgak-chart-body .bv-layout-full > .bv-symbol-panel,
+  .bitgak-chart-body .bv-layout.bv-drawer-open > .bv-symbol-panel,
+  .bitgak-chart-body .bv-layout-full.bv-drawer-open > .bv-symbol-panel {
+    display: none !important;
+  }
+}
+
+@media (max-width: 1120px) {
+  .bitgak-chart-body .bv-layout.bv-drawer-open > .bv-main,
+  .bitgak-chart-body .bv-layout-full.bv-drawer-open > .bv-main,
+  .bitgak-chart-body .bv-layout > .bv-main,
+  .bitgak-chart-body .bv-layout-full > .bv-main {
+    padding: 10px !important;
+  }
+
+  .bitgak-chart-body .bv-left-panel.bv-tool-drawer {
+    position: fixed !important;
+    left: 10px !important;
+    top: 86px !important;
+    bottom: 12px !important;
+    width: min(430px, calc(100vw - 20px)) !important;
+    max-width: min(430px, calc(100vw - 20px)) !important;
+    z-index: 9000 !important;
+  }
+}
+

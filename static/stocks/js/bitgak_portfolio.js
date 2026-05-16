@@ -7,6 +7,7 @@
 
   const STORAGE_KEY = "bitgak:portfolio:v1";
   const DEFAULT_CAPITAL = 10000000;
+  const DRAWER_ANIMATION_MS = 1450;
   const COLORS = ["#3b82f6", "#22c55e", "#f97316", "#a855f7", "#ec4899", "#14b8a6", "#facc15", "#64748b", "#ef4444", "#06b6d4"];
 
   const layout = document.querySelector(".bv-layout, .bv-layout-full");
@@ -181,7 +182,7 @@
           drawer.style.setProperty("visibility", "hidden", "important");
           drawer.style.setProperty("pointer-events", "none", "important");
         }
-      }, 520);
+      }, DRAWER_ANIMATION_MS);
     }
   }
 
@@ -227,9 +228,25 @@
 
   function requestResize() {
     const fire = function () { window.dispatchEvent(new Event("resize")); };
+
     requestAnimationFrame(fire);
-    setTimeout(fire, 40);
-    setTimeout(fire, 260);
+
+    // drawer가 천천히 열리는 동안 Lightweight Chart가 폭 변화를 계속 따라오도록
+    // transition 시간 동안 resize 이벤트를 여러 번 발생시킨다.
+    const startedAt = Date.now();
+    const timer = setInterval(function () {
+      fire();
+
+      if (Date.now() - startedAt > DRAWER_ANIMATION_MS + 160) {
+        clearInterval(timer);
+        requestAnimationFrame(fire);
+      }
+    }, 80);
+
+    setTimeout(fire, 180);
+    setTimeout(fire, 520);
+    setTimeout(fire, 980);
+    setTimeout(fire, DRAWER_ANIMATION_MS + 120);
   }
 
   function readAvgRowsFromDom() {
@@ -359,10 +376,41 @@
     return { totals, cash, positions, valuation, totalAsset, profit, returnRate };
   }
 
+  function removeCurrentStockFromPortfolio() {
+    const current = getStockInfo();
+    const portfolio = loadPortfolio();
+
+    const beforeCount = (portfolio.trades || []).length;
+    const remainingTrades = (portfolio.trades || []).filter(function (trade) {
+      return trade.code !== current.code;
+    });
+    const removedCount = beforeCount - remainingTrades.length;
+
+    if (removedCount > 0) {
+      const candidate = {
+        capital: portfolio.capital,
+        trades: remainingTrades,
+        updatedAt: new Date().toISOString(),
+      };
+
+      savePortfolio(candidate);
+      showMessage(current.name + " 포트폴리오에서 삭제되었습니다.", "ok");
+      renderPortfolio();
+      openDrawer("portfolio");
+      return;
+    }
+
+    showMessage("저장할 매수/매도 줄이 없고, 포트폴리오에 삭제할 내역도 없습니다.", "warn");
+    renderPortfolio();
+  }
+
   function saveCurrentAverageToPortfolio() {
     const avgRows = readAvgRowsFromDom();
+
+    // 매수/매도 줄이 없는 상태로 저장하면 기존에는 경고만 나왔지만,
+    // 사용자가 해당 종목을 초기화한 뒤 저장하는 흐름에서는 포트폴리오에서도 빠지는 것이 자연스럽다.
     if (!avgRows.length) {
-      showMessage("저장할 매수/매도 줄이 없습니다.", "warn");
+      removeCurrentStockFromPortfolio();
       return;
     }
 
