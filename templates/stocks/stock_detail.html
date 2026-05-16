@@ -5,7 +5,7 @@
 {% block body_class %}bitgak-chart-body{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'stocks/css/bitgak_chart.css' %}?v=20260516-tv-style-indicators-v8">
+<link rel="stylesheet" href="{% static 'stocks/css/bitgak_chart.css' %}?v=20260516-yfinance-hourly-v1">
 {% endblock %}
 
 {% block content %}
@@ -109,6 +109,36 @@
               <div class="tv-interval-section">
                 <span>기간</span>
                 <em></em>
+              </div>
+
+              <div class="tv-interval-section tv-interval-section-sub">
+                <span>시간봉</span>
+                <em>Yahoo</em>
+              </div>
+
+              <button class="tv-interval-item" type="button" data-interval="1h" data-label="1시간" role="menuitem">
+                <span>1시간</span>
+                <span class="tv-interval-sub">1H</span>
+              </button>
+
+              <button class="tv-interval-item" type="button" data-interval="2h" data-label="2시간" role="menuitem">
+                <span>2시간</span>
+                <span class="tv-interval-sub">2H</span>
+              </button>
+
+              <button class="tv-interval-item" type="button" data-interval="3h" data-label="3시간" role="menuitem">
+                <span>3시간</span>
+                <span class="tv-interval-sub">3H</span>
+              </button>
+
+              <button class="tv-interval-item" type="button" data-interval="4h" data-label="4시간" role="menuitem">
+                <span>4시간</span>
+                <span class="tv-interval-sub">4H</span>
+              </button>
+
+              <div class="tv-interval-section tv-interval-section-sub">
+                <span>일반</span>
+                <em>KRX</em>
               </div>
 
               <button class="tv-interval-item active" type="button" data-interval="1d" data-label="일" role="menuitem">
@@ -549,8 +579,8 @@
 {% block extra_js %}
 <script src="https://unpkg.com/lightweight-charts@5.0.8/dist/lightweight-charts.standalone.production.js"></script>
 
-<script src="{% static 'stocks/js/bitgak_chart_core.js' %}?v=20260516-tv-style-indicators-v8"></script>
-<script src="{% static 'stocks/js/bitgak_groups.js' %}?v=20260516-tv-style-indicators-v8"></script>
-<script src="{% static 'stocks/js/bitgak_indicators.js' %}?v=20260516-tv-style-indicators-v8"></script>
-<script src="{% static 'stocks/js/bitgak_search.js' %}?v=20260516-tv-style-indicators-v8"></script>
+<script src="{% static 'stocks/js/bitgak_chart_core.js' %}?v=20260516-yfinance-hourly-v1"></script>
+<script src="{% static 'stocks/js/bitgak_groups.js' %}?v=20260516-yfinance-hourly-v1"></script>
+<script src="{% static 'stocks/js/bitgak_indicators.js' %}?v=20260516-yfinance-hourly-v1"></script>
+<script src="{% static 'stocks/js/bitgak_search.js' %}?v=20260516-yfinance-hourly-v1"></script>
 {% endblock %}

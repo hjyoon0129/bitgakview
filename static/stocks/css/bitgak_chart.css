@@ -1669,3 +1669,28 @@
   background: var(--label-color, #60a5fa);
   box-shadow: 0 0 8px color-mix(in srgb, var(--label-color, #60a5fa) 70%, transparent);
 }
+
+/* =========================================================
+   Hourly interval dropdown safety - yfinance hourly v1
+   ========================================================= */
+.bitgak-chart-body .tv-interval-menu {
+  max-height: min(520px, calc(100vh - 120px));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.bitgak-chart-body .tv-interval-section-sub {
+  margin-top: 6px;
+}
+
+.bitgak-chart-body .tv-interval-item[data-interval="1h"],
+.bitgak-chart-body .tv-interval-item[data-interval="2h"],
+.bitgak-chart-body .tv-interval-item[data-interval="3h"],
+.bitgak-chart-body .tv-interval-item[data-interval="4h"] {
+  display: flex;
+}
+
+.bitgak-chart-body .tv-interval-item[hidden] {
+  display: none !important;
+}
+

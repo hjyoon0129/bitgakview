@@ -14,6 +14,11 @@ from django.urls import reverse
 from django.views.decorators.http import require_GET
 from pykrx import stock as krx_stock
 
+try:
+    import yfinance as yf
+except Exception:
+    yf = None
+
 from .models import StockSymbol
 
 
@@ -659,6 +664,150 @@ def _naver_fchart_ohlcv(symbol, timeframe="day", count=2000):
     return result
 
 
+
+def _yahoo_symbol_candidates(code):
+    """
+    Yahoo Finance 한국 종목 심볼 후보를 만든다.
+    KOSPI는 .KS, KOSDAQ/KONEX는 .KQ를 우선 사용하고,
+    실패 시 반대 suffix도 한 번 더 시도한다.
+    """
+    code = _clean_code(code)
+
+    if not code:
+        return []
+
+    stock_obj = _get_stock(code)
+    market = str(getattr(stock_obj, "market", "") or "").upper()
+
+    if "KOSDAQ" in market or "KONEX" in market:
+        candidates = [f"{code}.KQ", f"{code}.KS"]
+    else:
+        candidates = [f"{code}.KS", f"{code}.KQ"]
+
+    result = []
+    for item in candidates:
+        if item not in result:
+            result.append(item)
+
+    return result
+
+
+def _yahoo_period_for_range(range_key):
+    range_key = _normalize_range(range_key)
+
+    if range_key in ["1d", "5d"]:
+        return "10d"
+    if range_key in ["30d", "1m"]:
+        return "45d"
+    if range_key == "60d":
+        return "80d"
+    if range_key in ["90d", "3m"]:
+        return "100d"
+    if range_key in ["120d", "6m"]:
+        return "180d"
+    if range_key == "1y":
+        return "365d"
+
+    # Yahoo 1h 데이터는 너무 길게 요청하면 실패/누락될 수 있어 우선 180d로 제한
+    return "180d"
+
+
+def _extract_yfinance_column(df, target_name):
+    if df is None or df.empty:
+        return None
+
+    target_name = str(target_name).lower()
+
+    for col in df.columns:
+        if isinstance(col, tuple):
+            if any(str(part).lower() == target_name for part in col):
+                return df[col]
+        else:
+            if str(col).lower() == target_name:
+                return df[col]
+
+    return None
+
+
+def _standardize_yfinance_intraday_df(df):
+    if df is None or df.empty:
+        return _empty_ohlcv()
+
+    try:
+        open_series = _extract_yfinance_column(df, "Open")
+        high_series = _extract_yfinance_column(df, "High")
+        low_series = _extract_yfinance_column(df, "Low")
+        close_series = _extract_yfinance_column(df, "Close")
+        volume_series = _extract_yfinance_column(df, "Volume")
+
+        if open_series is None or high_series is None or low_series is None or close_series is None:
+            return _empty_ohlcv()
+
+        dates = pd.to_datetime(df.index, errors="coerce")
+
+        try:
+            if getattr(dates, "tz", None) is not None:
+                dates = dates.tz_convert("Asia/Seoul").tz_localize(None)
+        except Exception:
+            try:
+                dates = dates.tz_localize(None)
+            except Exception:
+                pass
+
+        result = pd.DataFrame(
+            {
+                "date": dates,
+                "open": pd.to_numeric(open_series, errors="coerce"),
+                "high": pd.to_numeric(high_series, errors="coerce"),
+                "low": pd.to_numeric(low_series, errors="coerce"),
+                "close": pd.to_numeric(close_series, errors="coerce"),
+                "volume": pd.to_numeric(volume_series if volume_series is not None else 0, errors="coerce").fillna(0),
+            }
+        )
+
+        result = result.dropna(subset=["date", "open", "high", "low", "close"])
+        result = result[result["close"] > 0]
+        result = result.sort_values("date").drop_duplicates(subset=["date"]).reset_index(drop=True)
+
+        return result
+    except Exception:
+        return _empty_ohlcv()
+
+
+def _fetch_yahoo_intraday(code, range_key, interval):
+    """
+    1시간~4시간봉 전용 데이터 소스.
+    Yahoo/yfinance에서 1h 원본을 받고, _aggregate_intraday_interval()에서
+    2h/3h/4h로 서버 재집계한다.
+    """
+    code = _clean_code(code)
+
+    if not code or yf is None:
+        return _empty_ohlcv()
+
+    period = _yahoo_period_for_range(range_key)
+
+    for symbol in _yahoo_symbol_candidates(code):
+        try:
+            df = yf.download(
+                symbol,
+                period=period,
+                interval="1h",
+                auto_adjust=False,
+                progress=False,
+                threads=False,
+                prepost=False,
+            )
+        except Exception:
+            continue
+
+        result = _standardize_yfinance_intraday_df(df)
+
+        if not result.empty:
+            return result
+
+    return _empty_ohlcv()
+
 def _fetch_naver_intraday(code, range_key, interval):
     code = _clean_code(code)
 
@@ -699,7 +848,7 @@ def _aggregate_intraday_interval(df, interval):
     else:
         rule = f"{minutes}min"
 
-    grouped = df.resample(rule, origin="start_day", label="left", closed="left").agg(
+    grouped = df.resample(rule, origin="start_day", offset="9h", label="left", closed="left").agg(
         {
             "open": "first",
             "high": "max",
@@ -905,19 +1054,16 @@ def _make_payload(code, range_key, interval):
     source = "pykrx/naver"
 
     if intraday_requested:
-        base_df = _fetch_naver_intraday(code, range_key, interval)
+        base_df = _fetch_yahoo_intraday(code, range_key, interval)
 
         if not base_df.empty:
             chart_df = _aggregate_intraday_interval(base_df, interval)
             chart_df = _apply_visible_range(chart_df, range_key)
             intraday_source_used = True
-            source = "naver-minute"
+            source = "yfinance-hourly"
         else:
-            # 분봉을 못 받으면 일봉으로 조용히 변환하지 말고 fallback임을 payload에 명시한다.
-            daily_df = _fetch_pykrx_daily(code, "6m" if range_key in ["1d", "5d", "30d", "60d", "90d"] else range_key)
-            chart_df = _aggregate_interval(daily_df, "1d")
-            chart_df = _apply_visible_range(chart_df, "6m" if range_key in ["1d", "5d", "30d", "60d", "90d"] else range_key)
-            source = "pykrx/naver-daily-fallback"
+            chart_df = _empty_ohlcv()
+            source = "yfinance-hourly-empty"
     else:
         daily_df = _fetch_pykrx_daily(code, range_key)
         daily_interval = _daily_interval_from_display_interval(interval)
@@ -927,7 +1073,7 @@ def _make_payload(code, range_key, interval):
     if chart_df.empty:
         return {
             "ok": False,
-            "message": "표시할 차트 데이터가 없습니다. 분봉/시간봉은 Naver minute 데이터가 제한될 수 있습니다.",
+            "message": "표시할 차트 데이터가 없습니다. 시간봉은 Yahoo/yfinance 데이터가 제한되었거나 yfinance가 설치되지 않았을 수 있습니다.",
             "code": code,
             "name": stock.name,
             "market": getattr(stock, "market", "KRX"),
@@ -936,6 +1082,8 @@ def _make_payload(code, range_key, interval):
             "requested_interval": interval,
             "intraday": False,
             "intraday_requested": intraday_requested,
+            "server_aggregated": False,
+            "provider": source,
             "results": [],
             "rows": [],
             "ohlc": [],
@@ -990,7 +1138,7 @@ def _make_payload(code, range_key, interval):
 
     message = ""
     if intraday_requested and not intraday_source_used:
-        message = "분봉/시간봉 원본 데이터를 가져오지 못해 일봉 데이터로 fallback되었습니다. Naver minute 응답을 확인하세요."
+        message = "시간봉 원본 데이터를 가져오지 못했습니다. yfinance 설치 여부와 Yahoo Finance 응답을 확인하세요."
 
     return {
         "ok": True,
@@ -1004,6 +1152,8 @@ def _make_payload(code, range_key, interval):
         "requested_interval": interval,
         "intraday": intraday_source_used,
         "intraday_requested": intraday_requested,
+        "server_aggregated": intraday_source_used,
+        "provider": "yfinance" if intraday_source_used else source,
         "current": {"price": int(last["close"]), "change": change, "change_rate": change_rate},
         "results": results,
         "rows": results,

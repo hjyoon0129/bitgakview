@@ -90,10 +90,19 @@
       color: "#8b5cf6",
     },
     {
+      type: "ichimoku",
+      name: "일목구름",
+      shortName: "ICH",
+      desc: "전환선·기준선·선행스팬·후행스팬을 차트 위에 표시합니다.",
+      keywords: "ichimoku 일목균형표 일목구름 구름 전환선 기준선 선행스팬 후행스팬",
+      defaultPeriod: 9,
+      color: "#22c55e",
+    },
+    {
       type: "volume",
       name: "거래량",
       shortName: "VOL",
-      desc: "거래량 막대를 표시합니다.",
+      desc: "거래량 막대를 차트 바로 아래 보조창에 표시합니다.",
       keywords: "volume vol 거래량",
       defaultPeriod: 0,
       color: "#64748b",
@@ -102,19 +111,19 @@
       type: "rsi",
       name: "RSI",
       shortName: "RSI",
-      desc: "상승과 하락 강도를 비교하는 모멘텀 지표입니다.",
-      keywords: "rsi relative strength index 상대강도",
+      desc: "상승과 하락 강도를 비교하는 모멘텀 지표입니다. RSI선, RSI MA, 상·중·하단 레벨을 설정할 수 있습니다.",
+      keywords: "rsi relative strength index 상대강도 과매수 과매도",
       defaultPeriod: 14,
-      color: "#db2777",
+      color: "#8b5cf6",
     },
     {
       type: "macd",
-      name: "MACD",
-      shortName: "MACD",
-      desc: "단기/장기 이동평균 차이를 보는 추세 지표입니다.",
-      keywords: "macd signal histogram",
+      name: "MACD+RSI",
+      shortName: "M+R",
+      desc: "MACD를 % 오실레이터로 정규화하고 RSI를 50 중심선 기준으로 함께 표시합니다. MACD 버튼 하나로 복합지표가 추가됩니다.",
+      keywords: "macd rsi combo macd+rsi 복합지표 오실레이터 시그널 히스토그램",
       defaultPeriod: 12,
-      color: "#2563eb",
+      color: "#22c55e",
     },
   ];
 
@@ -148,10 +157,13 @@
   }
 
   function fixType(type) {
-    if (type === "bb") return "boll";
-    if (type === "ma" || type === "ema") return "ma_pack";
-    if (type === "vol") return "volume";
-    return type || "ma_pack";
+    const value = String(type || "").toLowerCase();
+    if (value === "bb") return "boll";
+    if (value === "ma" || value === "ema") return "ma_pack";
+    if (value === "vol") return "volume";
+    if (value === "ich" || value === "ichimoku_cloud" || value === "일목구름") return "ichimoku";
+    if (value === "macdrsi" || value === "macd+rsi" || value === "macd_rsi" || value === "macd_rsi_combo") return "macd";
+    return value || "ma_pack";
   }
 
   function getMeta(type) {
@@ -253,6 +265,16 @@
     };
   }
 
+  function normalizeBool(value, fallback) {
+    if (value === undefined || value === null || value === "") return fallback;
+    if (value === false || value === "false" || value === 0 || value === "0") return false;
+    return true;
+  }
+
+  function normalizeColor(value, fallback) {
+    return typeof value === "string" && value.trim() ? value.trim() : fallback;
+  }
+
   function normalizeIndicator(raw) {
     if (!raw) return null;
 
@@ -304,19 +326,88 @@
       };
     }
 
-    return {
+    const base = {
       id: raw.id || raw.uid || makeId(type),
       type,
-      period: Number(raw.period || settings.period || meta.defaultPeriod || 20),
-      fast: Number(raw.fast || settings.fast || 12),
-      slow: Number(raw.slow || settings.slow || 26),
-      signal: Number(raw.signal || settings.signal || 9),
-      source: raw.source || settings.source || (type === "volume" ? "volume" : "close"),
-      color: raw.color || settings.color || meta.color,
-      width: Number(raw.width || settings.width || 2),
       visible: raw.visible !== false,
+      source: raw.source || settings.source || (type === "volume" ? "volume" : "close"),
+      color: normalizeColor(raw.color || settings.color, meta.color),
+      width: clampNumber(raw.width || settings.width || 2, 1, 6, type === "boll" ? 1 : 2),
+      period: clampNumber(raw.period || settings.period || meta.defaultPeriod || 20, 1, 2000, meta.defaultPeriod || 20),
+      fast: clampNumber(raw.fast || settings.fast || 12, 1, 500, 12),
+      slow: clampNumber(raw.slow || settings.slow || 26, 1, 800, 26),
+      signal: clampNumber(raw.signal || settings.signal || 9, 1, 500, 9),
       series: [],
     };
+
+    if (type === "boll") {
+      return Object.assign(base, {
+        upperColor: normalizeColor(raw.upperColor || settings.upperColor, "#ef4444"),
+        middleColor: normalizeColor(raw.middleColor || settings.middleColor, "#3b82f6"),
+        lowerColor: normalizeColor(raw.lowerColor || settings.lowerColor, "#14b8a6"),
+      });
+    }
+
+    if (type === "rsi") {
+      return Object.assign(base, {
+        period: clampNumber(raw.period || settings.period || 14, 1, 300, 14),
+        maPeriod: clampNumber(raw.maPeriod || settings.maPeriod || raw.signal || settings.signal || 14, 1, 300, 14),
+        upper: clampNumber(raw.upper || settings.upper || 70, 1, 100, 70),
+        middle: clampNumber(raw.middle || settings.middle || 50, 0, 100, 50),
+        lower: clampNumber(raw.lower || settings.lower || 30, 0, 99, 30),
+        maColor: normalizeColor(raw.maColor || settings.maColor, "#facc15"),
+        upperColor: normalizeColor(raw.upperColor || settings.upperColor, "rgba(148, 163, 184, 0.78)"),
+        middleColor: normalizeColor(raw.middleColor || settings.middleColor, "rgba(148, 163, 184, 0.48)"),
+        lowerColor: normalizeColor(raw.lowerColor || settings.lowerColor, "rgba(148, 163, 184, 0.78)"),
+        showRsi: normalizeBool(raw.showRsi ?? settings.showRsi, true),
+        showRsiMa: normalizeBool(raw.showRsiMa ?? settings.showRsiMa, true),
+        showUpper: normalizeBool(raw.showUpper ?? settings.showUpper, true),
+        showMiddle: normalizeBool(raw.showMiddle ?? settings.showMiddle, true),
+        showLower: normalizeBool(raw.showLower ?? settings.showLower, true),
+      });
+    }
+
+    if (type === "macd") {
+      return Object.assign(base, {
+        color: normalizeColor(raw.color || settings.color, "#22c55e"),
+        rsiPeriod: clampNumber(raw.rsiPeriod || settings.rsiPeriod || 14, 1, 300, 14),
+        rsiColor: normalizeColor(raw.rsiColor || settings.rsiColor, "#a78bfa"),
+        signalColor: normalizeColor(raw.signalColor || settings.signalColor, "#fb923c"),
+        histUpColor: normalizeColor(raw.histUpColor || settings.histUpColor, "rgba(20, 184, 166, 0.64)"),
+        histDownColor: normalizeColor(raw.histDownColor || settings.histDownColor, "rgba(248, 113, 113, 0.64)"),
+        levelColor: normalizeColor(raw.levelColor || settings.levelColor || raw.zeroColor || settings.zeroColor, "rgba(148, 163, 184, 0.62)"),
+        showHistogram: normalizeBool(raw.showHistogram ?? settings.showHistogram, true),
+        showMacd: normalizeBool(raw.showMacd ?? settings.showMacd, true),
+        showSignal: normalizeBool(raw.showSignal ?? settings.showSignal, true),
+        showRsi: normalizeBool(raw.showRsi ?? settings.showRsi, true),
+        showLevels: normalizeBool(raw.showLevels ?? settings.showLevels ?? raw.showZero ?? settings.showZero, true),
+      });
+    }
+
+    if (type === "ichimoku") {
+      return Object.assign(base, {
+        conversion: clampNumber(raw.conversion || settings.conversion || 9, 1, 300, 9),
+        base: clampNumber(raw.base || settings.base || 26, 1, 500, 26),
+        spanB: clampNumber(raw.spanB || settings.spanB || 52, 1, 800, 52),
+        displacement: clampNumber(raw.displacement || settings.displacement || 26, 0, 300, 26),
+        conversionColor: normalizeColor(raw.conversionColor || settings.conversionColor, "#2563eb"),
+        baseColor: normalizeColor(raw.baseColor || settings.baseColor, "#dc2626"),
+        spanAColor: normalizeColor(raw.spanAColor || settings.spanAColor, "#22c55e"),
+        spanBColor: normalizeColor(raw.spanBColor || settings.spanBColor, "#f87171"),
+        laggingColor: normalizeColor(raw.laggingColor || settings.laggingColor, "#16a34a"),
+        cloudUpColor: normalizeColor(raw.cloudUpColor || settings.cloudUpColor, "rgba(37, 99, 235, 0.18)"),
+        cloudDownColor: normalizeColor(raw.cloudDownColor || settings.cloudDownColor, "rgba(239, 68, 68, 0.18)"),
+        showConversion: normalizeBool(raw.showConversion ?? settings.showConversion, true),
+        showBase: normalizeBool(raw.showBase ?? settings.showBase, true),
+        showSpanA: normalizeBool(raw.showSpanA ?? settings.showSpanA, true),
+        showSpanB: normalizeBool(raw.showSpanB ?? settings.showSpanB, true),
+        showLagging: normalizeBool(raw.showLagging ?? settings.showLagging, true),
+        showCloudFill: normalizeBool(raw.showCloudFill ?? settings.showCloudFill, true),
+      });
+    }
+
+
+    return base;
   }
 
   function readStoredIndicators() {
@@ -355,18 +446,9 @@
           }),
         };
       }
-      return {
-        id: item.id,
-        type: item.type,
-        period: item.period,
-        fast: item.fast,
-        slow: item.slow,
-        signal: item.signal,
-        source: item.source,
-        color: item.color,
-        width: item.width,
-        visible: item.visible,
-      };
+      const copy = { ...item };
+      delete copy.series;
+      return copy;
     });
     localStorage.setItem(STORAGE_KEY, JSON.stringify(plain));
   }
@@ -443,19 +525,32 @@
     return { upper, middle, lower };
   }
 
-  function calcRSI(rows, period) {
+  function calcRSI(rows, period, source) {
     const result = [];
     if (!period || rows.length <= period) return result;
-    let gains = 0, losses = 0;
+
+    let gains = 0;
+    let losses = 0;
+
     for (let i = 1; i <= period; i++) {
-      const diff = Number(rows[i].close) - Number(rows[i - 1].close);
+      const prev = getSourceValue(rows[i - 1], source || "close");
+      const curr = getSourceValue(rows[i], source || "close");
+      if (prev === null || curr === null) return result;
+      const diff = curr - prev;
       if (diff >= 0) gains += diff;
       else losses += Math.abs(diff);
     }
+
     let avgGain = gains / period;
     let avgLoss = losses / period;
+    const firstRs = avgLoss === 0 ? 100 : avgGain / avgLoss;
+    result.push({ time: rows[period].time, value: Math.round((100 - 100 / (1 + firstRs)) * 100) / 100 });
+
     for (let i = period + 1; i < rows.length; i++) {
-      const diff = Number(rows[i].close) - Number(rows[i - 1].close);
+      const prev = getSourceValue(rows[i - 1], source || "close");
+      const curr = getSourceValue(rows[i], source || "close");
+      if (prev === null || curr === null) continue;
+      const diff = curr - prev;
       const gain = diff > 0 ? diff : 0;
       const loss = diff < 0 ? Math.abs(diff) : 0;
       avgGain = (avgGain * (period - 1) + gain) / period;
@@ -520,16 +615,23 @@
     });
   }
 
-  function calcMACD(rows, fastPeriod, slowPeriod, signalPeriod) {
-    const fast = calcEMA(rows, fastPeriod || 12, "close");
-    const slow = calcEMA(rows, slowPeriod || 26, "close");
+  function calcMACD(rows, fastPeriod, slowPeriod, signalPeriod, source, asPercent) {
+    const fast = calcEMA(rows, fastPeriod || 12, source || "close");
+    const slow = calcEMA(rows, slowPeriod || 26, source || "close");
     const slowMap = new Map(slow.map(function (x) { return [String(x.time), x.value]; }));
+    const rowMap = new Map((rows || []).map(function (row) { return [String(row.time), row]; }));
     const macd = [];
 
     fast.forEach(function (x) {
       const slowValue = slowMap.get(String(x.time));
       if (slowValue === undefined) return;
-      macd.push({ time: x.time, value: Math.round((x.value - slowValue) * 100) / 100 });
+      let value = x.value - slowValue;
+      if (asPercent) {
+        const row = rowMap.get(String(x.time));
+        const baseValue = getSourceValue(row, source || "close") || Number(row && row.close) || 0;
+        if (baseValue) value = (value / baseValue) * 100;
+      }
+      macd.push({ time: x.time, value: Math.round(value * 10000) / 10000 });
     });
 
     const signal = calcSeriesEMA(macd, signalPeriod || 9);
@@ -539,31 +641,94 @@
     macd.forEach(function (x) {
       const signalValue = signalMap.get(String(x.time));
       if (signalValue === undefined) return;
-
-      const value = Math.round((x.value - signalValue) * 100) / 100;
-      histogram.push({
-        time: x.time,
-        value: value,
-        color: value >= 0 ? "rgba(20, 184, 166, 0.62)" : "rgba(248, 113, 113, 0.62)",
-      });
+      const value = Math.round((x.value - signalValue) * 10000) / 10000;
+      histogram.push({ time: x.time, value: value });
     });
 
     return { macd, signal, histogram };
   }
 
+  function colorizeHistogram(data, upColor, downColor) {
+    return (data || []).map(function (item) {
+      return {
+        time: item.time,
+        value: item.value,
+        color: Number(item.value) >= 0 ? upColor : downColor,
+      };
+    });
+  }
+
+  function donchianMid(rows, index, period) {
+    if (index < period - 1) return null;
+    let high = -Infinity;
+    let low = Infinity;
+    for (let i = index - period + 1; i <= index; i++) {
+      const h = Number(rows[i] && rows[i].high);
+      const l = Number(rows[i] && rows[i].low);
+      if (!Number.isFinite(h) || !Number.isFinite(l)) return null;
+      high = Math.max(high, h);
+      low = Math.min(low, l);
+    }
+    return Math.round(((high + low) / 2) * 100) / 100;
+  }
+
+  function calcIchimoku(rows, conversionPeriod, basePeriod, spanBPeriod, displacement) {
+    const conversion = [];
+    const base = [];
+    const spanA = [];
+    const spanB = [];
+    const lagging = [];
+    const convMap = new Map();
+    const baseMap = new Map();
+    const shift = Math.max(0, Number(displacement || 26));
+
+    for (let i = 0; i < rows.length; i++) {
+      const convValue = donchianMid(rows, i, conversionPeriod || 9);
+      const baseValue = donchianMid(rows, i, basePeriod || 26);
+      const spanBValue = donchianMid(rows, i, spanBPeriod || 52);
+
+      if (convValue !== null) {
+        conversion.push({ time: rows[i].time, value: convValue });
+        convMap.set(i, convValue);
+      }
+      if (baseValue !== null) {
+        base.push({ time: rows[i].time, value: baseValue });
+        baseMap.set(i, baseValue);
+      }
+      if (convValue !== null && baseValue !== null && rows[i + shift]) {
+        spanA.push({ time: rows[i + shift].time, value: Math.round(((convValue + baseValue) / 2) * 100) / 100 });
+      }
+      if (spanBValue !== null && rows[i + shift]) {
+        spanB.push({ time: rows[i + shift].time, value: spanBValue });
+      }
+      if (i >= shift) {
+        const close = Number(rows[i].close);
+        if (Number.isFinite(close)) lagging.push({ time: rows[i - shift].time, value: close });
+      }
+    }
+
+    return { conversion, base, spanA, spanB, lagging };
+  }
+
   function clearSeries(indicator) {
     if (!indicator || !indicator.series) return;
-    indicator.series.forEach(function (series) { api.removeSeries(series); });
+    indicator.series.forEach(function (series) {
+      try {
+        if (series && series.__bitgakOverlay && typeof series.remove === "function") series.remove();
+        else api.removeSeries(series);
+      } catch (e) {}
+    });
     indicator.series = [];
   }
 
-  function addLine(color, width) {
-    return api.addLineSeries({
+  function addLine(color, width, extraOptions) {
+    const options = Object.assign({
       color,
       lineWidth: clampNumber(width, 1, 6, 2),
       priceLineVisible: false,
       lastValueVisible: false,
-    });
+    }, extraOptions || {});
+    return api.addLineSeries(options);
   }
 
   function addPaneLine(paneType, color, width, extraOptions) {
@@ -618,6 +783,215 @@
     return null;
   }
 
+  const adaptivePaneLabels = {};
+  let paneLabelRefreshRaf = null;
+  let paneLabelResizeObserver = null;
+
+  function setAdaptivePaneLabel(paneType, text, color) {
+    adaptivePaneLabels[paneType] = { text: text, color: color };
+    try {
+      if (api.setPaneLabel) api.setPaneLabel(paneType, text, color);
+    } catch (e) {}
+    schedulePaneLabelRefresh();
+  }
+
+  function getPossibleChartRoot() {
+    if (typeof api.getChartContainer === "function") return api.getChartContainer();
+    if (api.chartContainer) return api.chartContainer;
+    if (api.container) return api.container;
+    return document.querySelector("#chartContainer, #chart-container, #chart, .chart-container, .chart-wrap, .bitgak-chart, .tv-lightweight-charts");
+  }
+
+  function normalizePaneLabelDom() {
+    const names = Object.keys(adaptivePaneLabels).map(function (key) { return adaptivePaneLabels[key].text; });
+    if (!names.length) return;
+
+    const candidates = Array.from(document.querySelectorAll("[data-pane-label], .pane-label, .indicator-pane-label, .bitgak-pane-label, .chart-pane-label"));
+    const textCandidates = Array.from(document.querySelectorAll("span, div, strong"))
+      .filter(function (el) {
+        const text = (el.textContent || "").trim();
+        return names.includes(text) && el.children.length === 0;
+      });
+
+    candidates.concat(textCandidates).forEach(function (el) {
+      const text = (el.textContent || "").trim();
+      if (text && !names.includes(text) && !el.dataset.paneLabel) return;
+      const pane = el.closest("[data-pane-type], .indicator-pane, .chart-pane, .pane, .tv-lightweight-charts") || el.parentElement;
+      if (pane) {
+        const computed = window.getComputedStyle(pane);
+        if (computed.position === "static") pane.style.position = "relative";
+      }
+      el.classList.add("bitgak-adaptive-pane-label");
+      el.style.left = "10px";
+      el.style.top = "8px";
+      el.style.right = "auto";
+      el.style.bottom = "auto";
+      el.style.transform = "none";
+      el.style.pointerEvents = "none";
+    });
+  }
+
+  function schedulePaneLabelRefresh() {
+    if (paneLabelRefreshRaf) cancelAnimationFrame(paneLabelRefreshRaf);
+    paneLabelRefreshRaf = requestAnimationFrame(function () {
+      paneLabelRefreshRaf = null;
+      Object.keys(adaptivePaneLabels).forEach(function (paneType) {
+        const item = adaptivePaneLabels[paneType];
+        try {
+          if (api.setPaneLabel) api.setPaneLabel(paneType, item.text, item.color);
+        } catch (e) {}
+      });
+      normalizePaneLabelDom();
+      if (api.syncPaneTimeScales) {
+        try { api.syncPaneTimeScales(); } catch (e) {}
+      }
+    });
+  }
+
+  function startPaneLabelResizeSync() {
+    if (paneLabelResizeObserver || !window.ResizeObserver) return;
+    const root = getPossibleChartRoot() || document.body;
+    paneLabelResizeObserver = new ResizeObserver(function () { schedulePaneLabelRefresh(); });
+    try { paneLabelResizeObserver.observe(root); } catch (e) {}
+    window.addEventListener("resize", schedulePaneLabelRefresh, { passive: true });
+    window.addEventListener("orientationchange", schedulePaneLabelRefresh, { passive: true });
+  }
+
+  function getMainChartObject() {
+    if (typeof api.getChart === "function") return api.getChart();
+    if (typeof api.getMainChart === "function") return api.getMainChart();
+    return api.chart || api.mainChart || api.priceChart || null;
+  }
+
+  function timeToCoordinate(chart, time) {
+    try {
+      const ts = chart && chart.timeScale && chart.timeScale();
+      if (ts && typeof ts.timeToCoordinate === "function") return ts.timeToCoordinate(time);
+    } catch (e) {}
+    try {
+      if (api.timeScale && typeof api.timeScale.timeToCoordinate === "function") return api.timeScale.timeToCoordinate(time);
+    } catch (e) {}
+    return null;
+  }
+
+  function getMainChartContainer() {
+    const root = getPossibleChartRoot();
+    if (!root) return null;
+    const tv = root.classList && root.classList.contains("tv-lightweight-charts") ? root : root.querySelector && root.querySelector(".tv-lightweight-charts");
+    return tv || root;
+  }
+
+  function createIchimokuCloudOverlay(spanA, spanB, coordinateSeries, upColor, downColor) {
+    const chart = getMainChartObject() || (api.timeScale ? { timeScale: function () { return api.timeScale; } } : null);
+    const container = getMainChartContainer();
+    if (!chart || !container || !coordinateSeries || typeof coordinateSeries.priceToCoordinate !== "function") return null;
+
+    const computed = window.getComputedStyle(container);
+    if (computed.position === "static") container.style.position = "relative";
+
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    svg.classList.add("bitgak-ichimoku-cloud-fill");
+    svg.setAttribute("aria-hidden", "true");
+    svg.style.position = "absolute";
+    svg.style.inset = "0";
+    svg.style.width = "100%";
+    svg.style.height = "100%";
+    svg.style.pointerEvents = "none";
+    svg.style.zIndex = "3";
+    container.appendChild(svg);
+
+    const spanBMap = new Map((spanB || []).map(function (item) { return [String(item.time), item.value]; }));
+    const pairs = (spanA || []).map(function (a) {
+      const bValue = spanBMap.get(String(a.time));
+      if (bValue === undefined) return null;
+      return { time: a.time, a: Number(a.value), b: Number(bValue) };
+    }).filter(function (item) {
+      return item && Number.isFinite(item.a) && Number.isFinite(item.b);
+    });
+
+    function buildPath(points) {
+      if (points.length < 2) return "";
+      const top = points.map(function (p) { return p.x + "," + p.yA; }).join(" L");
+      const bottom = points.slice().reverse().map(function (p) { return p.x + "," + p.yB; }).join(" L");
+      return "M" + top + " L" + bottom + " Z";
+    }
+
+    function render() {
+      const rect = container.getBoundingClientRect();
+      if (!rect.width || !rect.height) return;
+      svg.setAttribute("viewBox", "0 0 " + rect.width + " " + rect.height);
+      svg.setAttribute("width", String(rect.width));
+      svg.setAttribute("height", String(rect.height));
+      svg.innerHTML = "";
+
+      let current = [];
+      let currentBull = null;
+      function flush() {
+        if (current.length >= 2) {
+          const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+          path.setAttribute("d", buildPath(current));
+          path.setAttribute("fill", currentBull ? upColor : downColor);
+          path.setAttribute("stroke", "none");
+          svg.appendChild(path);
+        }
+        current = [];
+        currentBull = null;
+      }
+
+      pairs.forEach(function (item) {
+        const x = timeToCoordinate(chart, item.time);
+        const yA = coordinateSeries.priceToCoordinate(item.a);
+        const yB = coordinateSeries.priceToCoordinate(item.b);
+        if (x === null || yA === null || yB === null || !Number.isFinite(x) || !Number.isFinite(yA) || !Number.isFinite(yB)) {
+          flush();
+          return;
+        }
+        const bull = item.a >= item.b;
+        const point = { x: Math.round(x * 100) / 100, yA: Math.round(yA * 100) / 100, yB: Math.round(yB * 100) / 100 };
+        if (currentBull === null) currentBull = bull;
+        if (currentBull !== bull) {
+          if (current.length) current.push(point);
+          flush();
+          currentBull = bull;
+          current.push(point);
+        } else {
+          current.push(point);
+        }
+      });
+      flush();
+    }
+
+    const schedule = function () { requestAnimationFrame(render); };
+    schedule();
+
+    let unsubscribe = null;
+    try {
+      const ts = chart.timeScale && chart.timeScale();
+      if (ts && typeof ts.subscribeVisibleLogicalRangeChange === "function") {
+        ts.subscribeVisibleLogicalRangeChange(schedule);
+        unsubscribe = function () { try { ts.unsubscribeVisibleLogicalRangeChange(schedule); } catch (e) {} };
+      } else if (ts && typeof ts.subscribeVisibleTimeRangeChange === "function") {
+        ts.subscribeVisibleTimeRangeChange(schedule);
+        unsubscribe = function () { try { ts.unsubscribeVisibleTimeRangeChange(schedule); } catch (e) {} };
+      }
+    } catch (e) {}
+
+    const ro = window.ResizeObserver ? new ResizeObserver(schedule) : null;
+    try { if (ro) ro.observe(container); } catch (e) {}
+    window.addEventListener("resize", schedule, { passive: true });
+
+    return {
+      __bitgakOverlay: true,
+      remove: function () {
+        try { if (unsubscribe) unsubscribe(); } catch (e) {}
+        try { if (ro) ro.disconnect(); } catch (e) {}
+        window.removeEventListener("resize", schedule);
+        svg.remove();
+      },
+      update: schedule,
+    };
+  }
+
 
   function rebuildOne(indicator) {
     const rows = api.getRows();
@@ -638,7 +1012,7 @@
       });
       const data = rowsToVolumeData(rows);
       series.setData(data);
-      if (api.setPaneLabel) api.setPaneLabel("volume", "거래량", "#64748b");
+      setAdaptivePaneLabel("volume", "거래량", indicator.color || "#64748b");
       indicator.series = [series];
       return;
     }
@@ -669,84 +1043,174 @@
       return;
     }
 
+    if (indicator.type === "ichimoku") {
+      const data = calcIchimoku(
+        rows,
+        Number(indicator.conversion || 9),
+        Number(indicator.base || 26),
+        Number(indicator.spanB || 52),
+        Number(indicator.displacement || 26)
+      );
+      const created = [];
+
+      if (indicator.showCloudFill !== false && data.spanA.length && data.spanB.length) {
+        const cloudCoordinateSeries = addLine("rgba(0,0,0,0)", 1, {
+          priceLineVisible: false,
+          lastValueVisible: false,
+          crosshairMarkerVisible: false,
+        });
+        cloudCoordinateSeries.setData(data.spanA);
+        created.push(cloudCoordinateSeries);
+        const cloudOverlay = createIchimokuCloudOverlay(
+          data.spanA,
+          data.spanB,
+          cloudCoordinateSeries,
+          indicator.cloudUpColor || "rgba(37, 99, 235, 0.18)",
+          indicator.cloudDownColor || "rgba(239, 68, 68, 0.18)"
+        );
+        if (cloudOverlay) created.push(cloudOverlay);
+      }
+
+      if (indicator.showConversion !== false) {
+        const s = addLine(indicator.conversionColor || "#2563eb", indicator.width || 2);
+        s.setData(data.conversion);
+        created.push(s);
+      }
+      if (indicator.showBase !== false) {
+        const s = addLine(indicator.baseColor || "#dc2626", indicator.width || 2);
+        s.setData(data.base);
+        created.push(s);
+      }
+      if (indicator.showSpanA !== false) {
+        const s = addLine(indicator.spanAColor || "#22c55e", 1, { lineStyle: 0 });
+        s.setData(data.spanA);
+        created.push(s);
+      }
+      if (indicator.showSpanB !== false) {
+        const s = addLine(indicator.spanBColor || "#f87171", 1, { lineStyle: 0 });
+        s.setData(data.spanB);
+        created.push(s);
+      }
+      if (indicator.showLagging !== false) {
+        const s = addLine(indicator.laggingColor || "#16a34a", 1);
+        s.setData(data.lagging);
+        created.push(s);
+      }
+      indicator.series = created;
+      return;
+    }
+
     if (indicator.type === "rsi") {
       if (api.ensureIndicatorPane) api.ensureIndicatorPane("rsi", "RSI");
+      const created = [];
+      const rsiData = calcRSI(rows, Number(indicator.period || 14), indicator.source || "close");
 
-      const rsiData = calcRSI(rows, Number(indicator.period || 14));
-      const rsiSeries = addPaneLine("rsi", indicator.color || "#8b5cf6", indicator.width || 2, {
-        priceFormat: { type: "price", precision: 2, minMove: 0.01 },
-      });
-      rsiSeries.setData(rsiData);
+      if (indicator.showRsi !== false) {
+        const rsiSeries = addPaneLine("rsi", indicator.color || "#8b5cf6", indicator.width || 2, {
+          priceFormat: { type: "price", precision: 2, minMove: 0.01 },
+        });
+        rsiSeries.setData(rsiData);
+        created.push(rsiSeries);
+      }
 
-      const maData = calcSeriesMA(rsiData, Number(indicator.signal || 14));
-      const maSeries = addPaneLine("rsi", indicator.maColor || "#facc15", 1, {
-        priceFormat: { type: "price", precision: 2, minMove: 0.01 },
-      });
-      maSeries.setData(maData);
+      if (indicator.showRsiMa !== false) {
+        const maData = calcSeriesMA(rsiData, Number(indicator.maPeriod || 14));
+        const maSeries = addPaneLine("rsi", indicator.maColor || "#facc15", 1, {
+          priceFormat: { type: "price", precision: 2, minMove: 0.01 },
+        });
+        maSeries.setData(maData);
+        created.push(maSeries);
+      }
 
-      const upperLine = addPaneLine("rsi", "rgba(148, 163, 184, 0.72)", 1, {
-        lineStyle: 2,
-        priceFormat: { type: "price", precision: 2, minMove: 0.01 },
-      });
-      const middleLine = addPaneLine("rsi", "rgba(148, 163, 184, 0.42)", 1, {
-        lineStyle: 2,
-        priceFormat: { type: "price", precision: 2, minMove: 0.01 },
-      });
-      const lowerLine = addPaneLine("rsi", "rgba(148, 163, 184, 0.72)", 1, {
-        lineStyle: 2,
-        priceFormat: { type: "price", precision: 2, minMove: 0.01 },
-      });
+      if (indicator.showUpper !== false) {
+        const upperLine = addPaneLine("rsi", indicator.upperColor || "rgba(148, 163, 184, 0.78)", 1, {
+          lineStyle: 2,
+          priceFormat: { type: "price", precision: 2, minMove: 0.01 },
+        });
+        upperLine.setData(buildConstantLine(rows, Number(indicator.upper || 70)));
+        created.push(upperLine);
+      }
+      if (indicator.showMiddle !== false) {
+        const middleLine = addPaneLine("rsi", indicator.middleColor || "rgba(148, 163, 184, 0.48)", 1, {
+          lineStyle: 2,
+          priceFormat: { type: "price", precision: 2, minMove: 0.01 },
+        });
+        middleLine.setData(buildConstantLine(rows, Number(indicator.middle || 50)));
+        created.push(middleLine);
+      }
+      if (indicator.showLower !== false) {
+        const lowerLine = addPaneLine("rsi", indicator.lowerColor || "rgba(148, 163, 184, 0.78)", 1, {
+          lineStyle: 2,
+          priceFormat: { type: "price", precision: 2, minMove: 0.01 },
+        });
+        lowerLine.setData(buildConstantLine(rows, Number(indicator.lower || 30)));
+        created.push(lowerLine);
+      }
 
-      upperLine.setData(buildConstantLine(rows, 70));
-      middleLine.setData(buildConstantLine(rows, 50));
-      lowerLine.setData(buildConstantLine(rows, 30));
-
-      if (api.setPaneLabel) api.setPaneLabel("rsi", "RSI", indicator.color || "#8b5cf6");
-      indicator.series = [rsiSeries, maSeries, upperLine, middleLine, lowerLine];
+      setAdaptivePaneLabel("rsi", "RSI", indicator.color || "#8b5cf6");
+      indicator.series = created;
       return;
     }
 
     if (indicator.type === "macd") {
-      if (api.ensureIndicatorPane) api.ensureIndicatorPane("macd", "MACD");
-
+      if (api.ensureIndicatorPane) api.ensureIndicatorPane("macd", "MACD+RSI");
+      const created = [];
       const data = calcMACD(
         rows,
         Number(indicator.fast || 12),
         Number(indicator.slow || 26),
-        Number(indicator.signal || 9)
+        Number(indicator.signal || 9),
+        indicator.source || "close",
+        true
       );
-
-      const histogram = addPaneHistogram("macd", {
-        priceFormat: { type: "price", precision: 2, minMove: 0.01 },
-        base: 0,
-        priceLineVisible: false,
-        lastValueVisible: false,
+      const rsiData = calcRSI(rows, Number(indicator.rsiPeriod || 14), indicator.source || "close").map(function (x) {
+        return { time: x.time, value: Math.round((x.value - 50) * 100) / 100 };
       });
-      histogram.setData(data.histogram);
 
-      const macdLine = addPaneLine("macd", indicator.color || "#38bdf8", indicator.width || 2, {
-        priceFormat: { type: "price", precision: 2, minMove: 0.01 },
-      });
-      macdLine.setData(data.macd);
-
-      const signalLine = addPaneLine("macd", indicator.signalColor || "#fb923c", 2, {
-        priceFormat: { type: "price", precision: 2, minMove: 0.01 },
-      });
-      signalLine.setData(data.signal);
-
-      try {
-        macdLine.createPriceLine({
-          price: 0,
-          color: "rgba(148, 163, 184, 0.70)",
-          lineWidth: 1,
-          lineStyle: 2,
-          axisLabelVisible: false,
-          title: "",
+      if (indicator.showHistogram !== false) {
+        const histogram = addPaneHistogram("macd", {
+          priceFormat: { type: "price", precision: 2, minMove: 0.01 },
+          base: 0,
+          priceLineVisible: false,
+          lastValueVisible: false,
         });
-      } catch (e) {}
-
-      if (api.setPaneLabel) api.setPaneLabel("macd", "MACD", indicator.color || "#38bdf8");
-      indicator.series = [histogram, macdLine, signalLine];
+        histogram.setData(colorizeHistogram(data.histogram, indicator.histUpColor || "rgba(20, 184, 166, 0.64)", indicator.histDownColor || "rgba(248, 113, 113, 0.64)"));
+        created.push(histogram);
+      }
+      if (indicator.showMacd !== false) {
+        const macdLine = addPaneLine("macd", indicator.color || "#22c55e", indicator.width || 2, {
+          priceFormat: { type: "price", precision: 2, minMove: 0.01 },
+        });
+        macdLine.setData(data.macd);
+        created.push(macdLine);
+      }
+      if (indicator.showSignal !== false) {
+        const signalLine = addPaneLine("macd", indicator.signalColor || "#fb923c", 2, {
+          priceFormat: { type: "price", precision: 2, minMove: 0.01 },
+        });
+        signalLine.setData(data.signal);
+        created.push(signalLine);
+      }
+      if (indicator.showRsi !== false) {
+        const rsiLine = addPaneLine("macd", indicator.rsiColor || "#a78bfa", 2, {
+          priceFormat: { type: "price", precision: 2, minMove: 0.01 },
+        });
+        rsiLine.setData(rsiData);
+        created.push(rsiLine);
+      }
+      if (indicator.showLevels !== false) {
+        [-20, 0, 20].forEach(function (level) {
+          const line = addPaneLine("macd", indicator.levelColor || "rgba(148, 163, 184, 0.62)", 1, {
+            lineStyle: level === 0 ? 2 : 3,
+            priceFormat: { type: "price", precision: 2, minMove: 0.01 },
+          });
+          line.setData(buildConstantLine(rows, level));
+          created.push(line);
+        });
+      }
+      setAdaptivePaneLabel("macd", "MACD+RSI", indicator.color || "#22c55e");
+      indicator.series = created;
+      return;
     }
   }
 
@@ -765,6 +1229,7 @@
     indicators.forEach(rebuildOne);
     renderRightList();
     if (api.syncPaneTimeScales) api.syncPaneTimeScales();
+    schedulePaneLabelRefresh();
   }
 
   function renderRightList() {
@@ -997,7 +1462,7 @@
   function openColorPalette(button) {
     closeColorPalette();
     const row = button.closest(".ma-setting-row") || button.closest(".indicator-setting-field") || activeSettingsEl;
-    const input = row ? (row.querySelector('[data-ma-field="color"]') || row.querySelector("#settingColor")) : null;
+    const input = row ? (row.querySelector('[data-ma-field="color"]') || row.querySelector("[data-color-value]") || row.querySelector("#settingColor")) : null;
     if (!input) return;
     const palette = document.createElement("div");
     palette.className = "indicator-color-palette";
@@ -1065,63 +1530,156 @@
       </div>`;
   }
 
+  function checkboxFieldHtml(id, label, checked) {
+    return `
+      <label class="indicator-check-row">
+        <input id="${escapeHtml(id)}" type="checkbox" ${checked ? "checked" : ""}>
+        <span aria-hidden="true"></span>
+        <strong>${escapeHtml(label)}</strong>
+      </label>`;
+  }
+
+  function colorFieldHtml(id, label, value) {
+    const color = value || "#111827";
+    return `
+      <div class="indicator-setting-field indicator-color-cell">
+        <label>${escapeHtml(label)}</label>
+        <button class="indicator-color-button" type="button" data-color-target="single" style="--selected-color:${escapeHtml(color)};" title="${escapeHtml(label)} 색상 선택"></button>
+        <input id="${escapeHtml(id)}" data-color-value type="hidden" value="${escapeHtml(color)}">
+      </div>`;
+  }
+
+  function numberFieldHtml(id, label, value, min, max) {
+    return `<div class="indicator-setting-field"><label>${escapeHtml(label)}</label><input id="${escapeHtml(id)}" type="number" min="${escapeHtml(min || 1)}" max="${escapeHtml(max || 9999)}" value="${escapeHtml(value)}"></div>`;
+  }
+
+  function selectFieldHtml(id, label, value, options) {
+    return `<div class="indicator-setting-field"><label>${escapeHtml(label)}</label>${customSelectHtml({ id: id, value: String(value), options: options })}</div>`;
+  }
+
+  function sectionHtml(title, body) {
+    return `<section class="indicator-setting-section"><div class="indicator-setting-section-title">${escapeHtml(title)}</div>${body}</section>`;
+  }
+
   function renderSettings(indicator) {
     const meta = getMeta(indicator.type);
     if (settingsTitle) settingsTitle.textContent = `${meta.name} 설정`;
     if (activeSettingsEl) activeSettingsEl.dataset.mode = indicator.type === "ma_pack" ? "ma" : "single";
     if (indicator.type === "ma_pack") { renderMaSettings(indicator); return; }
+
     if (indicator.type === "volume") {
       activeSettingsEl.innerHTML = `
         <div class="indicator-setting-grid">
-          <div class="indicator-setting-field"><label>표시 여부</label>${customSelectHtml({ id: "settingVisible", value: String(indicator.visible !== false), options: VISIBLE_OPTIONS })}</div>
-          <div class="indicator-setting-field"><label>색상</label><button class="indicator-color-button" type="button" data-color-target="single" style="--selected-color:${escapeHtml(indicator.color || meta.color)};"></button><input id="settingColor" type="hidden" value="${escapeHtml(indicator.color || meta.color)}"></div>
+          ${selectFieldHtml("settingVisible", "표시 여부", String(indicator.visible !== false), VISIBLE_OPTIONS)}
+          ${colorFieldHtml("settingColor", "막대 색상", indicator.color || meta.color)}
         </div>`;
       return;
     }
+
     if (indicator.type === "macd") {
       activeSettingsEl.innerHTML = `
         <div class="indicator-setting-grid">
-          <div class="indicator-setting-field"><label>표시 여부</label>${customSelectHtml({ id: "settingVisible", value: String(indicator.visible !== false), options: VISIBLE_OPTIONS })}</div>
-          <div class="indicator-setting-field"><label>단기</label><input id="settingFast" type="number" min="1" max="300" value="${escapeHtml(indicator.fast || 12)}"></div>
-          <div class="indicator-setting-field"><label>장기</label><input id="settingSlow" type="number" min="1" max="500" value="${escapeHtml(indicator.slow || 26)}"></div>
-          <div class="indicator-setting-field"><label>시그널</label><input id="settingSignal" type="number" min="1" max="300" value="${escapeHtml(indicator.signal || 9)}"></div>
-          <div class="indicator-setting-field"><label>선 굵기</label>${customSelectHtml({ id: "settingWidth", value: String(indicator.width || 2), options: WIDTH_OPTIONS })}</div>
-          <div class="indicator-setting-field"><label>색상</label><button class="indicator-color-button" type="button" data-color-target="single" style="--selected-color:${escapeHtml(indicator.color || meta.color)};"></button><input id="settingColor" type="hidden" value="${escapeHtml(indicator.color || meta.color)}"></div>
-        </div>`;
+          ${selectFieldHtml("settingVisible", "표시 여부", String(indicator.visible !== false), VISIBLE_OPTIONS)}
+          ${selectFieldHtml("settingSource", "소스", indicator.source || "close", SOURCE_OPTIONS)}
+          ${numberFieldHtml("settingFast", "MACD Fast", indicator.fast || 12, 1, 300)}
+          ${numberFieldHtml("settingSlow", "MACD Slow", indicator.slow || 26, 1, 500)}
+          ${numberFieldHtml("settingSignal", "MACD Signal", indicator.signal || 9, 1, 300)}
+          ${numberFieldHtml("settingRsiPeriod", "RSI 길이", indicator.rsiPeriod || 14, 1, 300)}
+          ${selectFieldHtml("settingWidth", "선 굵기", String(indicator.width || 2), WIDTH_OPTIONS)}
+        </div>
+        ${sectionHtml("표시 항목", `<div class="indicator-toggle-grid">
+          ${checkboxFieldHtml("settingShowHistogram", "히스토그램", indicator.showHistogram !== false)}
+          ${checkboxFieldHtml("settingShowMacd", "MACD", indicator.showMacd !== false)}
+          ${checkboxFieldHtml("settingShowSignal", "시그널", indicator.showSignal !== false)}
+          ${checkboxFieldHtml("settingShowRsi", "RSI(50 중심)", indicator.showRsi !== false)}
+          ${checkboxFieldHtml("settingShowLevels", "±20 / 0 레벨", indicator.showLevels !== false)}
+        </div>`)}
+        ${sectionHtml("색상", `<div class="indicator-setting-grid indicator-color-grid">
+          ${colorFieldHtml("settingColor", "MACD", indicator.color || "#22c55e")}
+          ${colorFieldHtml("settingSignalColor", "시그널", indicator.signalColor || "#fb923c")}
+          ${colorFieldHtml("settingRsiColor", "RSI", indicator.rsiColor || "#a78bfa")}
+          ${colorFieldHtml("settingHistUpColor", "히스토그램 상승", indicator.histUpColor || "rgba(20, 184, 166, 0.64)")}
+          ${colorFieldHtml("settingHistDownColor", "히스토그램 하락", indicator.histDownColor || "rgba(248, 113, 113, 0.64)")}
+          ${colorFieldHtml("settingLevelColor", "레벨", indicator.levelColor || "rgba(148, 163, 184, 0.62)")}
+        </div>`)}
+      `;
       return;
     }
+
+    if (indicator.type === "rsi") {
+      activeSettingsEl.innerHTML = `
+        <div class="indicator-setting-grid">
+          ${selectFieldHtml("settingVisible", "표시 여부", String(indicator.visible !== false), VISIBLE_OPTIONS)}
+          ${selectFieldHtml("settingSource", "기준가격", indicator.source || "close", SOURCE_OPTIONS)}
+          ${numberFieldHtml("settingPeriod", "RSI 기간", indicator.period || 14, 1, 300)}
+          ${numberFieldHtml("settingMaPeriod", "RSI MA 기간", indicator.maPeriod || 14, 1, 300)}
+          ${numberFieldHtml("settingUpper", "상단 레벨", indicator.upper || 70, 1, 100)}
+          ${numberFieldHtml("settingMiddle", "중간 레벨", indicator.middle || 50, 0, 100)}
+          ${numberFieldHtml("settingLower", "하단 레벨", indicator.lower || 30, 0, 99)}
+          ${selectFieldHtml("settingWidth", "선 굵기", String(indicator.width || 2), WIDTH_OPTIONS)}
+        </div>
+        ${sectionHtml("표시 항목", `<div class="indicator-toggle-grid">
+          ${checkboxFieldHtml("settingShowRsi", "RSI 라인", indicator.showRsi !== false)}
+          ${checkboxFieldHtml("settingShowRsiMa", "RSI-based MA", indicator.showRsiMa !== false)}
+          ${checkboxFieldHtml("settingShowUpper", "Upper Band", indicator.showUpper !== false)}
+          ${checkboxFieldHtml("settingShowMiddle", "Middle Band", indicator.showMiddle !== false)}
+          ${checkboxFieldHtml("settingShowLower", "Lower Band", indicator.showLower !== false)}
+        </div>`)}
+        ${sectionHtml("색상", `<div class="indicator-setting-grid indicator-color-grid">
+          ${colorFieldHtml("settingColor", "RSI", indicator.color || "#8b5cf6")}
+          ${colorFieldHtml("settingMaColor", "RSI MA", indicator.maColor || "#facc15")}
+          ${colorFieldHtml("settingUpperColor", "상단 레벨", indicator.upperColor || "rgba(148, 163, 184, 0.78)")}
+          ${colorFieldHtml("settingMiddleColor", "중간 레벨", indicator.middleColor || "rgba(148, 163, 184, 0.48)")}
+          ${colorFieldHtml("settingLowerColor", "하단 레벨", indicator.lowerColor || "rgba(148, 163, 184, 0.78)")}
+        </div>`)}
+      `;
+      return;
+    }
+
+    if (indicator.type === "ichimoku") {
+      activeSettingsEl.innerHTML = `
+        <div class="indicator-setting-grid">
+          ${selectFieldHtml("settingVisible", "표시 여부", String(indicator.visible !== false), VISIBLE_OPTIONS)}
+          ${numberFieldHtml("settingConversion", "전환선 길이", indicator.conversion || 9, 1, 300)}
+          ${numberFieldHtml("settingBase", "기준선 길이", indicator.base || 26, 1, 500)}
+          ${numberFieldHtml("settingSpanB", "선행 스팬 B 길이", indicator.spanB || 52, 1, 800)}
+          ${numberFieldHtml("settingDisplacement", "래깅/선행 스팬", indicator.displacement || 26, 0, 300)}
+          ${selectFieldHtml("settingWidth", "선 굵기", String(indicator.width || 2), WIDTH_OPTIONS)}
+        </div>
+        ${sectionHtml("표시 항목", `<div class="indicator-toggle-grid">
+          ${checkboxFieldHtml("settingShowConversion", "전환선 라인", indicator.showConversion !== false)}
+          ${checkboxFieldHtml("settingShowBase", "기준선 라인", indicator.showBase !== false)}
+          ${checkboxFieldHtml("settingShowSpanA", "선행 스팬 A", indicator.showSpanA !== false)}
+          ${checkboxFieldHtml("settingShowSpanB", "선행 스팬 B", indicator.showSpanB !== false)}
+          ${checkboxFieldHtml("settingShowLagging", "후행 스팬", indicator.showLagging !== false)}
+          ${checkboxFieldHtml("settingShowCloudFill", "구름 배경 채우기", indicator.showCloudFill !== false)}
+        </div>`)}
+        ${sectionHtml("색상", `<div class="indicator-setting-grid indicator-color-grid">
+          ${colorFieldHtml("settingConversionColor", "전환선", indicator.conversionColor || "#2563eb")}
+          ${colorFieldHtml("settingBaseColor", "기준선", indicator.baseColor || "#dc2626")}
+          ${colorFieldHtml("settingSpanAColor", "선행 스팬 A", indicator.spanAColor || "#22c55e")}
+          ${colorFieldHtml("settingSpanBColor", "선행 스팬 B", indicator.spanBColor || "#f87171")}
+          ${colorFieldHtml("settingLaggingColor", "후행 스팬", indicator.laggingColor || "#16a34a")}
+          ${colorFieldHtml("settingCloudUpColor", "상승 구름 배경", indicator.cloudUpColor || "rgba(37, 99, 235, 0.18)")}
+          ${colorFieldHtml("settingCloudDownColor", "하락 구름 배경", indicator.cloudDownColor || "rgba(239, 68, 68, 0.18)")}
+        </div>`)}
+      `;
+      return;
+    }
+
     activeSettingsEl.innerHTML = `
       <div class="indicator-setting-grid">
-        <div class="indicator-setting-field"><label>표시 여부</label>${customSelectHtml({ id: "settingVisible", value: String(indicator.visible !== false), options: VISIBLE_OPTIONS })}</div>
-        <div class="indicator-setting-field"><label>기간</label><input id="settingPeriod" type="number" min="1" max="500" value="${escapeHtml(indicator.period || meta.defaultPeriod || 20)}"></div>
-        <div class="indicator-setting-field"><label>기준가격</label>${customSelectHtml({ id: "settingSource", value: indicator.source || "close", options: SOURCE_OPTIONS })}</div>
-        <div class="indicator-setting-field"><label>선 굵기</label>${customSelectHtml({ id: "settingWidth", value: String(indicator.width || 2), options: WIDTH_OPTIONS })}</div>
-        <div class="indicator-setting-field"><label>색상</label><button class="indicator-color-button" type="button" data-color-target="single" style="--selected-color:${escapeHtml(indicator.color || meta.color)};"></button><input id="settingColor" type="hidden" value="${escapeHtml(indicator.color || meta.color)}"></div>
+        ${selectFieldHtml("settingVisible", "표시 여부", String(indicator.visible !== false), VISIBLE_OPTIONS)}
+        ${numberFieldHtml("settingPeriod", "기간", indicator.period || meta.defaultPeriod || 20, 1, 500)}
+        ${selectFieldHtml("settingSource", "기준가격", indicator.source || "close", SOURCE_OPTIONS)}
+        ${selectFieldHtml("settingWidth", "선 굵기", String(indicator.width || 2), WIDTH_OPTIONS)}
+        ${colorFieldHtml("settingColor", "색상", indicator.color || meta.color)}
       </div>`;
   }
 
-  function addIndicator(type) {
-    const fixedType = fixType(type);
+  function createDefaultIndicator(fixedType) {
     const meta = getMeta(fixedType);
-
-    if (fixedType === "ma_pack") {
-      const existing = indicators.find(function (item) { return item.type === "ma_pack"; });
-      if (existing) {
-        existing.visible = true;
-        saveIndicators();
-        rebuildAll();
-        closeModal();
-        return;
-      }
-    }
-
-    const indicator = fixedType === "ma_pack" ? {
-      id: makeId("ma_pack"),
-      type: "ma_pack",
-      visible: true,
-      lines: cloneDefaultMaLines(),
-      series: [],
-    } : {
+    const base = {
       id: makeId(fixedType),
       type: fixedType,
       period: meta.defaultPeriod || 20,
@@ -1135,6 +1693,96 @@
       series: [],
     };
 
+    if (fixedType === "ma_pack") {
+      return {
+        id: makeId("ma_pack"),
+        type: "ma_pack",
+        visible: true,
+        lines: cloneDefaultMaLines(),
+        series: [],
+      };
+    }
+    if (fixedType === "rsi") {
+      return Object.assign(base, {
+        period: 14,
+        maPeriod: 14,
+        upper: 70,
+        middle: 50,
+        lower: 30,
+        maColor: "#facc15",
+        upperColor: "rgba(148, 163, 184, 0.78)",
+        middleColor: "rgba(148, 163, 184, 0.48)",
+        lowerColor: "rgba(148, 163, 184, 0.78)",
+        showRsi: true,
+        showRsiMa: true,
+        showUpper: true,
+        showMiddle: true,
+        showLower: true,
+      });
+    }
+    if (fixedType === "macd") {
+      return Object.assign(base, {
+        color: "#22c55e",
+        rsiPeriod: 14,
+        rsiColor: "#a78bfa",
+        signalColor: "#fb923c",
+        histUpColor: "rgba(20, 184, 166, 0.64)",
+        histDownColor: "rgba(248, 113, 113, 0.64)",
+        levelColor: "rgba(148, 163, 184, 0.62)",
+        showHistogram: true,
+        showMacd: true,
+        showSignal: true,
+        showRsi: true,
+        showLevels: true,
+      });
+    }
+    if (fixedType === "ichimoku") {
+      return Object.assign(base, {
+        conversion: 9,
+        base: 26,
+        spanB: 52,
+        displacement: 26,
+        conversionColor: "#2563eb",
+        baseColor: "#dc2626",
+        spanAColor: "#22c55e",
+        spanBColor: "#f87171",
+        laggingColor: "#16a34a",
+        cloudUpColor: "rgba(37, 99, 235, 0.18)",
+        cloudDownColor: "rgba(239, 68, 68, 0.18)",
+        showConversion: true,
+        showBase: true,
+        showSpanA: true,
+        showSpanB: true,
+        showLagging: true,
+        showCloudFill: true,
+      });
+    }
+    if (fixedType === "boll") {
+      return Object.assign(base, {
+        upperColor: "#ef4444",
+        middleColor: "#3b82f6",
+        lowerColor: "#14b8a6",
+      });
+    }
+    return base;
+  }
+
+  function addIndicator(type) {
+    const fixedType = fixType(type);
+
+    if (fixedType === "ma_pack") {
+      const existing = indicators.find(function (item) { return item.type === "ma_pack"; });
+      if (existing) {
+        existing.visible = true;
+        saveIndicators();
+        rebuildAll();
+        closeModal();
+        return;
+      }
+    }
+
+    const indicator = createDefaultIndicator(fixedType);
+
     if (fixedType === "volume") {
       const exists = indicators.find(function (item) { return item.type === "volume"; });
       if (exists) exists.visible = true;
@@ -1145,11 +1793,6 @@
 
     saveIndicators();
     rebuildAll();
-
-    /*
-      주가이동평균 추가 시 설정창을 바로 열지 않습니다.
-      오른쪽 적용지표의 '이평선' 칸에만 추가하고, 세부 수정은 연필 버튼에서 열리게 분리했습니다.
-    */
     closeModal();
   }
 
@@ -1196,6 +1839,21 @@
     });
   }
 
+  function getSettingValue(id, fallback) {
+    const el = document.getElementById(id);
+    return el ? el.value : fallback;
+  }
+
+  function getSettingNumber(id, fallback, min, max) {
+    return clampNumber(getSettingValue(id, fallback), min || 0, max || 999999, fallback);
+  }
+
+  function getSettingChecked(id, fallback) {
+    const el = document.getElementById(id);
+    if (!el) return fallback;
+    return !!el.checked;
+  }
+
   function applySettings() {
     const indicator = indicators.find(function (item) { return item.id === editingId; });
     if (!indicator) return;
@@ -1207,31 +1865,138 @@
       closeModal();
       return;
     }
+
     const visibleEl = document.getElementById("settingVisible");
-    const periodEl = document.getElementById("settingPeriod");
-    const sourceEl = document.getElementById("settingSource");
-    const fastEl = document.getElementById("settingFast");
-    const slowEl = document.getElementById("settingSlow");
-    const signalEl = document.getElementById("settingSignal");
-    const widthEl = document.getElementById("settingWidth");
-    const colorEl = document.getElementById("settingColor");
     if (visibleEl) indicator.visible = visibleEl.value === "true";
-    if (periodEl) indicator.period = Math.max(1, Number(periodEl.value || meta.defaultPeriod || 20));
-    if (sourceEl) indicator.source = sourceEl.value || "close";
-    if (fastEl) indicator.fast = Math.max(1, Number(fastEl.value || 12));
-    if (slowEl) indicator.slow = Math.max(1, Number(slowEl.value || 26));
-    if (signalEl) indicator.signal = Math.max(1, Number(signalEl.value || 9));
-    if (widthEl) indicator.width = clampNumber(widthEl.value || 2, 1, 6, 2);
-    if (colorEl) indicator.color = colorEl.value || meta.color;
+
+    indicator.period = getSettingNumber("settingPeriod", indicator.period || meta.defaultPeriod || 20, 1, 2000);
+    indicator.source = getSettingValue("settingSource", indicator.source || (indicator.type === "volume" ? "volume" : "close")) || "close";
+    indicator.fast = getSettingNumber("settingFast", indicator.fast || 12, 1, 500);
+    indicator.slow = getSettingNumber("settingSlow", indicator.slow || 26, 1, 800);
+    indicator.signal = getSettingNumber("settingSignal", indicator.signal || 9, 1, 500);
+    indicator.width = getSettingNumber("settingWidth", indicator.width || 2, 1, 6);
+    indicator.color = getSettingValue("settingColor", indicator.color || meta.color) || meta.color;
+
+    if (indicator.type === "rsi") {
+      indicator.maPeriod = getSettingNumber("settingMaPeriod", indicator.maPeriod || 14, 1, 300);
+      indicator.upper = getSettingNumber("settingUpper", indicator.upper || 70, 0, 100);
+      indicator.middle = getSettingNumber("settingMiddle", indicator.middle || 50, 0, 100);
+      indicator.lower = getSettingNumber("settingLower", indicator.lower || 30, 0, 100);
+      indicator.maColor = getSettingValue("settingMaColor", indicator.maColor || "#facc15");
+      indicator.upperColor = getSettingValue("settingUpperColor", indicator.upperColor || "rgba(148, 163, 184, 0.78)");
+      indicator.middleColor = getSettingValue("settingMiddleColor", indicator.middleColor || "rgba(148, 163, 184, 0.48)");
+      indicator.lowerColor = getSettingValue("settingLowerColor", indicator.lowerColor || "rgba(148, 163, 184, 0.78)");
+      indicator.showRsi = getSettingChecked("settingShowRsi", indicator.showRsi !== false);
+      indicator.showRsiMa = getSettingChecked("settingShowRsiMa", indicator.showRsiMa !== false);
+      indicator.showUpper = getSettingChecked("settingShowUpper", indicator.showUpper !== false);
+      indicator.showMiddle = getSettingChecked("settingShowMiddle", indicator.showMiddle !== false);
+      indicator.showLower = getSettingChecked("settingShowLower", indicator.showLower !== false);
+    }
+
+    if (indicator.type === "macd") {
+      indicator.rsiPeriod = getSettingNumber("settingRsiPeriod", indicator.rsiPeriod || 14, 1, 300);
+      indicator.rsiColor = getSettingValue("settingRsiColor", indicator.rsiColor || "#a78bfa");
+      indicator.signalColor = getSettingValue("settingSignalColor", indicator.signalColor || "#fb923c");
+      indicator.histUpColor = getSettingValue("settingHistUpColor", indicator.histUpColor || "rgba(20, 184, 166, 0.64)");
+      indicator.histDownColor = getSettingValue("settingHistDownColor", indicator.histDownColor || "rgba(248, 113, 113, 0.64)");
+      indicator.levelColor = getSettingValue("settingLevelColor", indicator.levelColor || "rgba(148, 163, 184, 0.62)");
+      indicator.showHistogram = getSettingChecked("settingShowHistogram", indicator.showHistogram !== false);
+      indicator.showMacd = getSettingChecked("settingShowMacd", indicator.showMacd !== false);
+      indicator.showSignal = getSettingChecked("settingShowSignal", indicator.showSignal !== false);
+      indicator.showRsi = getSettingChecked("settingShowRsi", indicator.showRsi !== false);
+      indicator.showLevels = getSettingChecked("settingShowLevels", indicator.showLevels !== false);
+    }
+
+    if (indicator.type === "ichimoku") {
+      indicator.conversion = getSettingNumber("settingConversion", indicator.conversion || 9, 1, 300);
+      indicator.base = getSettingNumber("settingBase", indicator.base || 26, 1, 500);
+      indicator.spanB = getSettingNumber("settingSpanB", indicator.spanB || 52, 1, 800);
+      indicator.displacement = getSettingNumber("settingDisplacement", indicator.displacement || 26, 0, 300);
+      indicator.conversionColor = getSettingValue("settingConversionColor", indicator.conversionColor || "#2563eb");
+      indicator.baseColor = getSettingValue("settingBaseColor", indicator.baseColor || "#dc2626");
+      indicator.spanAColor = getSettingValue("settingSpanAColor", indicator.spanAColor || "#22c55e");
+      indicator.spanBColor = getSettingValue("settingSpanBColor", indicator.spanBColor || "#f87171");
+      indicator.laggingColor = getSettingValue("settingLaggingColor", indicator.laggingColor || "#16a34a");
+      indicator.cloudUpColor = getSettingValue("settingCloudUpColor", indicator.cloudUpColor || "rgba(37, 99, 235, 0.18)");
+      indicator.cloudDownColor = getSettingValue("settingCloudDownColor", indicator.cloudDownColor || "rgba(239, 68, 68, 0.18)");
+      indicator.showConversion = getSettingChecked("settingShowConversion", indicator.showConversion !== false);
+      indicator.showBase = getSettingChecked("settingShowBase", indicator.showBase !== false);
+      indicator.showSpanA = getSettingChecked("settingShowSpanA", indicator.showSpanA !== false);
+      indicator.showSpanB = getSettingChecked("settingShowSpanB", indicator.showSpanB !== false);
+      indicator.showLagging = getSettingChecked("settingShowLagging", indicator.showLagging !== false);
+      indicator.showCloudFill = getSettingChecked("settingShowCloudFill", indicator.showCloudFill !== false);
+    }
+
+    if (indicator.type === "boll") {
+      indicator.upperColor = getSettingValue("settingUpperColor", indicator.upperColor || "#ef4444");
+      indicator.middleColor = getSettingValue("settingMiddleColor", indicator.middleColor || "#3b82f6");
+      indicator.lowerColor = getSettingValue("settingLowerColor", indicator.lowerColor || "#14b8a6");
+    }
+
     saveIndicators();
     rebuildAll();
     closeModal();
   }
 
+  function getCustomSelectMenu(wrap) {
+    if (!wrap) return null;
+    return wrap.__bvMenu || wrap.querySelector("[data-bv-select-menu]");
+  }
+
+  function positionCustomSelectMenu(wrap) {
+    const menu = getCustomSelectMenu(wrap);
+    const btn = wrap ? wrap.querySelector("[data-bv-select-btn]") : null;
+    if (!menu || !btn) return;
+    const rect = btn.getBoundingClientRect();
+    const gap = 7;
+    const viewportGap = 12;
+    const desiredWidth = Math.max(rect.width, 180);
+    const maxHeight = Math.min(310, window.innerHeight - viewportGap * 2);
+    let top = rect.bottom + gap;
+    if (top + maxHeight > window.innerHeight - viewportGap) {
+      top = Math.max(viewportGap, rect.top - gap - maxHeight);
+    }
+    let left = Math.min(window.innerWidth - desiredWidth - viewportGap, Math.max(viewportGap, rect.left));
+    menu.style.width = desiredWidth + "px";
+    menu.style.maxHeight = maxHeight + "px";
+    menu.style.left = left + "px";
+    menu.style.top = top + "px";
+  }
+
+  function openCustomSelect(wrap) {
+    if (!wrap) return;
+    const menu = getCustomSelectMenu(wrap);
+    if (!menu) return;
+    closeAllCustomSelects(wrap);
+    wrap.__bvMenu = menu;
+    menu.__bvOwner = wrap;
+    if (menu.parentNode !== document.body) document.body.appendChild(menu);
+    wrap.classList.add("open");
+    menu.classList.add("open", "bv-select-menu-portal");
+    positionCustomSelectMenu(wrap);
+  }
+
+  function closeCustomSelect(wrap) {
+    if (!wrap) return;
+    const menu = getCustomSelectMenu(wrap);
+    wrap.classList.remove("open");
+    if (menu) {
+      menu.classList.remove("open", "bv-select-menu-portal");
+      menu.removeAttribute("style");
+      if (menu.parentNode === document.body) wrap.appendChild(menu);
+    }
+  }
+
   function closeAllCustomSelects(except) {
     document.querySelectorAll(".bv-select.open").forEach(function (el) {
       if (except && el === except) return;
-      el.classList.remove("open");
+      closeCustomSelect(el);
+    });
+    document.querySelectorAll(".bv-select-menu-portal.open").forEach(function (menu) {
+      const owner = menu.__bvOwner;
+      if (except && owner === except) return;
+      if (owner) closeCustomSelect(owner);
+      else menu.remove();
     });
   }
 
@@ -1243,22 +2008,29 @@
       const wrap = btn.closest("[data-bv-select]");
       if (!wrap) return;
       const open = wrap.classList.contains("open");
-      closeAllCustomSelects(wrap);
-      wrap.classList.toggle("open", !open);
+      if (open) closeCustomSelect(wrap);
+      else openCustomSelect(wrap);
       return;
     }
+
     const option = event.target.closest("[data-bv-select-option]");
     if (option) {
       event.preventDefault();
       event.stopPropagation();
-      const wrap = option.closest("[data-bv-select]");
+      const menu = option.closest("[data-bv-select-menu]");
+      const wrap = (menu && menu.__bvOwner) || option.closest("[data-bv-select]");
       if (!wrap) return;
       const input = wrap.querySelector("input[type='hidden']");
       const label = wrap.querySelector(".bv-select-label");
       if (input) input.value = option.dataset.value || "";
       if (label) label.textContent = option.textContent.trim();
-      wrap.querySelectorAll("[data-bv-select-option]").forEach(function (node) { node.classList.toggle("active", node === option); });
-      wrap.classList.remove("open");
+      const currentMenu = getCustomSelectMenu(wrap);
+      if (currentMenu) {
+        currentMenu.querySelectorAll("[data-bv-select-option]").forEach(function (node) {
+          node.classList.toggle("active", node === option);
+        });
+      }
+      closeCustomSelect(wrap);
     }
   }
 
@@ -1319,16 +2091,24 @@
   document.querySelectorAll("[data-close-indicator]").forEach(function (btn) { btn.addEventListener("click", closeModal); });
 
   document.addEventListener("click", function (event) {
-    if (event.target.closest("[data-bv-select]")) {
+    if (event.target.closest("[data-bv-select-btn]") || event.target.closest("[data-bv-select-option]")) {
       handleCustomSelectClick(event);
       return;
     }
     closeAllCustomSelects();
-    if (modal.classList.contains("open") && panel && !panel.contains(event.target) && !event.target.closest(".indicator-color-palette") && !openTopBtn?.contains(event.target) && !openSideBtn?.contains(event.target) && !quickSearchBtn?.contains(event.target)) {
+    if (modal.classList.contains("open") && panel && !panel.contains(event.target) && !event.target.closest(".indicator-color-palette") && !event.target.closest(".bv-select-menu-portal") && !openTopBtn?.contains(event.target) && !openSideBtn?.contains(event.target) && !quickSearchBtn?.contains(event.target)) {
       closeModal();
     }
     if (!event.target.closest(".indicator-color-palette") && !event.target.closest("[data-color-target]")) closeColorPalette();
   });
+
+  window.addEventListener("resize", function () {
+    document.querySelectorAll(".bv-select.open").forEach(positionCustomSelectMenu);
+  });
+
+  document.addEventListener("scroll", function () {
+    document.querySelectorAll(".bv-select.open").forEach(positionCustomSelectMenu);
+  }, true);
 
   document.addEventListener("keydown", function (event) {
     if (event.key === "Escape") {
@@ -1341,8 +2121,10 @@
   document.addEventListener("bitgak:chart-data-loaded", rebuildAll);
 
   loadIndicators();
+  startPaneLabelResizeSync();
   ensureCatalogLayout();
   renderCatalog();
   renderFavoritePanel();
   renderRightList();
+  schedulePaneLabelRefresh();
 })();

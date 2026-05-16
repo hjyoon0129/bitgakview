@@ -122,9 +122,10 @@
   function getServerInterval(interval) {
     const key = normalizeIntervalValue(interval);
 
-    // 현재 프로젝트에서는 분봉 API가 불안정하므로 분봉 요청은 1시간봉으로 안전하게 우회한다.
-    // 2h/3h/4h는 서버에서 1h를 받은 뒤 프론트에서 OHLCV를 재집계한다.
-    if (isMinuteInterval(key) || isHourInterval(key)) return "1h";
+    // 시간봉은 백엔드에서 Yahoo/yfinance 1h 원본을 받아 1h/2h/3h/4h로 재집계한다.
+    // 분봉 버튼은 현재 노출하지 않지만, 혹시 들어오면 1h로 안전하게 처리한다.
+    if (isMinuteInterval(key)) return "1h";
+    if (isHourInterval(key)) return key;
     return key;
   }
 
@@ -842,7 +843,8 @@
       }
 
       const normalizedRows = normalizeRows(data);
-      const baseRows = aggregateHourlyRows(normalizedRows, state.interval);
+      const serverAggregated = !!data.server_aggregated || String(data.source || "").indexOf("yfinance") >= 0;
+      const baseRows = serverAggregated ? normalizedRows : aggregateHourlyRows(normalizedRows, state.interval);
 
       if (!baseRows.length) {
         throw new Error("표시할 차트 데이터가 없습니다.");
@@ -884,10 +886,10 @@
   }
 
 
-  function setupDailyOnlyIntervalMenu() {
+  function setupTradingIntervalMenu() {
     if (!intervalDropdown) return;
 
-    const allowed = new Set(["1d", "1w", "1mo"]);
+    const allowed = new Set(["1h", "2h", "3h", "4h", "1d", "1w", "1mo"]);
     let activeIsHidden = false;
     let firstDailyButton = null;
 
@@ -898,13 +900,13 @@
         if (btn.classList.contains("active")) activeIsHidden = true;
         btn.classList.remove("active");
         btn.hidden = true;
-        btn.classList.add("bv-interval-hidden-daily");
+        btn.classList.add("bv-interval-hidden-unsupported");
         btn.setAttribute("aria-hidden", "true");
         return;
       }
 
       btn.hidden = false;
-      btn.classList.remove("bv-interval-hidden-minute", "bv-interval-hidden-duplicate", "bv-interval-hidden-daily");
+      btn.classList.remove("bv-interval-hidden-minute", "bv-interval-hidden-duplicate", "bv-interval-hidden-unsupported");
       btn.removeAttribute("aria-hidden");
 
       if (!firstDailyButton) firstDailyButton = btn;
@@ -934,7 +936,7 @@
     intervalDropdown.classList.contains("open") ? closeIntervalDropdown() : openIntervalDropdown();
   }
 
-  setupDailyOnlyIntervalMenu();
+  setupTradingIntervalMenu();
 
   if (intervalDropdown && intervalDropdownBtn) {
     intervalDropdownBtn.addEventListener("click", function (event) {
@@ -949,7 +951,7 @@
         event.stopPropagation();
 
         let value = normalizeIntervalValue(btn.dataset.interval);
-        if (!["1d", "1w", "1mo"].includes(value)) value = "1d";
+        if (!["1h", "2h", "3h", "4h", "1d", "1w", "1mo"].includes(value)) value = "1d";
         const label = btn.dataset.label || getIntervalMeta(value).label || btn.textContent.trim();
 
         if (!value) return;
