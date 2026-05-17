@@ -1,10 +1,45 @@
 {% extends "base.html" %}
 {% load static %}
 
-{% block title %}BitgakView - 한국 주식 검색{% endblock %}
+{% block title %}BitgakView | 한국 주식 차트·종목검색·시장지표{% endblock %}
 {% block body_class %}stock-search-body{% endblock %}
 
 {% block extra_css %}
+<meta name="description" content="BitgakView는 한국 주식 종목 검색, KOSPI·KOSDAQ 시장지표, 투자 타이밍 점수와 차트 확인을 제공하는 주식 차트 서비스입니다.">
+<meta name="keywords" content="BitgakView, 빗각뷰, 한국 주식, 주식 차트, 종목 검색, 코스피, 코스닥, 투자 타이밍, 시장지표, 삼성전자 차트">
+<meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1">
+<meta name="naver-site-verification" content="0731d69ed94b6877157d63b4a631eb0593daea24">
+<meta name="google-site-verification" content="JT-Rk8ciQQYitTZyVdDkGwpyNaVNri9IFSi5rBCZfwE" />
+
+<link rel="canonical" href="https://bitgakview.com/stocks/">
+
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="BitgakView">
+<meta property="og:title" content="BitgakView | 한국 주식 차트·종목검색·시장지표">
+<meta property="og:description" content="한국 주식을 빠르게 검색하고 KOSPI·KOSDAQ 시장지표와 투자 타이밍을 한 화면에서 확인하세요.">
+<meta property="og:url" content="https://bitgakview.com/stocks/">
+<meta property="og:locale" content="ko_KR">
+
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="BitgakView | 한국 주식 차트·종목검색·시장지표">
+<meta name="twitter:description" content="한국 주식 종목 검색, 시장지표, 투자 타이밍, 차트 확인을 제공하는 BitgakView.">
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  "name": "BitgakView",
+  "alternateName": "빗각뷰",
+  "url": "https://bitgakview.com/",
+  "inLanguage": "ko-KR",
+  "potentialAction": {
+    "@type": "SearchAction",
+    "target": "https://bitgakview.com/stocks/?q={search_term_string}",
+    "query-input": "required name=search_term_string"
+  }
+}
+</script>
+
 <style>
   :root {
     --bv-bg: #07101d;
