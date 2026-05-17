@@ -5,19 +5,87 @@ from urllib.request import Request, urlopen
 import ast
 import re
 
-import pandas as pd
 from django.core.cache import cache
 from django.db.models import Q
 from django.http import JsonResponse
 from django.shortcuts import render
 from django.urls import reverse
 from django.views.decorators.http import require_GET
-from pykrx import stock as krx_stock
 
-try:
-    import yfinance as yf
-except Exception:
-    yf = None
+class _LazyPandas:
+    """
+    pandas는 매우 무거운 모듈이라 Django check/migrate/server start 시점에
+    바로 import하면 서버가 멈춘 것처럼 느려질 수 있습니다.
+    실제 차트/시장지표 API가 호출될 때만 import되도록 지연 로딩합니다.
+    """
+    _module = None
+
+    def _load(self):
+        if self._module is None:
+            import pandas as _pandas
+            self._module = _pandas
+        return self._module
+
+    def __getattr__(self, name):
+        return getattr(self._load(), name)
+
+
+class _LazyKrxStock:
+    """
+    pykrx도 import 시점에 부하가 있을 수 있으므로 실제 KRX 데이터 조회 때만 로딩합니다.
+    """
+    _module = None
+    _error = None
+
+    def _load(self):
+        if self._module is not None:
+            return self._module
+        if self._error is not None:
+            raise self._error
+
+        try:
+            from pykrx import stock as _krx_stock
+        except Exception as exc:
+            self._error = exc
+            raise
+
+        self._module = _krx_stock
+        return self._module
+
+    def __getattr__(self, name):
+        return getattr(self._load(), name)
+
+
+class _LazyYFinance:
+    """
+    yfinance는 protobuf/google 계열 모듈을 같이 로딩할 수 있어 check를 느리게 만들 수 있습니다.
+    시간봉 API가 호출될 때만 로딩합니다.
+    """
+    _module = None
+    _error = None
+
+    def _load(self):
+        if self._module is not None:
+            return self._module
+        if self._error is not None:
+            raise self._error
+
+        try:
+            import yfinance as _yf
+        except Exception as exc:
+            self._error = exc
+            raise
+
+        self._module = _yf
+        return self._module
+
+    def __getattr__(self, name):
+        return getattr(self._load(), name)
+
+
+pd = _LazyPandas()
+krx_stock = _LazyKrxStock()
+yf = _LazyYFinance()
 
 from .models import StockSymbol
 
@@ -1568,10 +1636,6 @@ def api_market_temperature(request):
         payload = _default_market_temperature_payload(str(exc))
         cache.set(cache_key, payload, 60 * 2)
         return JsonResponse(payload, json_dumps_params={"ensure_ascii": False})
-
-# apps/stocks/views.py 에 추가
-
-from django.shortcuts import render
 
 
 def features_view(request):
