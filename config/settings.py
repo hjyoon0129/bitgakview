@@ -87,6 +87,7 @@ INSTALLED_APPS = [
     # BitgakView apps
     "apps.stocks.apps.StocksConfig",
     "apps.support",
+    "apps.access",
 ]
 
 MIDDLEWARE = [
@@ -124,6 +125,7 @@ TEMPLATES = [
                 "django.contrib.messages.context_processors.messages",
 
                 "apps.stocks.context_processors.stock_search_payload",
+                "apps.access.context_processors.bitgak_access",
             ],
         },
     },

@@ -9,6 +9,7 @@
 {% endblock %}
 
 {% block content %}
+{{ bitgak_access|json_script:"bitgak-access-data" }}
 <section
   class="bv-app"
   data-code="{{ stock.code }}"
@@ -704,6 +705,7 @@
 {% endblock %}
 
 {% block extra_js %}
+<script src="{% static 'stocks/js/bitgak_access_guard.js' %}?v=20260517-strong-lock-v2"></script>
 <script src="https://unpkg.com/lightweight-charts@5.0.8/dist/lightweight-charts.standalone.production.js"></script>
 
 <script src="{% static 'stocks/js/bitgak_chart_core.js' %}?v=20260517-mobile-final-align-v5"></script>
