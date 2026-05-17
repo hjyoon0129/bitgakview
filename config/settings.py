@@ -88,6 +88,9 @@ INSTALLED_APPS = [
     "apps.stocks.apps.StocksConfig",
     "apps.support",
     "apps.access",
+    "apps.analytics.apps.AnalyticsConfig",
+
+
 ]
 
 MIDDLEWARE = [
@@ -104,6 +107,8 @@ MIDDLEWARE = [
 
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+
+    "apps.analytics.middleware.VisitLogMiddleware",
 ]
 
 
