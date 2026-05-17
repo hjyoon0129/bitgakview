@@ -35,6 +35,8 @@ urlpatterns = [
 
     # stocks
     path("stocks/", include("apps.stocks.urls")),
+
+    path("support/", include("apps.support.urls", namespace="support")),
 ]
 
 if settings.DEBUG:

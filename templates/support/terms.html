@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}서비스 이용약관 - BitgakView{% endblock %}
+{% block content %}
+<section class="policy-page"><a href="{% url 'support:home' %}" class="policy-back">← 고객지원으로</a><article class="policy-card">
+<p class="policy-eyebrow">TERMS OF SERVICE</p><h1>서비스 이용약관</h1><p class="policy-updated">시행일: {{ policy_effective_date }}</p>
+<section class="policy-section"><h2>제1조 목적</h2><p>본 약관은 BitgakView가 제공하는 국내 주식 차트, 기술적 지표, 관심종목, 투자 메모, 포트폴리오 보조 도구, 계정 서비스의 이용 조건과 절차, 이용자와 운영자 간의 권리·의무 및 책임사항을 정합니다.</p></section>
+<section class="policy-section"><h2>제2조 서비스 내용</h2><ul><li>국내 주식 차트, 시세 조회, 시간봉/일봉/주봉/월봉 조회 기능</li><li>이동평균, RSI, MACD, 거래량 등 기술적 지표 표시 및 설정 기능</li><li>관심종목 그룹, 차트 드로잉, 투자 메모, 평단가 계산기, 포트폴리오 보조 도구</li><li>일반 회원가입 및 Google, Naver, Kakao 등 소셜 로그인</li><li>유료 기능, 광고, 알림, 기타 운영자가 추가하는 서비스</li></ul></section>
+<section class="policy-section"><h2>제3조 회원가입 및 계정 관리</h2><p>이용자는 일반 가입 또는 소셜 로그인을 통해 계정을 만들 수 있습니다. 이용자는 본인의 계정 정보를 안전하게 관리해야 하며, 계정 이용으로 발생한 결과에 대한 책임은 이용자에게 있습니다.</p></section>
+<section class="policy-section"><h2>제4조 투자 정보의 성격</h2><p>BitgakView의 차트, 지표, 계산기, 포트폴리오 화면, 시장지표, 안내 문구는 투자 참고용 정보입니다. 이는 특정 종목의 매수·매도 추천, 투자 자문, 투자 일임, 수익 보장, 금융상품 판매 권유에 해당하지 않습니다.</p></section>
+<section class="policy-section"><h2>제5조 금지행위</h2><ul><li>시세·차트·검색 데이터를 무단 수집, 복제, 재배포, 판매하는 행위</li><li>자동화 프로그램, 과도한 요청, 비정상 접속으로 서비스 운영을 방해하는 행위</li><li>허위 정보, 불법 투자 권유, 사기성 게시물, 타인의 권리 침해 내용을 게시하는 행위</li><li>보안 취약점 탐색, 역공학, 계정 탈취, 부정 로그인 시도 등 서비스 안정성을 침해하는 행위</li></ul></section>
+<section class="policy-section"><h2>제6조 이용자 데이터</h2><p>이용자가 작성한 메모, 관심종목, 포트폴리오 정보, 문의 내용 등은 서비스 제공과 이용자 편의를 위해 저장될 수 있습니다.</p></section>
+<section class="policy-section"><h2>제7조 서비스 변경 및 중단</h2><p>운영자는 데이터 제공처, 외부 API, 서버 점검, 보안 문제, 법령·정책 변경, 사업상 필요에 따라 서비스의 일부 또는 전부를 변경, 제한, 중단할 수 있습니다.</p></section>
+<section class="policy-section"><h2>제8조 책임 제한</h2><p>운영자는 고의 또는 중대한 과실이 없는 한 시세 지연, 데이터 오류, 차트 표시 오류, 이용자의 투자 손실, 외부 서비스 장애, 이용자 기기·네트워크 문제로 인한 손해에 대해 책임을 지지 않습니다.</p></section>
+<div class="policy-notice">본 문서는 초기 운영용 초안입니다. 사업자 등록, 유료 결제, 광고, 제휴, 데이터 제공 계약이 확정되면 실제 운영 형태에 맞춰 법률 검토 후 보완하는 것을 권장합니다.</div>
+</article></section>{% endblock %}

@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}유료서비스/환불정책 - BitgakView{% endblock %}
+{% block content %}
+<section class="policy-page"><a href="{% url 'support:home' %}" class="policy-back">← 고객지원으로</a><article class="policy-card">
+<p class="policy-eyebrow">PAID SERVICE POLICY</p><h1>유료서비스/환불정책</h1><p class="policy-updated">시행일: {{ policy_effective_date }}</p>
+<section class="policy-section"><h2>1. 유료서비스의 범위</h2><p>BitgakView는 향후 고급 지표, 저장공간 확장, 알림, 포트폴리오 고급 분석, 광고 제거 등 유료 기능을 제공할 수 있습니다. 구체적인 상품명, 가격, 기간, 제공 기능은 결제 화면 또는 가격소개 페이지에 표시합니다.</p></section>
+<section class="policy-section"><h2>2. 결제 및 이용 기간</h2><p>유료서비스는 결제 완료 후 즉시 또는 안내된 시점부터 제공됩니다. 구독형 상품은 상품별 이용 기간이 종료되면 접근 권한이 제한될 수 있습니다.</p></section>
+<section class="policy-section"><h2>3. 환불 기준</h2><ul><li>서비스가 제공되지 않았거나 중대한 장애로 정상 이용이 불가능한 경우 환불 대상이 될 수 있습니다.</li><li>이미 상당 기간 사용했거나 디지털 기능이 즉시 제공된 경우 환불이 제한될 수 있습니다.</li><li>프로모션, 쿠폰, 무료 체험, 이벤트 상품의 환불 기준은 별도 안내를 따릅니다.</li><li>결제대행사 정책, 관련 법령, 운영 정책에 따라 환불 처리 기간이 달라질 수 있습니다.</li></ul></section>
+<section class="policy-section"><h2>4. 투자 결과와 환불</h2><p>유료 기능 이용 후 투자 손실이 발생했다는 사유만으로 환불이 보장되지 않습니다. BitgakView는 투자 수익을 보장하지 않으며, 모든 투자 결과는 이용자의 판단에 따릅니다.</p></section>
+<section class="policy-section"><h2>5. 정책 변경</h2><p>실제 결제 시스템 도입 시 결제대행사, 상품 구성, 청약철회 기준, 환불 절차를 반영하여 본 정책을 업데이트합니다.</p></section>
+<div class="policy-notice">현재 결제 기능이 완전히 도입되지 않았다면 본 문서는 사전 고지용 초안으로 사용하고, 결제 오픈 전 실제 상품/환불 기준에 맞게 보완하세요.</div>
+</article></section>{% endblock %}

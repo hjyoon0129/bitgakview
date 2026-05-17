@@ -86,6 +86,7 @@ INSTALLED_APPS = [
 
     # BitgakView apps
     "apps.stocks.apps.StocksConfig",
+    "apps.support",
 ]
 
 MIDDLEWARE = [
@@ -414,3 +415,7 @@ LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
 }
+BITGAK_SERVICE_NAME = "BitgakView"
+BITGAK_SERVICE_DOMAIN = "bitgakview.com"
+BITGAK_SUPPORT_EMAIL = "bitgakview@gmail.com"
+BITGAK_POLICY_EFFECTIVE_DATE = "2026년 5월 17일"

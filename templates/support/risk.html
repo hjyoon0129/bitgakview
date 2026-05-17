@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}투자 유의사항 - BitgakView{% endblock %}
+{% block content %}
+<section class="policy-page"><a href="{% url 'support:home' %}" class="policy-back">← 고객지원으로</a><article class="policy-card">
+<p class="policy-eyebrow">INVESTMENT RISK NOTICE</p><h1>투자 유의사항</h1><p class="policy-updated">시행일: {{ policy_effective_date }}</p>
+<div class="risk-box strong">BitgakView는 투자 참고용 차트와 보조 도구를 제공하는 서비스입니다. 특정 종목의 매수·매도 추천, 투자 자문, 투자 일임, 수익 보장 서비스를 제공하지 않습니다.</div>
+<section class="policy-section"><h2>1. 투자 판단 책임</h2><p>모든 투자 판단과 투자 결과에 대한 책임은 이용자 본인에게 있습니다. 이용자는 투자 전 자신의 투자 목적, 재무 상태, 위험 감수 능력, 투자 기간을 고려해야 합니다.</p></section>
+<section class="policy-section"><h2>2. 원금 손실 가능성</h2><p>주식, ETF, ETN, 파생상품, 기타 금융투자상품은 시장 변동에 따라 원금 손실이 발생할 수 있습니다. 과거 수익률, 차트 패턴, 기술적 지표, 백테스트 결과는 미래 수익을 보장하지 않습니다.</p></section>
+<section class="policy-section"><h2>3. 기술적 지표의 한계</h2><p>이동평균, RSI, MACD, 볼린저밴드, 거래량 등 기술적 지표는 과거 가격과 거래 정보를 기반으로 계산됩니다. 지표는 시장 상황에 따라 오신호가 발생할 수 있으며, 단독 투자 판단 기준으로 사용해서는 안 됩니다.</p></section>
+<section class="policy-section"><h2>4. 계산기와 포트폴리오 도구의 한계</h2><p>평단가 계산기, 포트폴리오, 투자 메모, 분할매수 계획 기능은 이용자의 입력값을 기반으로 계산되는 보조 도구입니다. 세금, 수수료, 체결 가격, 슬리피지, 권리락, 배당, 액면분할 등 실제 거래 조건과 다를 수 있습니다.</p></section>
+<section class="policy-section"><h2>5. 외부 정보 확인</h2><p>실제 매매 전에는 증권사, 거래소, 전자공시, 기업 공시, 투자설명서 등 공식 자료를 반드시 확인해야 합니다.</p></section>
+</article></section>{% endblock %}

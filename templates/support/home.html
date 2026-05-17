@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}고객지원 - BitgakView{% endblock %}
+{% block content %}
+<section class="support-shell">
+  <div class="support-hero">
+    <p class="support-eyebrow">BITGAKVIEW SUPPORT</p>
+    <h1>고객지원</h1>
+    <p>BitgakView 이용에 필요한 약관, 개인정보처리방침, 투자 유의사항, 시세 데이터 고지, 고객센터 정보를 확인할 수 있습니다.</p>
+  </div>
+  <div class="support-grid">
+    <a href="{% url 'support:terms' %}" class="support-card"><span>📄</span><strong>서비스 이용약관</strong><p>차트, 지표, 관심종목, 계정 이용에 관한 기본 약관입니다.</p></a>
+    <a href="{% url 'support:privacy' %}" class="support-card"><span>🔐</span><strong>개인정보처리방침</strong><p>회원정보, 소셜 로그인, 문의 정보 처리 기준입니다.</p></a>
+    <a href="{% url 'support:risk' %}" class="support-card"><span>⚠️</span><strong>투자 유의사항</strong><p>투자 책임, 원금 손실 가능성, 정보 제공 한계를 안내합니다.</p></a>
+    <a href="{% url 'support:data_policy' %}" class="support-card"><span>📊</span><strong>시세·데이터 고지</strong><p>시세, 지표, 차트 데이터의 지연·오류 가능성을 안내합니다.</p></a>
+    <a href="{% url 'support:paid_policy' %}" class="support-card"><span>💳</span><strong>유료서비스/환불정책</strong><p>구독, 결제, 환불, 서비스 변경 기준입니다.</p></a>
+    <a href="{% url 'support:company' %}" class="support-card"><span>🏢</span><strong>사업자 정보</strong><p>서비스 운영자, 도메인, 연락처 정보를 확인합니다.</p></a>
+    <a href="{% url 'support:contact' %}" class="support-card"><span>💬</span><strong>고객센터</strong><p>오류 제보, 계정 문의, 데이터 문의, 제휴 문의를 접수합니다.</p></a>
+  </div>
+</section>
+{% endblock %}

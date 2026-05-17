@@ -1,0 +1,8 @@
+{% extends "base.html" %}
+{% block title %}사업자 정보 - BitgakView{% endblock %}
+{% block content %}
+<section class="policy-page"><a href="{% url 'support:home' %}" class="policy-back">← 고객지원으로</a><article class="policy-card">
+<p class="policy-eyebrow">COMPANY INFO</p><h1>사업자 정보</h1><p class="policy-updated">최종 업데이트: {{ policy_effective_date }}</p>
+<section class="policy-section"><h2>서비스 정보</h2><div class="contact-box"><div class="contact-row"><strong>서비스명</strong><span>{{ service_name }}</span></div><div class="contact-row"><strong>도메인</strong><span>{{ service_domain }}</span></div><div class="contact-row"><strong>서비스 유형</strong><span>국내 주식 차트 및 투자 보조 도구</span></div><div class="contact-row"><strong>운영자</strong><span>업데이트 예정</span></div><div class="contact-row"><strong>사업자등록번호</strong><span>업데이트 예정</span></div><div class="contact-row"><strong>통신판매업 신고</strong><span>유료 결제 기능 도입 시 업데이트 예정</span></div><div class="contact-row"><strong>고객지원 이메일</strong><span>{{ support_email }}</span></div></div></section>
+<section class="policy-section"><h2>안내</h2><p>현재 BitgakView는 초기 서비스 검증 및 개발 단계입니다. 유료 구독, 광고 상품, 제휴 서비스, 결제 기능이 본격화되면 사업자 정보와 통신판매 관련 정보를 업데이트합니다.</p></section>
+</article></section>{% endblock %}

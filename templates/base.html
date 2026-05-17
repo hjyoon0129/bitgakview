@@ -172,8 +172,10 @@
 
   </style>
 
+  {% include "support/support_style.html" %}
   {% block extra_css %}{% endblock %}
 </head>
+
 <body class="{% block body_class %}{% endblock %}">
   <header class="site-header">
     <a class="site-logo" href="{% url 'stocks:search' %}">
@@ -196,6 +198,9 @@
     {% block content %}{% endblock %}
   </main>
 
+  {% include "support/_footer.html" %}
+
   {% block extra_js %}{% endblock %}
 </body>
+
 </html>
