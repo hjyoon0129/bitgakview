@@ -4040,3 +4040,1090 @@
     padding: 14px 12px !important;
   }
 }
+
+
+/* =========================================================
+   Mobile 관심지표 button + modal
+   ========================================================= */
+.bitgak-chart-body .bv-mobile-watch-actions {
+  display: none;
+}
+
+.bitgak-chart-body .bv-mobile-watch-btn {
+  width: 100%;
+  height: 40px;
+  border: 1px solid rgba(45, 212, 191, 0.32);
+  border-radius: 14px;
+  background:
+    radial-gradient(circle at 18% 18%, rgba(45, 212, 191, 0.20), transparent 34%),
+    linear-gradient(135deg, rgba(37, 99, 235, 0.88), rgba(20, 184, 166, 0.86));
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 1000;
+  letter-spacing: -0.04em;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  box-shadow: 0 12px 24px rgba(20, 184, 166, 0.14);
+}
+
+.bitgak-chart-body .mobile-watchlist-badge {
+  min-width: 22px;
+  height: 22px;
+  padding: 0 7px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 1000;
+}
+
+.mobile-watchlist-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483200;
+  display: none;
+  align-items: flex-start;
+  justify-content: center;
+  padding: max(80px, env(safe-area-inset-top)) 12px 16px;
+  background: rgba(2, 6, 23, 0.66);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.mobile-watchlist-modal.open,
+.mobile-watchlist-modal.is-open {
+  display: flex;
+}
+
+.mobile-watchlist-panel {
+  width: min(410px, calc(100vw - 24px));
+  max-height: min(74vh, 610px);
+  max-height: min(74dvh, 610px);
+  overflow: hidden;
+  border-radius: 24px;
+  border: 1px solid rgba(96, 165, 250, 0.24);
+  background:
+    radial-gradient(circle at top right, rgba(45, 212, 191, 0.13), transparent 34%),
+    linear-gradient(180deg, #0f172a, #07101d);
+  color: #ffffff;
+  box-shadow: 0 28px 90px rgba(0, 0, 0, 0.58);
+  display: flex;
+  flex-direction: column;
+}
+
+.mobile-watchlist-head {
+  flex: 0 0 auto;
+  padding: 17px 18px 14px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.14);
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.mobile-watchlist-head h2 {
+  margin: 0;
+  color: #ffffff;
+  font-size: 21px;
+  line-height: 1.2;
+  font-weight: 1000;
+  letter-spacing: -0.05em;
+}
+
+.mobile-watchlist-head p {
+  margin: 6px 0 0;
+  color: #9fb0c8;
+  font-size: 12px;
+  line-height: 1.45;
+  font-weight: 800;
+}
+
+.mobile-watchlist-toolbar {
+  flex: 0 0 auto;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 112px;
+  gap: 9px;
+  padding: 14px 16px 10px;
+}
+
+.mobile-watchlist-select-label {
+  min-width: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.mobile-watchlist-select-label span {
+  color: #8aa3c3;
+  font-size: 11px;
+  font-weight: 1000;
+}
+
+.mobile-watchlist-select,
+.mobile-watchlist-add-current,
+.mobile-watchlist-manage {
+  height: 40px;
+  min-width: 0;
+  border-radius: 13px;
+  font-size: 13px;
+  font-weight: 1000;
+  outline: none;
+}
+
+.mobile-watchlist-select {
+  width: 100%;
+  border: 1px solid rgba(96, 165, 250, 0.30);
+  background: rgba(2, 6, 23, 0.72);
+  color: #ffffff;
+  padding: 0 12px;
+}
+
+.mobile-watchlist-add-current,
+.mobile-watchlist-manage {
+  border: 1px solid rgba(96, 165, 250, 0.34);
+  background: rgba(37, 99, 235, 0.16);
+  color: #dbeafe;
+}
+
+.mobile-watchlist-add-current:hover,
+.mobile-watchlist-manage:hover {
+  background: rgba(56, 189, 248, 0.15);
+  border-color: rgba(56, 189, 248, 0.58);
+  color: #ffffff;
+}
+
+.mobile-watchlist-summary {
+  flex: 0 0 auto;
+  margin: 0 16px 10px;
+  min-height: 42px;
+  padding: 0 13px;
+  border-radius: 15px;
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  background: rgba(15, 23, 42, 0.62);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.mobile-watchlist-summary span {
+  min-width: 0;
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 1000;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mobile-watchlist-summary strong {
+  flex: 0 0 auto;
+  color: #67e8f9;
+  font-size: 13px;
+  font-weight: 1000;
+}
+
+.mobile-watchlist-list {
+  min-height: 0;
+  flex: 1 1 auto;
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  padding: 0 16px 14px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.mobile-watchlist-row {
+  min-height: 58px;
+  padding: 10px;
+  border-radius: 15px;
+  border: 1px solid rgba(148, 163, 184, 0.13);
+  background: rgba(15, 23, 42, 0.76);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 38px;
+  gap: 8px;
+  align-items: center;
+}
+
+.mobile-watchlist-row:hover {
+  border-color: rgba(56, 189, 248, 0.35);
+  background: rgba(56, 189, 248, 0.09);
+}
+
+.mobile-watchlist-link {
+  min-width: 0;
+  display: block;
+  text-decoration: none;
+  color: inherit;
+}
+
+.mobile-watchlist-link strong {
+  display: block;
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 1000;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mobile-watchlist-link span {
+  display: block;
+  margin-top: 4px;
+  color: #8fb7ff;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.mobile-watchlist-trash {
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 12px;
+  background: rgba(239, 68, 68, 0.13);
+  color: #fecaca;
+  display: grid;
+  place-items: center;
+}
+
+.mobile-watchlist-trash svg {
+  width: 17px;
+  height: 17px;
+}
+
+.mobile-watchlist-trash:hover {
+  background: rgba(239, 68, 68, 0.22);
+  color: #ffffff;
+}
+
+.mobile-watchlist-bottom-actions {
+  flex: 0 0 auto;
+  padding: 12px 16px 16px;
+  border-top: 1px solid rgba(148, 163, 184, 0.12);
+}
+
+.mobile-watchlist-manage {
+  width: 100%;
+}
+
+.mobile-watchlist-empty {
+  padding: 22px 14px !important;
+  text-align: center;
+  line-height: 1.55;
+}
+
+@media (min-width: 761px) {
+  .bitgak-chart-body .bv-mobile-watch-actions {
+    display: none !important;
+  }
+}
+
+@media (max-width: 760px) {
+  .bitgak-chart-body .bv-app {
+    grid-template-rows: 156px minmax(0, 1fr) !important;
+  }
+
+  .bitgak-chart-body .bv-header {
+    height: 156px !important;
+    min-height: 156px !important;
+    grid-template-columns: 32px minmax(0, 1fr) 60px !important;
+    grid-template-rows: 38px 40px 40px !important;
+    row-gap: 8px !important;
+  }
+
+  .bitgak-chart-body .bv-drawer-actions {
+    grid-column: 1 / 4 !important;
+    grid-row: 2 / 3 !important;
+    width: 100% !important;
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
+    gap: 8px !important;
+  }
+
+  .bitgak-chart-body .bv-mobile-watch-actions {
+    grid-column: 1 / 4 !important;
+    grid-row: 3 / 4 !important;
+    display: flex !important;
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  .bitgak-chart-body .bv-layout,
+  .bitgak-chart-body .bv-layout-full,
+  .bitgak-chart-body .bv-layout.bv-drawer-open,
+  .bitgak-chart-body .bv-layout-full.bv-drawer-open {
+    height: calc(100vh - 156px) !important;
+    height: calc(100dvh - 156px) !important;
+  }
+
+  .bitgak-chart-body .bv-left-panel.bv-tool-drawer {
+    max-height: calc(100vh - 174px) !important;
+    max-height: calc(100dvh - 174px) !important;
+  }
+
+  .bitgak-chart-body .mobile-watchlist-modal {
+    padding-top: max(76px, env(safe-area-inset-top)) !important;
+  }
+}
+
+@media (max-width: 420px) {
+  .bitgak-chart-body .bv-header {
+    grid-template-columns: 32px minmax(0, 1fr) 56px !important;
+  }
+
+  .bitgak-chart-body .bv-header-actions,
+  .bitgak-chart-body .bv-header-actions a,
+  .bitgak-chart-body .bv-header-actions button {
+    width: 56px !important;
+    min-width: 56px !important;
+  }
+
+  .bitgak-chart-body .mobile-watchlist-toolbar {
+    grid-template-columns: 1fr;
+  }
+
+  .bitgak-chart-body .mobile-watchlist-add-current {
+    width: 100%;
+  }
+}
+
+
+/* =========================================================
+   Mobile watchlist dropdown polish v2
+   - native select 대신 PC 스타일 커스텀 드롭다운 사용
+   - 화살표가 오른쪽 바깥으로 밀리지 않게 내부 고정
+   ========================================================= */
+.mobile-watchlist-native-select,
+.bitgak-chart-body .mobile-watchlist-native-select {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  overflow: hidden !important;
+  clip-path: inset(50%) !important;
+}
+
+.mobile-watchlist-select-label,
+.bitgak-chart-body .mobile-watchlist-select-label {
+  position: relative;
+  min-width: 0;
+  z-index: 8;
+}
+
+.mobile-watchlist-select-custom,
+.bitgak-chart-body .mobile-watchlist-select-custom {
+  position: relative;
+  width: 100%;
+  min-width: 0;
+}
+
+.mobile-watchlist-select-btn,
+.bitgak-chart-body .mobile-watchlist-select-btn {
+  width: 100%;
+  height: 40px;
+  min-width: 0;
+  padding: 0 42px 0 13px;
+  border-radius: 14px;
+  border: 1px solid rgba(96, 165, 250, 0.34);
+  background:
+    radial-gradient(circle at 18% 18%, rgba(56, 189, 248, 0.12), transparent 34%),
+    linear-gradient(180deg, rgba(15, 29, 52, 0.98), rgba(6, 14, 29, 0.98));
+  color: #ffffff;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 8px 18px rgba(0, 0, 0, 0.16);
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  text-align: left;
+  font-size: 13px;
+  font-weight: 1000;
+  letter-spacing: -0.035em;
+  outline: none;
+  transition: border-color 0.14s ease, background 0.14s ease, box-shadow 0.14s ease;
+}
+
+.mobile-watchlist-select-btn span,
+.bitgak-chart-body .mobile-watchlist-select-btn span {
+  display: block;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #ffffff;
+}
+
+.mobile-watchlist-select-btn::after,
+.bitgak-chart-body .mobile-watchlist-select-btn::after {
+  content: "";
+  position: absolute;
+  right: 17px;
+  top: 50%;
+  width: 8px;
+  height: 8px;
+  border-right: 2px solid #67e8f9;
+  border-bottom: 2px solid #67e8f9;
+  transform: translateY(-65%) rotate(45deg);
+  opacity: 0.95;
+  pointer-events: none;
+  transition: transform 0.14s ease;
+}
+
+.mobile-watchlist-select-custom.open .mobile-watchlist-select-btn,
+.mobile-watchlist-select-btn:hover,
+.bitgak-chart-body .mobile-watchlist-select-custom.open .mobile-watchlist-select-btn,
+.bitgak-chart-body .mobile-watchlist-select-btn:hover {
+  border-color: rgba(56, 189, 248, 0.72);
+  background:
+    radial-gradient(circle at 18% 18%, rgba(45, 212, 191, 0.14), transparent 34%),
+    linear-gradient(180deg, rgba(21, 44, 76, 0.98), rgba(8, 22, 43, 0.98));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 0 0 3px rgba(56, 189, 248, 0.10),
+    0 12px 24px rgba(0, 0, 0, 0.20);
+}
+
+.mobile-watchlist-select-custom.open .mobile-watchlist-select-btn::after,
+.bitgak-chart-body .mobile-watchlist-select-custom.open .mobile-watchlist-select-btn::after {
+  transform: translateY(-35%) rotate(225deg);
+}
+
+.mobile-watchlist-select-menu,
+.bitgak-chart-body .mobile-watchlist-select-menu {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(100% + 7px);
+  z-index: 50;
+  max-height: 194px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 7px;
+  border-radius: 16px;
+  border: 1px solid rgba(96, 165, 250, 0.32);
+  background:
+    radial-gradient(circle at 90% 0%, rgba(56, 189, 248, 0.10), transparent 34%),
+    rgba(5, 13, 27, 0.99);
+  box-shadow: 0 22px 54px rgba(0, 0, 0, 0.46);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  display: none;
+}
+
+.mobile-watchlist-select-custom.open .mobile-watchlist-select-menu,
+.bitgak-chart-body .mobile-watchlist-select-custom.open .mobile-watchlist-select-menu {
+  display: grid;
+  gap: 5px;
+}
+
+.mobile-watchlist-select-option,
+.bitgak-chart-body .mobile-watchlist-select-option {
+  width: 100%;
+  min-height: 38px;
+  padding: 0 10px 0 12px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: #dbeafe;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto 18px;
+  align-items: center;
+  gap: 10px;
+  text-align: left;
+  font-size: 13px;
+  font-weight: 950;
+}
+
+.mobile-watchlist-select-option span,
+.bitgak-chart-body .mobile-watchlist-select-option span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mobile-watchlist-select-option b,
+.bitgak-chart-body .mobile-watchlist-select-option b {
+  min-width: 24px;
+  height: 22px;
+  padding: 0 7px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(59, 130, 246, 0.18);
+  color: #93c5fd;
+  font-size: 11px;
+  font-weight: 1000;
+}
+
+.mobile-watchlist-select-option:hover,
+.mobile-watchlist-select-option.active,
+.bitgak-chart-body .mobile-watchlist-select-option:hover,
+.bitgak-chart-body .mobile-watchlist-select-option.active {
+  background: rgba(56, 189, 248, 0.12);
+  color: #ffffff;
+}
+
+.mobile-watchlist-select-option.active::after,
+.bitgak-chart-body .mobile-watchlist-select-option.active::after {
+  content: "✓";
+  color: #67e8f9;
+  font-size: 13px;
+  font-weight: 1000;
+  margin-left: 2px;
+}
+
+.mobile-watchlist-row,
+.bitgak-chart-body .mobile-watchlist-row {
+  grid-template-columns: minmax(0, 1fr) 40px;
+  padding: 10px 9px 10px 12px;
+  gap: 8px;
+}
+
+.mobile-watchlist-trash,
+.bitgak-chart-body .mobile-watchlist-trash {
+  justify-self: end;
+  width: 36px;
+  min-width: 36px;
+  height: 36px;
+}
+
+@media (max-width: 420px) {
+  .bitgak-chart-body .mobile-watchlist-toolbar {
+    grid-template-columns: 1fr;
+  }
+
+  .bitgak-chart-body .mobile-watchlist-add-current {
+    width: 100%;
+  }
+
+  .bitgak-chart-body .mobile-watchlist-select-menu {
+    max-height: 178px;
+  }
+}
+
+/* =========================================================
+   Mobile watchlist typography + spacing v3
+   - 관심종목/그룹 드롭다운 글씨 확대
+   - 작은 화면에서 화살표/삭제버튼이 바깥으로 밀리지 않게 보정
+   ========================================================= */
+.mobile-watchlist-select-btn,
+.bitgak-chart-body .mobile-watchlist-select-btn {
+  height: 44px;
+  padding: 0 44px 0 15px;
+  font-size: 15px;
+  line-height: 1;
+  letter-spacing: -0.045em;
+}
+
+.mobile-watchlist-select-btn span,
+.bitgak-chart-body .mobile-watchlist-select-btn span {
+  font-size: 15px;
+  font-weight: 1000;
+}
+
+.mobile-watchlist-select-btn::after,
+.bitgak-chart-body .mobile-watchlist-select-btn::after {
+  right: 18px;
+  width: 9px;
+  height: 9px;
+}
+
+.mobile-watchlist-select-label span,
+.bitgak-chart-body .mobile-watchlist-select-label span {
+  font-size: 12px;
+  font-weight: 1000;
+  color: #9db6dc;
+}
+
+.mobile-watchlist-add-current,
+.mobile-watchlist-manage,
+.bitgak-chart-body .mobile-watchlist-add-current,
+.bitgak-chart-body .mobile-watchlist-manage {
+  height: 44px;
+  font-size: 14px;
+  font-weight: 1000;
+}
+
+.mobile-watchlist-summary,
+.bitgak-chart-body .mobile-watchlist-summary {
+  min-height: 48px;
+  padding: 0 15px;
+}
+
+.mobile-watchlist-summary span,
+.bitgak-chart-body .mobile-watchlist-summary span {
+  font-size: 16px;
+  line-height: 1.15;
+  font-weight: 1000;
+}
+
+.mobile-watchlist-summary strong,
+.bitgak-chart-body .mobile-watchlist-summary strong {
+  font-size: 14px;
+}
+
+.mobile-watchlist-summary strong b,
+.bitgak-chart-body .mobile-watchlist-summary strong b {
+  font-size: 15px;
+}
+
+.mobile-watchlist-select-option,
+.bitgak-chart-body .mobile-watchlist-select-option {
+  min-height: 43px;
+  padding: 0 12px 0 13px;
+  grid-template-columns: minmax(0, 1fr) auto 20px;
+  font-size: 14px;
+  font-weight: 1000;
+}
+
+.mobile-watchlist-select-option span,
+.bitgak-chart-body .mobile-watchlist-select-option span {
+  font-size: 14px;
+  line-height: 1.2;
+  font-weight: 1000;
+}
+
+.mobile-watchlist-select-option b,
+.bitgak-chart-body .mobile-watchlist-select-option b {
+  min-width: 28px;
+  height: 24px;
+  padding: 0 8px;
+  font-size: 12px;
+}
+
+.mobile-watchlist-select-option.active::after,
+.bitgak-chart-body .mobile-watchlist-select-option.active::after {
+  font-size: 15px;
+}
+
+.mobile-watchlist-row,
+.bitgak-chart-body .mobile-watchlist-row {
+  min-height: 64px;
+  grid-template-columns: minmax(0, 1fr) 42px;
+  padding: 11px 10px 11px 13px;
+  gap: 9px;
+}
+
+.mobile-watchlist-link strong,
+.bitgak-chart-body .mobile-watchlist-link strong {
+  font-size: 16px;
+  line-height: 1.18;
+  font-weight: 1000;
+}
+
+.mobile-watchlist-link span,
+.bitgak-chart-body .mobile-watchlist-link span {
+  margin-top: 5px;
+  font-size: 13px;
+  line-height: 1.2;
+  font-weight: 1000;
+}
+
+.mobile-watchlist-trash,
+.bitgak-chart-body .mobile-watchlist-trash {
+  width: 38px;
+  min-width: 38px;
+  height: 38px;
+  border-radius: 13px;
+}
+
+.mobile-watchlist-trash svg,
+.bitgak-chart-body .mobile-watchlist-trash svg {
+  width: 18px;
+  height: 18px;
+}
+
+.mobile-watchlist-list,
+.bitgak-chart-body .mobile-watchlist-list {
+  gap: 9px;
+}
+
+/* PC 오른쪽 관심종목 패널도 글씨가 너무 작아 보이지 않게 살짝 보정 */
+.bitgak-chart-body .selected-group-head strong,
+.bitgak-chart-body .indicator-list-head strong {
+  font-size: 16px;
+}
+
+.bitgak-chart-body .symbol-row strong,
+.bitgak-chart-body .indicator-row-title strong {
+  font-size: 15px;
+}
+
+.bitgak-chart-body .symbol-row span,
+.bitgak-chart-body .indicator-row-title span {
+  font-size: 13px;
+}
+
+@media (max-width: 420px) {
+  .bitgak-chart-body .mobile-watchlist-select-btn {
+    height: 43px;
+    padding-left: 14px;
+    padding-right: 42px;
+    font-size: 14px;
+  }
+
+  .bitgak-chart-body .mobile-watchlist-select-btn span {
+    font-size: 14px;
+  }
+
+  .bitgak-chart-body .mobile-watchlist-summary span {
+    font-size: 15px;
+  }
+
+  .bitgak-chart-body .mobile-watchlist-link strong {
+    font-size: 15px;
+  }
+
+  .bitgak-chart-body .mobile-watchlist-link span {
+    font-size: 12.5px;
+  }
+}
+
+/* =========================================================
+   Final restore: watchlist button/modal + chart interaction
+   - PC에서는 관심지표 모바일 버튼 숨김
+   - 모바일에서는 평단가/포트폴리오 아래에만 표시
+   - 관심지표 모달 드롭다운/리스트 타이포 보강
+   ========================================================= */
+.bitgak-chart-body .bv-mobile-watch-actions {
+  display: none !important;
+}
+
+@media (min-width: 761px) {
+  .bitgak-chart-body .bv-mobile-watch-actions,
+  .bitgak-chart-body .mobile-watchlist-modal:not(.open):not(.is-open) {
+    display: none !important;
+  }
+}
+
+@media (max-width: 760px) {
+  .bitgak-chart-body .bv-app {
+    grid-template-rows: 156px minmax(0, 1fr) !important;
+  }
+
+  .bitgak-chart-body .bv-header {
+    height: 156px !important;
+    min-height: 156px !important;
+    display: grid !important;
+    grid-template-columns: 32px minmax(0, 1fr) 62px !important;
+    grid-template-rows: 38px 40px 40px !important;
+    row-gap: 8px !important;
+    column-gap: 8px !important;
+    align-items: center !important;
+  }
+
+  .bitgak-chart-body .bv-drawer-actions {
+    grid-column: 1 / 4 !important;
+    grid-row: 2 / 3 !important;
+    width: 100% !important;
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
+    gap: 8px !important;
+  }
+
+  .bitgak-chart-body .bv-mobile-watch-actions {
+    grid-column: 1 / 4 !important;
+    grid-row: 3 / 4 !important;
+    display: flex !important;
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  .bitgak-chart-body .bv-mobile-watch-btn {
+    width: 100% !important;
+    height: 40px !important;
+    border-radius: 14px !important;
+    border: 1px solid rgba(45, 212, 191, 0.36) !important;
+    background: linear-gradient(135deg, rgba(37, 99, 235, 0.94), rgba(20, 184, 166, 0.88)) !important;
+    color: #ffffff !important;
+    font-size: 14px !important;
+    font-weight: 1000 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 8px !important;
+  }
+
+  .bitgak-chart-body .mobile-watchlist-modal.open,
+  .bitgak-chart-body .mobile-watchlist-modal.is-open {
+    display: flex !important;
+  }
+
+  .bitgak-chart-body .mobile-watchlist-panel {
+    width: min(372px, calc(100vw - 24px)) !important;
+    max-width: calc(100vw - 24px) !important;
+    overflow: hidden !important;
+  }
+
+  .bitgak-chart-body .mobile-watchlist-select-btn {
+    width: 100% !important;
+    height: 42px !important;
+    padding: 0 48px 0 14px !important;
+    font-size: 14px !important;
+    font-weight: 1000 !important;
+    overflow: hidden !important;
+  }
+
+  .bitgak-chart-body .mobile-watchlist-select-btn span {
+    display: block !important;
+    max-width: 100% !important;
+    overflow: hidden !important;
+    white-space: nowrap !important;
+    text-overflow: ellipsis !important;
+  }
+
+  .bitgak-chart-body .mobile-watchlist-select-btn::after {
+    right: 18px !important;
+  }
+
+  .bitgak-chart-body .mobile-watchlist-select-option {
+    min-height: 42px !important;
+    padding: 0 42px 0 13px !important;
+    font-size: 14px !important;
+    font-weight: 1000 !important;
+  }
+
+  .bitgak-chart-body .mobile-watchlist-select-option span {
+    font-size: 14px !important;
+    font-weight: 1000 !important;
+  }
+
+  .bitgak-chart-body .mobile-watchlist-select-option b {
+    min-width: 24px !important;
+    height: 24px !important;
+    font-size: 12px !important;
+  }
+
+  .bitgak-chart-body .mobile-watchlist-summary span {
+    font-size: 15px !important;
+    font-weight: 1000 !important;
+  }
+
+  .bitgak-chart-body .mobile-watchlist-summary strong,
+  .bitgak-chart-body .mobile-watchlist-summary strong b {
+    font-size: 14px !important;
+    font-weight: 1000 !important;
+  }
+
+  .bitgak-chart-body .mobile-watchlist-row {
+    grid-template-columns: minmax(0, 1fr) 40px !important;
+    min-height: 62px !important;
+    padding: 11px 10px 11px 12px !important;
+    overflow: hidden !important;
+  }
+
+  .bitgak-chart-body .mobile-watchlist-link {
+    min-width: 0 !important;
+    overflow: hidden !important;
+  }
+
+  .bitgak-chart-body .mobile-watchlist-link strong {
+    font-size: 15px !important;
+    font-weight: 1000 !important;
+    max-width: 100% !important;
+  }
+
+  .bitgak-chart-body .mobile-watchlist-link span {
+    font-size: 13px !important;
+    font-weight: 950 !important;
+  }
+
+  .bitgak-chart-body .mobile-watchlist-trash {
+    width: 36px !important;
+    height: 36px !important;
+    justify-self: end !important;
+  }
+
+  .bitgak-chart-body .bv-layout,
+  .bitgak-chart-body .bv-layout-full,
+  .bitgak-chart-body .bv-layout.bv-drawer-open,
+  .bitgak-chart-body .bv-layout-full.bv-drawer-open {
+    height: calc(100vh - 156px) !important;
+    height: calc(100dvh - 156px) !important;
+  }
+}
+
+/* 가격축은 브라우저 텍스트 선택/페이지 드래그가 끼어들지 않게 보정 */
+.bitgak-chart-body .tv-chart,
+.bitgak-chart-body .chart-wrap {
+  user-select: none !important;
+  touch-action: none;
+}
+
+
+/* =========================================================
+   Final watchlist dropdown cleanup + y-axis cursor UX
+   - 모바일 그룹 요약은 숫자만 우측 표시
+   - 드롭다운 선택 체크표시 제거
+   - 그룹 숫자 배지를 우측 끝에 고정
+   ========================================================= */
+.mobile-watchlist-select-btn,
+.bitgak-chart-body .mobile-watchlist-select-btn {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto !important;
+  align-items: center !important;
+  gap: 10px !important;
+  padding: 0 46px 0 15px !important;
+}
+
+.mobile-watchlist-select-btn .mobile-watchlist-selected-name,
+.bitgak-chart-body .mobile-watchlist-select-btn .mobile-watchlist-selected-name {
+  min-width: 0 !important;
+  overflow: hidden !important;
+  white-space: nowrap !important;
+  text-overflow: ellipsis !important;
+  font-size: 15px !important;
+  font-weight: 1000 !important;
+  color: #ffffff !important;
+}
+
+.mobile-watchlist-select-btn .mobile-watchlist-selected-count,
+.bitgak-chart-body .mobile-watchlist-select-btn .mobile-watchlist-selected-count {
+  justify-self: end !important;
+  min-width: 34px !important;
+  height: 24px !important;
+  padding: 0 8px !important;
+  border-radius: 999px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  background: rgba(59, 130, 246, 0.22) !important;
+  color: #93c5fd !important;
+  font-size: 12px !important;
+  font-weight: 1000 !important;
+  line-height: 1 !important;
+  white-space: nowrap !important;
+}
+
+.mobile-watchlist-summary,
+.bitgak-chart-body .mobile-watchlist-summary {
+  justify-content: flex-end !important;
+  min-height: 44px !important;
+  padding: 0 15px !important;
+}
+
+.mobile-watchlist-summary span,
+.bitgak-chart-body .mobile-watchlist-summary span {
+  display: none !important;
+}
+
+.mobile-watchlist-summary strong,
+.bitgak-chart-body .mobile-watchlist-summary strong {
+  margin-left: auto !important;
+  min-width: 44px !important;
+  height: 28px !important;
+  padding: 0 10px !important;
+  border-radius: 999px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  background: rgba(45, 212, 191, 0.13) !important;
+  border: 1px solid rgba(45, 212, 191, 0.20) !important;
+  color: #67e8f9 !important;
+  font-size: 13px !important;
+  font-weight: 1000 !important;
+}
+
+.mobile-watchlist-summary strong b,
+.bitgak-chart-body .mobile-watchlist-summary strong b {
+  color: #67e8f9 !important;
+  font-size: 14px !important;
+  font-weight: 1000 !important;
+}
+
+.mobile-watchlist-select-option,
+.bitgak-chart-body .mobile-watchlist-select-option {
+  grid-template-columns: minmax(0, 1fr) auto !important;
+  padding: 0 12px 0 13px !important;
+}
+
+.mobile-watchlist-select-option.active::after,
+.bitgak-chart-body .mobile-watchlist-select-option.active::after {
+  content: none !important;
+  display: none !important;
+}
+
+.mobile-watchlist-select-option b,
+.bitgak-chart-body .mobile-watchlist-select-option b {
+  justify-self: end !important;
+  min-width: 32px !important;
+  padding: 0 8px !important;
+}
+
+.bitgak-y-axis-scaling,
+.bitgak-y-axis-scaling * {
+  cursor: ns-resize !important;
+  user-select: none !important;
+}
+
+.bitgak-chart-body .chart-wrap,
+.bitgak-chart-body .tv-chart {
+  -webkit-user-select: none !important;
+  user-select: none !important;
+}
+
+
+/* =========================================================
+   Interaction cleanup final
+   - 모바일 관심지표: 닫힌 버튼은 그룹명만 표시
+   - 요약 숫자 빈 박스 제거
+   - 드로잉 선 몸통은 차트 팬/줌을 막지 않음
+   ========================================================= */
+.mobile-watchlist-select-btn,
+.bitgak-chart-body .mobile-watchlist-select-btn {
+  grid-template-columns: minmax(0, 1fr) !important;
+  padding: 0 46px 0 15px !important;
+}
+
+.mobile-watchlist-select-btn .mobile-watchlist-selected-name,
+.bitgak-chart-body .mobile-watchlist-select-btn .mobile-watchlist-selected-name {
+  display: block !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+.mobile-watchlist-select-btn .mobile-watchlist-selected-count,
+.bitgak-chart-body .mobile-watchlist-select-btn .mobile-watchlist-selected-count {
+  display: none !important;
+}
+
+.mobile-watchlist-summary,
+.bitgak-chart-body .mobile-watchlist-summary {
+  display: none !important;
+}
+
+.mobile-watchlist-list,
+.bitgak-chart-body .mobile-watchlist-list {
+  margin-top: 10px !important;
+}
+
+#drawingLayer.has-drawings .bv-drawing-hit,
+.bitgak-chart-body #drawingLayer.has-drawings .bv-drawing-hit {
+  pointer-events: none !important;
+  cursor: default !important;
+}
+
+#drawingLayer.has-drawings .bv-drawing-line,
+#drawingLayer.has-drawings .bv-drawing-fill,
+.bitgak-chart-body #drawingLayer.has-drawings .bv-drawing-line,
+.bitgak-chart-body #drawingLayer.has-drawings .bv-drawing-fill {
+  pointer-events: none !important;
+}
+
+.bitgak-chart-body #chartWrap,
+.bitgak-chart-body #tvChart {
+  cursor: default;
+}

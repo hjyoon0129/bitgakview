@@ -6,7 +6,87 @@
   if (!app) return;
 
   const STORAGE_KEY = "bitgak:portfolio:v1";
+  const PORTFOLIO_API_URL = (app.dataset.portfolioApiUrl || "/stocks/api/portfolio/");
   const DEFAULT_CAPITAL = 10000000;
+  let portfolioCache = null;
+  let portfolioServerReady = false;
+  let portfolioServerLoading = false;
+  let portfolioSaveTimer = null;
+
+  function getCookie(name) {
+    const value = `; ${document.cookie || ""}`;
+    const parts = value.split(`; ${name}=`);
+    if (parts.length === 2) return decodeURIComponent(parts.pop().split(";").shift());
+    return "";
+  }
+
+  function isAuthenticated() {
+    return !!(window.BITGAK_ACCESS && window.BITGAK_ACCESS.is_authenticated);
+  }
+
+  function normalizePortfolioPayload(raw) {
+    raw = raw || {};
+    const payload = raw.portfolio || raw;
+    return {
+      capital: positiveNumber(payload.capital) || DEFAULT_CAPITAL,
+      trades: Array.isArray(payload.trades) ? payload.trades.filter(Boolean) : [],
+      updatedAt: payload.updatedAt || payload.updated_at || null,
+    };
+  }
+
+  function savePortfolioLocal(payload) {
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(payload)); } catch (e) {}
+  }
+
+  async function fetchServerPortfolio() {
+    if (!isAuthenticated() || portfolioServerLoading) return false;
+    portfolioServerLoading = true;
+
+    try {
+      const res = await fetch(PORTFOLIO_API_URL, {
+        method: "GET",
+        headers: { "X-Requested-With": "XMLHttpRequest" },
+        credentials: "same-origin",
+        cache: "no-store",
+      });
+      if (!res.ok) throw new Error("portfolio api failed");
+      const data = await res.json();
+      portfolioCache = normalizePortfolioPayload(data);
+      portfolioServerReady = true;
+      savePortfolioLocal(portfolioCache);
+      document.dispatchEvent(new CustomEvent("bitgak:portfolio-updated", { detail: portfolioCache }));
+      renderPortfolio(portfolioCache);
+      return true;
+    } catch (e) {
+      console.warn("Bitgak portfolio server sync fallback to localStorage:", e);
+      return false;
+    } finally {
+      portfolioServerLoading = false;
+    }
+  }
+
+  function schedulePortfolioServerSave(payload) {
+    if (!isAuthenticated()) return;
+    clearTimeout(portfolioSaveTimer);
+    portfolioSaveTimer = setTimeout(async function () {
+      try {
+        const res = await fetch(PORTFOLIO_API_URL, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Requested-With": "XMLHttpRequest",
+            "X-CSRFToken": getCookie("csrftoken"),
+          },
+          credentials: "same-origin",
+          body: JSON.stringify({ portfolio: payload }),
+        });
+        if (!res.ok) throw new Error("portfolio save failed");
+        portfolioServerReady = true;
+      } catch (e) {
+        console.warn("Bitgak portfolio server save failed. Local backup kept:", e);
+      }
+    }, 220);
+  }
   const DRAWER_ANIMATION_MS = 1450;
   const COLORS = ["#3b82f6", "#22c55e", "#f97316", "#a855f7", "#ec4899", "#14b8a6", "#facc15", "#64748b", "#ef4444", "#06b6d4"];
 
@@ -117,15 +197,15 @@
   }
 
   function loadPortfolio() {
+    if (portfolioCache) return portfolioCache;
+
     try {
       const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
-      return {
-        capital: positiveNumber(parsed.capital) || DEFAULT_CAPITAL,
-        trades: Array.isArray(parsed.trades) ? parsed.trades.filter(Boolean) : [],
-        updatedAt: parsed.updatedAt || null,
-      };
+      portfolioCache = normalizePortfolioPayload(parsed);
+      return portfolioCache;
     } catch (e) {
-      return { capital: DEFAULT_CAPITAL, trades: [], updatedAt: null };
+      portfolioCache = { capital: DEFAULT_CAPITAL, trades: [], updatedAt: null };
+      return portfolioCache;
     }
   }
 
@@ -135,7 +215,9 @@
       trades: Array.isArray(portfolio.trades) ? portfolio.trades : [],
       updatedAt: new Date().toISOString(),
     };
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+    portfolioCache = payload;
+    savePortfolioLocal(payload);
+    schedulePortfolioServerSave(payload);
     document.dispatchEvent(new CustomEvent("bitgak:portfolio-updated", { detail: payload }));
     return payload;
   }
@@ -664,4 +746,5 @@
 
   syncDrawerState(false);
   renderPortfolio();
+  fetchServerPortfolio();
 })();

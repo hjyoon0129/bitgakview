@@ -30,6 +30,37 @@
 
   if (!chartEl || !chartWrap || !drawingLayer) return;
 
+  function normalHandleScrollOptions() {
+    return {
+      mouseWheel: true,
+      pressedMouseMove: true,
+      horzTouchDrag: true,
+      vertTouchDrag: false,
+    };
+  }
+
+  function normalHandleScaleOptions() {
+    return {
+      mouseWheel: true,
+      pinch: true,
+      axisPressedMouseMove: {
+        time: false,
+        price: true,
+      },
+      axisDoubleClickReset: {
+        time: true,
+        price: true,
+      },
+    };
+  }
+
+  function normalChartInteractionOptions() {
+    return {
+      handleScroll: normalHandleScrollOptions(),
+      handleScale: normalHandleScaleOptions(),
+    };
+  }
+
   if (!overlayEl) {
     overlayEl = document.createElement("div");
     overlayEl.id = "chartIndicatorOverlay";
@@ -259,6 +290,8 @@
       },
       rightPriceScale: {
         borderColor: "#e2e8f0",
+        autoScale: true,
+        mode: LW.PriceScaleMode ? LW.PriceScaleMode.Normal : 0,
         scaleMargins: { top: 0.08, bottom: 0.08 },
       },
       timeScale: {
@@ -274,8 +307,8 @@
           return formatTickMark(time);
         },
       },
-      handleScroll: true,
-      handleScale: true,
+      handleScroll: normalHandleScrollOptions(),
+      handleScale: normalHandleScaleOptions(),
       localization: {
         locale: "ko-KR",
         priceFormatter: function (price) {
@@ -1826,8 +1859,12 @@
     }
   }
 
+  function shouldDrawManualCrosshair() {
+    return !!(isMobileViewport() || normalizeDrawingTool(state.activeTool) !== "cursor" || state.tempDrawing || drawingDrag);
+  }
+
   function drawCrosshairGuide() {
-    if (!state.crosshairValue || !state.crosshairPoint) return;
+    if (!shouldDrawManualCrosshair() || !state.crosshairValue || !state.crosshairPoint) return;
 
     const size = getLayerSize();
     const p = state.crosshairPoint;
@@ -1875,6 +1912,7 @@
   let suppressNextDrawingClick = false;
   let lastDrawingClick = { id: null, time: 0 };
   let crosshairRaf = null;
+  let priceAxisDrag = null;
 
   function getDrawingEventTarget(event) {
     if (!event) return null;
@@ -2073,7 +2111,8 @@
     if (event.target && event.target.closest && event.target.closest(".bv-drawing-settings-modal, .bv-drawing-color-palette, [data-tool], .indicator-panel, .group-panel, .my-stock-panel")) return;
 
     const hit = hitTestDrawingAtPoint(getLocalPoint(event));
-    if (!hit) return;
+    // 선 몸통 위에서는 차트 드래그/팬을 우선한다. 선택된 점(handle)에서만 도형 편집을 시작한다.
+    if (!hit || !hit.isHandle) return;
 
     beginDrawingDrag(event, hit);
   }
@@ -2147,7 +2186,8 @@
     openDrawingSettings(drawing);
   }
 
-  function scheduleDrawingCrosshairRender() {
+  function scheduleDrawingCrosshairRender(forceClear) {
+    if (!forceClear && !shouldDrawManualCrosshair()) return;
     if (crosshairRaf) return;
     crosshairRaf = requestAnimationFrame(function () {
       crosshairRaf = null;
@@ -2156,6 +2196,7 @@
   }
 
   function setManualCrosshairFromEvent(event) {
+    if (!shouldDrawManualCrosshair()) return false;
     const resolved = pointFromEvent(event);
     if (!resolved) return false;
 
@@ -2166,7 +2207,8 @@
   }
 
   function updateDrawingCrosshairFromPointer(event) {
-    if (!event || drawingDrag) return;
+    if (!event || priceAxisDrag || drawingDrag) return;
+    if (!shouldDrawManualCrosshair()) return;
     setManualCrosshairFromEvent(event);
   }
 
@@ -2178,6 +2220,158 @@
     if (normalizeDrawingTool(state.activeTool) !== "cursor" && !state.tempDrawing) return;
 
     setManualCrosshairFromEvent(event);
+  }
+
+
+  function getPrimaryPriceScale() {
+    try {
+      if (candleSeries && typeof candleSeries.priceScale === "function") return candleSeries.priceScale();
+    } catch (e) {}
+    try {
+      if (chart && typeof chart.priceScale === "function") return chart.priceScale("right");
+    } catch (e) {}
+    return null;
+  }
+
+  function getVisibleRowsForPriceRange() {
+    const rows = state.rows || [];
+    if (!rows.length) return rows;
+
+    let from = 0;
+    let to = rows.length - 1;
+
+    try {
+      const range = chart.timeScale().getVisibleLogicalRange && chart.timeScale().getVisibleLogicalRange();
+      if (range && Number.isFinite(Number(range.from)) && Number.isFinite(Number(range.to))) {
+        from = Math.max(0, Math.floor(Number(range.from)) - 3);
+        to = Math.min(rows.length - 1, Math.ceil(Number(range.to)) + 3);
+      }
+    } catch (e) {}
+
+    return rows.slice(from, to + 1).filter(Boolean);
+  }
+
+  function getCurrentVisiblePriceRange() {
+    const priceScale = getPrimaryPriceScale();
+
+    try {
+      if (priceScale && typeof priceScale.getVisibleRange === "function") {
+        const range = priceScale.getVisibleRange();
+        if (range && Number.isFinite(Number(range.from)) && Number.isFinite(Number(range.to)) && Number(range.to) > Number(range.from)) {
+          return { from: Number(range.from), to: Number(range.to) };
+        }
+      }
+    } catch (e) {}
+
+    const rows = getVisibleRowsForPriceRange();
+    let min = Infinity;
+    let max = -Infinity;
+
+    rows.forEach(function (row) {
+      const low = Number(row.low);
+      const high = Number(row.high);
+      if (Number.isFinite(low)) min = Math.min(min, low);
+      if (Number.isFinite(high)) max = Math.max(max, high);
+    });
+
+    if (!Number.isFinite(min) || !Number.isFinite(max) || max <= min) {
+      const last = rows.length ? Number(rows[rows.length - 1].close) : 100;
+      min = last * 0.92;
+      max = last * 1.08;
+    }
+
+    const pad = Math.max((max - min) * 0.10, Math.abs(max) * 0.002, 1);
+    return { from: min - pad, to: max + pad };
+  }
+
+  function isPriceAxisPointer(event) {
+    if (!event || !chartWrap || !chartEl) return false;
+    if (normalizeDrawingTool(state.activeTool) !== "cursor" || drawingDrag) return false;
+    if (event.target && event.target.closest && event.target.closest("button, a, input, select, textarea, .tv-interval-dropdown, .bv-drawing-toolbar, .indicator-panel, .group-panel, .my-stock-panel, .mobile-watchlist-panel")) return false;
+
+    const rect = chartEl.getBoundingClientRect();
+    const axisWidth = Math.max(56, Math.min(88, rect.width * 0.08));
+    return event.clientX >= rect.right - axisWidth && event.clientX <= rect.right + 8 && event.clientY >= rect.top && event.clientY <= rect.bottom;
+  }
+
+  function applyPriceAxisVisibleRange(range) {
+    const priceScale = getPrimaryPriceScale();
+    if (!priceScale || !range || !Number.isFinite(range.from) || !Number.isFinite(range.to) || range.to <= range.from) return false;
+
+    try {
+      if (typeof priceScale.applyOptions === "function") priceScale.applyOptions({ autoScale: false });
+    } catch (e) {}
+
+    try {
+      if (typeof priceScale.setVisibleRange === "function") {
+        priceScale.setVisibleRange({ from: range.from, to: range.to });
+        return true;
+      }
+    } catch (e) {}
+
+    return false;
+  }
+
+  function handlePriceAxisPointerDown(event) {
+    if (!isPriceAxisPointer(event)) return;
+
+    const startRange = getCurrentVisiblePriceRange();
+    if (!startRange) return;
+
+    priceAxisDrag = {
+      pointerId: event.pointerId,
+      startY: event.clientY,
+      range: startRange,
+    };
+
+    event.preventDefault();
+    event.stopPropagation();
+    document.documentElement.classList.add("bitgak-y-axis-scaling");
+    chart.applyOptions({ handleScroll: false, handleScale: false });
+
+    try { chartWrap.setPointerCapture(event.pointerId); } catch (e) {}
+  }
+
+  function handlePriceAxisPointerMove(event) {
+    if (!priceAxisDrag) return;
+
+    event.preventDefault();
+    event.stopPropagation();
+
+    const dy = Number(event.clientY) - Number(priceAxisDrag.startY);
+    const start = priceAxisDrag.range;
+    const center = (Number(start.from) + Number(start.to)) / 2;
+    const half = Math.max((Number(start.to) - Number(start.from)) / 2, 1);
+    const factor = Math.max(0.08, Math.min(12, Math.exp(dy * 0.012)));
+    const nextHalf = half * factor;
+
+    applyPriceAxisVisibleRange({ from: center - nextHalf, to: center + nextHalf });
+    renderDrawings();
+  }
+
+  function finishPriceAxisPointerDrag(event) {
+    if (!priceAxisDrag) return;
+
+    event && event.preventDefault && event.preventDefault();
+    event && event.stopPropagation && event.stopPropagation();
+
+    try { chartWrap.releasePointerCapture(priceAxisDrag.pointerId); } catch (e) {}
+    priceAxisDrag = null;
+    document.documentElement.classList.remove("bitgak-y-axis-scaling");
+    chart.applyOptions(normalChartInteractionOptions());
+    renderDrawings();
+  }
+
+  function handlePriceAxisDoubleClick(event) {
+    if (!isPriceAxisPointer(event)) return;
+
+    const priceScale = getPrimaryPriceScale();
+    try {
+      if (priceScale && typeof priceScale.applyOptions === "function") priceScale.applyOptions({ autoScale: true });
+    } catch (e) {}
+    event.preventDefault();
+    event.stopPropagation();
+    renderDrawings();
   }
 
   function processDrawingToolTap(event) {
@@ -2353,8 +2547,9 @@
       state.crosshairValue = resolved.value;
     }
 
-    if (state.hoverDrawingId && active === "cursor") {
-      drawingLayer.style.cursor = "move";
+    if (active === "cursor") {
+      const hit = hitTestDrawingEvent(event);
+      drawingLayer.style.cursor = hit && hit.isHandle ? "grab" : "default";
     } else {
       drawingLayer.style.cursor = "crosshair";
     }
@@ -2389,7 +2584,8 @@
     }
 
     const hit = hitTestDrawingEvent(event);
-    if (!hit || !hit.id) return;
+    // 일반 선 위에서는 차트 이동을 막지 않는다. 선택된 핸들만 직접 드래그 편집한다.
+    if (!hit || !hit.id || !hit.isHandle) return;
 
     beginDrawingDrag(event, hit);
   }
@@ -2474,7 +2670,7 @@
     suppressClickAfterDrag = !!drawingDrag.moved;
     drawingDrag = null;
     saveDrawingsToStorage();
-    if (normalizeDrawingTool(state.activeTool) === "cursor") chart.applyOptions({ handleScroll: true, handleScale: true });
+    if (normalizeDrawingTool(state.activeTool) === "cursor") chart.applyOptions(normalChartInteractionOptions());
     renderDrawings();
   }
 
@@ -2805,10 +3001,10 @@
       const style = document.createElement("style");
       style.id = "bitgakDrawingUiStyle";
       style.textContent = `
-        #chartWrap, #tvChart { cursor: crosshair; }
+        #chartWrap, #tvChart { cursor: default; }
         #drawingLayer { touch-action: none; pointer-events: none; overflow: visible; }
         .drawing-mode #drawingLayer { pointer-events: auto; }
-        #drawingLayer.has-drawings .bv-drawing-hit { cursor: move; pointer-events: stroke; }
+        #drawingLayer.has-drawings .bv-drawing-hit { cursor: default; pointer-events: none; }
         #drawingLayer.has-drawings .bv-drawing-handle { pointer-events: all; cursor: grab; filter: drop-shadow(0 1px 2px rgba(15,23,42,.24)); }
         #drawingLayer.has-drawings .bv-drawing-handle:active { cursor: grabbing; }
         #drawingLayer .bv-drawing-line, #drawingLayer .bv-drawing-preview, #drawingLayer .bv-drawing-fill, #drawingLayer .bv-drawing-axis-badge, #drawingLayer .bv-drawing-axis-badge-text, #drawingLayer .bv-drawing-crosshair-guide * { pointer-events: none; }
@@ -2891,15 +3087,18 @@
 
     const drawingMode = fixed !== "cursor";
     chartWrap.classList.toggle("drawing-mode", drawingMode);
-    drawingLayer.style.cursor = "crosshair";
+    drawingLayer.style.cursor = drawingMode ? "crosshair" : "default";
 
     chart.applyOptions({
-      handleScroll: !drawingMode,
-      handleScale: !drawingMode,
+      handleScroll: drawingMode ? false : normalHandleScrollOptions(),
+      handleScale: drawingMode ? false : normalHandleScaleOptions(),
     });
 
     renderDrawings();
   }
+
+  // Lightweight Charts 기본 가격축 스케일러를 사용한다.
+  // 커스텀 Y축 드래그 핸들러는 차트 팬/십자선과 충돌할 수 있어 등록하지 않는다.
 
   chartWrap.addEventListener("pointerdown", handleChartWrapDrawingPointerDown, true);
   chartWrap.addEventListener("click", handleChartWrapDrawingClick, true);
@@ -2965,17 +3164,17 @@
   installDrawingUiSkin();
 
   chart.subscribeCrosshairMove(function (param) {
-    if (param && param.time && param.point && Number.isFinite(param.point.x) && Number.isFinite(param.point.y)) {
+    if (shouldDrawManualCrosshair() && param && param.time && param.point && Number.isFinite(param.point.x) && Number.isFinite(param.point.y)) {
       const price = candleSeries.coordinateToPrice(param.point.y);
       if (price !== null && price !== undefined && !Number.isNaN(Number(price))) {
         state.crosshairPoint = { x: param.point.x, y: param.point.y };
         state.crosshairValue = { time: normalizeTime(param.time), price: Number(price) };
-        renderDrawings();
+        scheduleDrawingCrosshairRender();
       }
-    } else if (!state.tempDrawing && !drawingDrag) {
+    } else if (!state.tempDrawing && !drawingDrag && state.crosshairValue) {
       state.crosshairPoint = null;
       state.crosshairValue = null;
-      renderDrawings();
+      scheduleDrawingCrosshairRender(true);
     }
 
     if (!param || !param.time || !state.payload) return;
@@ -2999,7 +3198,14 @@
       `거래량 -`;
   });
 
-  chart.timeScale().subscribeVisibleTimeRangeChange(renderDrawings);
+  let visibleRangeRenderRaf = null;
+  chart.timeScale().subscribeVisibleTimeRangeChange(function () {
+    if (visibleRangeRenderRaf) return;
+    visibleRangeRenderRaf = requestAnimationFrame(function () {
+      visibleRangeRenderRaf = null;
+      renderDrawings();
+    });
+  });
 
   function resizeChart() {
     const width = Math.max(1, chartEl.clientWidth || chartWrap.clientWidth || 800);

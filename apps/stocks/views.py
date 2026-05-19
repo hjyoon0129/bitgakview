@@ -3,14 +3,16 @@ from types import SimpleNamespace
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 import ast
+import json
 import re
 
+from django.contrib.auth.decorators import login_required
 from django.core.cache import cache
 from django.db.models import Q
 from django.http import JsonResponse
 from django.shortcuts import render
 from django.urls import reverse
-from django.views.decorators.http import require_GET
+from django.views.decorators.http import require_GET, require_http_methods
 
 class _LazyPandas:
     """
@@ -87,7 +89,7 @@ pd = _LazyPandas()
 krx_stock = _LazyKrxStock()
 yf = _LazyYFinance()
 
-from .models import StockSymbol
+from .models import StockSymbol, UserStockStorage
 
 
 DERIVATIVE_KEYWORDS = [
@@ -1637,6 +1639,176 @@ def api_market_temperature(request):
         cache.set(cache_key, payload, 60 * 2)
         return JsonResponse(payload, json_dumps_params={"ensure_ascii": False})
 
+
+
+# -----------------------------------------------------------------------------
+# 로그인 사용자별 서버 저장 API
+# -----------------------------------------------------------------------------
+# 기존 프론트 JS는 관심종목/포트폴리오를 localStorage에 저장했기 때문에
+# 브라우저·기기·IP가 바뀌면 데이터가 사라지는 것처럼 보였습니다.
+# 아래 API는 로그인 계정 기준으로 DB에 저장하고 불러오기 위한 엔드포인트입니다.
+
+
+def _json_body(request):
+    try:
+        return json.loads(request.body.decode("utf-8") or "{}")
+    except Exception:
+        return {}
+
+
+def _default_user_groups():
+    return [{"id": "default", "name": "내 관심종목", "items": []}]
+
+
+def _default_user_portfolio():
+    return {"capital": 10000000, "trades": [], "updatedAt": None}
+
+
+def _normalize_user_groups(groups):
+    if not isinstance(groups, list):
+        return _default_user_groups()
+
+    normalized = []
+
+    for index, group in enumerate(groups):
+        if not isinstance(group, dict):
+            continue
+
+        group_id = str(group.get("id") or f"group_{index + 1}")[:120]
+        group_name = str(group.get("name") or "내 관심종목")[:80]
+        raw_items = group.get("items") if isinstance(group.get("items"), list) else []
+        items = []
+        seen_codes = set()
+
+        for item in raw_items:
+            if not isinstance(item, dict):
+                continue
+
+            code = _clean_code(item.get("code") or item.get("stock_code"))
+            if not code or code in seen_codes:
+                continue
+
+            seen_codes.add(code)
+            items.append(
+                {
+                    "code": code,
+                    "name": str(item.get("name") or item.get("stock_name") or code)[:100],
+                    "market": str(item.get("market") or "KRX")[:20],
+                }
+            )
+
+        normalized.append({"id": group_id, "name": group_name, "items": items})
+
+    return normalized or _default_user_groups()
+
+
+def _normalize_user_portfolio(portfolio):
+    if not isinstance(portfolio, dict):
+        portfolio = {}
+
+    try:
+        capital = int(float(str(portfolio.get("capital") or 10000000).replace(",", "")))
+    except (TypeError, ValueError):
+        capital = 10000000
+
+    trades = portfolio.get("trades") if isinstance(portfolio.get("trades"), list) else []
+    normalized_trades = []
+
+    for trade in trades:
+        if not isinstance(trade, dict):
+            continue
+
+        fixed = dict(trade)
+        fixed["code"] = _clean_code(fixed.get("code"))
+        fixed["name"] = str(fixed.get("name") or fixed.get("code") or "")[:100]
+        fixed["market"] = str(fixed.get("market") or "KRX")[:20]
+
+        for number_key in ["price", "qty", "amount", "lastPrice", "lineWidth", "order"]:
+            if number_key in fixed:
+                try:
+                    fixed[number_key] = float(str(fixed[number_key]).replace(",", ""))
+                except (TypeError, ValueError):
+                    fixed[number_key] = 0
+
+        if fixed.get("code"):
+            normalized_trades.append(fixed)
+
+    return {
+        "capital": capital if capital > 0 else 10000000,
+        "trades": normalized_trades,
+        "updatedAt": portfolio.get("updatedAt") or portfolio.get("updated_at"),
+    }
+
+
+@login_required
+@require_http_methods(["GET", "POST"])
+def user_groups_api(request):
+    storage, _ = UserStockStorage.objects.get_or_create(user=request.user)
+
+    if request.method == "GET":
+        groups = _normalize_user_groups(storage.groups)
+        selected_group_id = storage.selected_group_id or (groups[0].get("id") if groups else "")
+
+        return JsonResponse(
+            {
+                "ok": True,
+                "groups": groups,
+                "selectedGroupId": selected_group_id,
+            },
+            json_dumps_params={"ensure_ascii": False},
+        )
+
+    data = _json_body(request)
+    groups = _normalize_user_groups(data.get("groups"))
+    selected_group_id = str(data.get("selectedGroupId") or data.get("selected_group_id") or "")[:120]
+
+    if selected_group_id and not any(group.get("id") == selected_group_id for group in groups):
+        selected_group_id = groups[0].get("id", "")
+    elif not selected_group_id:
+        selected_group_id = groups[0].get("id", "")
+
+    storage.groups = groups
+    storage.selected_group_id = selected_group_id
+    storage.save(update_fields=["groups", "selected_group_id", "updated_at"])
+
+    return JsonResponse(
+        {
+            "ok": True,
+            "groups": storage.groups,
+            "selectedGroupId": storage.selected_group_id,
+        },
+        json_dumps_params={"ensure_ascii": False},
+    )
+
+
+@login_required
+@require_http_methods(["GET", "POST"])
+def portfolio_api(request):
+    storage, _ = UserStockStorage.objects.get_or_create(user=request.user)
+
+    if request.method == "GET":
+        portfolio = _normalize_user_portfolio(storage.portfolio)
+        return JsonResponse(
+            {
+                "ok": True,
+                "portfolio": portfolio,
+            },
+            json_dumps_params={"ensure_ascii": False},
+        )
+
+    data = _json_body(request)
+    portfolio = _normalize_user_portfolio(data.get("portfolio", data))
+
+    storage.portfolio = portfolio
+    storage.save(update_fields=["portfolio", "updated_at"])
+
+    return JsonResponse(
+        {
+            "ok": True,
+            "portfolio": storage.portfolio,
+        },
+        json_dumps_params={"ensure_ascii": False},
+    )
 
 def features_view(request):
     return render(request, "stocks/features.html", {
