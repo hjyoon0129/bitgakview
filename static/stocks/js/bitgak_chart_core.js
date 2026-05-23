@@ -32,7 +32,10 @@
 
   function normalHandleScrollOptions() {
     return {
-      mouseWheel: true,
+      // 마우스휠은 아래 customRightAnchoredWheelZoom에서 직접 처리한다.
+      // 기본값을 켜두면 커서 위치 기준 확대/축소가 같이 동작해서
+      // TradingView처럼 오른쪽 끝 고정 확대가 되지 않는다.
+      mouseWheel: false,
       pressedMouseMove: true,
       horzTouchDrag: true,
       vertTouchDrag: false,
@@ -41,11 +44,12 @@
 
   function normalHandleScaleOptions() {
     return {
-      mouseWheel: true,
+      // 마우스휠 확대/축소는 오른쪽 고정 방식으로 커스텀 처리한다.
+      mouseWheel: false,
       pinch: true,
       axisPressedMouseMove: {
         time: false,
-        price: true,
+        price: false,
       },
       axisDoubleClickReset: {
         time: true,
@@ -123,6 +127,7 @@
     startPoint: null,
     requestToken: 0,
     activePaneTypes: [],
+    mainPaneHeight: 0,
   };
 
   const chartTimeToRow = new Map();
@@ -556,6 +561,8 @@
 
     const subHeight = paneHeights.reduce(function (sum, value) { return sum + value; }, 0);
     const mainHeight = Math.max(230, totalHeight - subHeight);
+    state.mainPaneHeight = mainHeight;
+    syncDrawingLayerBounds();
 
     try {
       if (panes[0] && panes[0].setHeight) panes[0].setHeight(mainHeight);
@@ -944,6 +951,7 @@
       state.rows = applyGaplessTimes(baseRows, state.interval, data);
 
       applyIntervalChartOptions();
+      resetManualMainPriceRange(false);
       candleSeries.setData(rowsToOhlcData(state.rows));
       updateHeaderInfo(data);
 
@@ -1340,6 +1348,58 @@
     return { x: client.x - rect.left, y: client.y - rect.top };
   }
 
+  function clampNumber(value, min, max) {
+    const n = Number(value);
+    if (!Number.isFinite(n)) return min;
+    return Math.max(min, Math.min(max, n));
+  }
+
+  function getMainPaneClientRect() {
+    const rect = chartEl.getBoundingClientRect();
+    const mainHeight = Math.max(1, getMainPaneHeight());
+    return {
+      left: rect.left,
+      right: rect.right,
+      top: rect.top,
+      bottom: Math.min(rect.bottom, rect.top + mainHeight),
+      width: rect.width,
+      height: Math.min(rect.height, mainHeight),
+    };
+  }
+
+  function getClampedMainPaneClientPoint(event) {
+    const client = getEventClientPoint(event);
+    const rect = getMainPaneClientRect();
+    if (!client) return { x: rect.left, y: rect.top };
+    return {
+      x: clampNumber(client.x, rect.left, rect.right),
+      y: clampNumber(client.y, rect.top, rect.bottom),
+    };
+  }
+
+  function getStableChartBodyPanPoint(event) {
+    const client = getEventClientPoint(event);
+    const rect = getMainPaneClientRect();
+    if (!client) return { x: rect.left, y: rect.top };
+
+    const outsideY = client.y < rect.top || client.y > rect.bottom;
+    let y = clampNumber(client.y, rect.top, rect.bottom);
+
+    // 차트 밖으로 손이 나갔을 때 Y값이 경계로 순간 점프하면서 axisLock이 바뀌는 현상을 막는다.
+    if (chartBodyPanDrag && chartBodyPanDrag.axisLock !== "vertical" && outsideY) {
+      y = Number(chartBodyPanDrag.lastY || chartBodyPanDrag.startY || y);
+    }
+
+    if (chartBodyPanDrag && chartBodyPanDrag.axisLock === "horizontal") {
+      y = Number(chartBodyPanDrag.startY || y);
+    }
+
+    return {
+      x: clampNumber(client.x, rect.left, rect.right),
+      y: y,
+    };
+  }
+
   function isMobileViewport() {
     return !!(window.matchMedia && window.matchMedia("(max-width: 760px)").matches);
   }
@@ -1517,6 +1577,8 @@
   }
 
   function pointToChartValue(point) {
+    if (!isLocalPointInsideMainPane(point)) return null;
+
     const ts = chart.timeScale();
     const logical = coordinateToLogicalSafe(point.x);
     const rawTime = ts.coordinateToTime(point.x);
@@ -1580,21 +1642,189 @@
     return el;
   }
 
+  let drawingContentLayer = null;
+  const drawingClipId = "bv-main-pane-clip-" + Math.random().toString(36).slice(2);
+
+  function prepareDrawingClipLayer() {
+    const size = getLayerSize();
+    const defs = svgEl("defs", {});
+    const clip = svgEl("clipPath", { id: drawingClipId, clipPathUnits: "userSpaceOnUse" });
+    const rect = svgEl("rect", {
+      x: 0,
+      y: 0,
+      width: size.width,
+      height: size.height,
+    });
+
+    clip.appendChild(rect);
+    defs.appendChild(clip);
+    drawingLayer.appendChild(defs);
+
+    drawingContentLayer = svgEl("g", {
+      class: "bv-drawing-content-layer",
+      "clip-path": "url(#" + drawingClipId + ")",
+    });
+    drawingLayer.appendChild(drawingContentLayer);
+  }
+
   function clearSvg() {
     while (drawingLayer.firstChild) drawingLayer.removeChild(drawingLayer.firstChild);
+    drawingContentLayer = null;
+    prepareDrawingClipLayer();
   }
 
   function appendSvg(tag, attrs, parent) {
     const el = svgEl(tag, attrs || {});
-    (parent || drawingLayer).appendChild(el);
+    (parent || drawingContentLayer || drawingLayer).appendChild(el);
     return el;
+  }
+
+  function measureMainPaneHeightFromDom(chartHeight) {
+    try {
+      const chartRect = chartEl.getBoundingClientRect();
+      if (!chartRect || !chartRect.height) return null;
+
+      const rows = Array.from(chartEl.querySelectorAll("table tr"))
+        .map(function (row) {
+          const rect = row.getBoundingClientRect();
+          return {
+            top: rect.top - chartRect.top,
+            bottom: rect.bottom - chartRect.top,
+            height: rect.height,
+            width: rect.width,
+          };
+        })
+        .filter(function (rect) {
+          return rect.height > 48 && rect.width > chartRect.width * 0.42 && rect.bottom > 0 && rect.top < chartRect.height;
+        })
+        .sort(function (a, b) { return a.top - b.top; });
+
+      if (rows.length >= 2) {
+        const boundary = Math.round(rows[0].bottom);
+        if (boundary > 160 && boundary < chartHeight - 72) return boundary;
+      }
+
+      const canvases = Array.from(chartEl.querySelectorAll("canvas"))
+        .map(function (canvas) {
+          const rect = canvas.getBoundingClientRect();
+          return {
+            top: rect.top - chartRect.top,
+            bottom: rect.bottom - chartRect.top,
+            height: rect.height,
+            width: rect.width,
+          };
+        })
+        .filter(function (rect) {
+          return rect.height > 60 && rect.width > chartRect.width * 0.42 && rect.bottom > 0 && rect.top < chartRect.height;
+        })
+        .sort(function (a, b) { return a.top - b.top; });
+
+      if (canvases.length >= 2) {
+        const boundary = Math.round(canvases[0].bottom);
+        if (boundary > 160 && boundary < chartHeight - 72) return boundary;
+      }
+    } catch (e) {}
+
+    return null;
+  }
+
+  function estimateMainPaneHeightFromActivePanes(chartHeight) {
+    const activeTypes = uniquePaneTypes(state.activePaneTypes || []);
+    if (!activeTypes.length) return null;
+
+    let subRatio = 0;
+    activeTypes.forEach(function (type) {
+      const base = paneBaseType(type);
+      if (base === "volume") subRatio += 0.30;
+      else if (base === "macd") subRatio += 0.24;
+      else if (base === "rsi" || base === "stoch") subRatio += 0.22;
+      else subRatio += 0.20;
+    });
+
+    subRatio = Math.max(0.22, Math.min(0.55, subRatio));
+    const estimated = Math.round(chartHeight * (1 - subRatio));
+    return Math.max(210, Math.min(chartHeight - 86, estimated));
+  }
+
+  function getMainPaneHeight() {
+    const chartHeight = Math.max(1, chartEl.clientHeight || chartWrap.clientHeight || 1);
+    const candidates = [];
+
+    const domMeasured = measureMainPaneHeightFromDom(chartHeight);
+    if (Number.isFinite(Number(domMeasured)) && domMeasured > 0) candidates.push(Number(domMeasured));
+
+    const estimated = estimateMainPaneHeightFromActivePanes(chartHeight);
+    if (Number.isFinite(Number(estimated)) && estimated > 0) candidates.push(Number(estimated));
+
+    const saved = Number(state.mainPaneHeight || 0);
+    if (Number.isFinite(saved) && saved > 0 && saved < chartHeight - 24) candidates.push(saved);
+
+    try {
+      const panes = chart && chart.panes ? chart.panes() : null;
+      const firstPane = panes && panes[0] ? panes[0] : null;
+      if (firstPane && typeof firstPane.getHeight === "function") {
+        const paneHeight = Number(firstPane.getHeight());
+        if (Number.isFinite(paneHeight) && paneHeight > 0 && paneHeight < chartHeight - 24) candidates.push(paneHeight);
+      }
+    } catch (e) {}
+
+    if (candidates.length) {
+      // 드로잉은 보조지표를 절대 침범하면 안 되므로 후보 중 가장 보수적인 값을 사용한다.
+      const strict = Math.min.apply(Math, candidates);
+      return Math.max(1, Math.min(chartHeight, Math.round(strict)));
+    }
+
+    return chartHeight;
+  }
+
+  function syncDrawingLayerBounds() {
+    if (!drawingLayer) return;
+
+    const width = Math.max(1, chartEl.clientWidth || chartWrap.clientWidth || 1);
+    const height = Math.max(1, getMainPaneHeight());
+
+    drawingLayer.setAttribute("width", width);
+    drawingLayer.setAttribute("height", height);
+    drawingLayer.setAttribute("viewBox", "0 0 " + width + " " + height);
+
+    drawingLayer.style.left = "0px";
+    drawingLayer.style.top = "0px";
+    drawingLayer.style.right = "auto";
+    drawingLayer.style.bottom = "auto";
+    drawingLayer.style.width = width + "px";
+    drawingLayer.style.height = height + "px";
+    drawingLayer.style.maxHeight = height + "px";
+    drawingLayer.style.overflow = "hidden";
+    drawingLayer.style.clipPath = "inset(0 0 0 0)";
   }
 
   function getLayerSize() {
     return {
       width: Number(drawingLayer.getAttribute("width")) || drawingLayer.clientWidth || chartEl.clientWidth || chartWrap.clientWidth || 1,
-      height: Number(drawingLayer.getAttribute("height")) || drawingLayer.clientHeight || chartEl.clientHeight || chartWrap.clientHeight || 1,
+      height: Number(drawingLayer.getAttribute("height")) || drawingLayer.clientHeight || getMainPaneHeight() || 1,
     };
+  }
+
+  function isLocalPointInsideMainPane(point) {
+    if (!point) return false;
+    const size = getLayerSize();
+    const x = Number(point.x);
+    const y = Number(point.y);
+
+    return Number.isFinite(x) && Number.isFinite(y) &&
+      x >= 0 && x <= size.width &&
+      y >= 0 && y <= size.height;
+  }
+
+  function isClientPointInsideMainPane(event) {
+    if (!event) return false;
+    const rect = chartEl.getBoundingClientRect();
+    const client = getEventClientPoint(event);
+    if (!client) return false;
+    const mainBottom = rect.top + getMainPaneHeight();
+
+    return client.x >= rect.left && client.x <= rect.right &&
+      client.y >= rect.top && client.y <= mainBottom;
   }
 
   function drawLineSvg(p1, p2, options, parent) {
@@ -1868,6 +2098,7 @@
 
     const size = getLayerSize();
     const p = state.crosshairPoint;
+    if (!isLocalPointInsideMainPane(p)) return;
     const color = "#2563eb";
     const group = appendSvg("g", { class: "bv-drawing-crosshair-guide" });
     drawLineSvg({ x: 0, y: p.y }, { x: size.width, y: p.y }, { stroke: "rgba(37,99,235,.38)", width: 1, dash: "4 4" }, group);
@@ -1886,6 +2117,13 @@
   }
 
   function renderDrawings() {
+    if (isChartBodyLivePanActive()) {
+      drawingRenderDeferred = true;
+      return;
+    }
+
+    drawingRenderDeferred = false;
+    syncDrawingLayerBounds();
     drawingLayer.classList.toggle("has-drawings", !!((state.drawings || []).length || state.tempDrawing));
     clearSvg();
     (state.drawings || []).forEach(function (drawing) { renderOneDrawing(drawing, false); });
@@ -1913,6 +2151,102 @@
   let lastDrawingClick = { id: null, time: 0 };
   let crosshairRaf = null;
   let priceAxisDrag = null;
+  let chartBodyPanDrag = null;
+  let manualMainPriceRange = null;
+  let manualAutoscaleProviderReady = false;
+  let priceAxisDragOverlay = null;
+  let wheelZoomRaf = null;
+  let chartBodyPanRaf = null;
+  let chartBodyPanPendingRange = null;
+  let priceAxisRaf = null;
+  let priceAxisPendingRange = null;
+  let drawingRenderDeferred = false;
+
+  function isChartBodyLivePanActive() {
+    // 수평 팬에서는 LightweightCharts가 X축 이동을 처리한다.
+    // 이때 드로잉은 레이어 transform으로 즉시 따라가게 하되, Y축 transform은 절대 허용하지 않는다.
+    return !!(chartBodyPanDrag && chartBodyPanDrag.liveTransform && chartBodyPanDrag.axisLock !== "vertical");
+  }
+
+  function applyDrawingLayerLiveTransform(dx, dy) {
+    if (!drawingLayer) return;
+    const x = Math.round((Number.isFinite(Number(dx)) ? Number(dx) : 0) * 100) / 100;
+    // 중요: SVG 레이어는 메인 가격 차트 높이까지만 존재하지만, 요소 자체를 Y축으로
+    // transform하면 보조지표/거래량 영역 위로 내려와 보인다. 그래서 라이브 이동은 X축만 허용한다.
+    const y = 0;
+
+    if (chartBodyPanDrag) chartBodyPanDrag.currentLiveDx = x;
+
+    drawingLayer.classList.add("is-live-panning");
+    drawingLayer.style.transform = `translate3d(${x}px, ${y}px, 0)`;
+    drawingLayer.style.willChange = "transform";
+    drawingLayer.style.backfaceVisibility = "hidden";
+  }
+
+  function clearDrawingLayerLiveTransform() {
+    if (!drawingLayer) return;
+    drawingLayer.classList.remove("is-live-panning");
+    drawingLayer.style.transform = "";
+    drawingLayer.style.willChange = "";
+    drawingLayer.style.backfaceVisibility = "";
+  }
+
+  function getActualDrawingPanDxFromTimeScale(fallbackDx) {
+    if (!chartBodyPanDrag) return Number(fallbackDx || 0);
+
+    const refLogical = chartBodyPanDrag.referenceLogical;
+    const refX = chartBodyPanDrag.referenceX;
+    if (Number.isFinite(Number(refLogical)) && Number.isFinite(Number(refX))) {
+      const currentX = logicalToCoordinateSafe(refLogical);
+      if (Number.isFinite(Number(currentX))) {
+        return Number(currentX) - Number(refX);
+      }
+    }
+
+    return Number(fallbackDx || 0);
+  }
+
+  let livePanSyncRaf = null;
+  function scheduleDrawingLivePanSync(fallbackDx) {
+    if (!isChartBodyLivePanActive()) return;
+
+    if (Number.isFinite(Number(fallbackDx))) {
+      applyDrawingLayerLiveTransform(fallbackDx, 0);
+    }
+
+    if (livePanSyncRaf) return;
+    livePanSyncRaf = requestAnimationFrame(function () {
+      livePanSyncRaf = null;
+      if (!isChartBodyLivePanActive()) return;
+      const dx = getActualDrawingPanDxFromTimeScale(chartBodyPanDrag.currentLiveDx || fallbackDx || 0);
+      applyDrawingLayerLiveTransform(dx, 0);
+    });
+  }
+
+  function requestDrawingRender() {
+    if (isChartBodyLivePanActive()) {
+      // 렌더를 끝까지 미뤄버리면 차트 팬과 드로잉이 따로 노는 느낌이 생긴다.
+      // 대신 현재 timeScale 기준의 실제 X 이동량으로 레이어를 즉시 보정한다.
+      drawingRenderDeferred = true;
+      scheduleDrawingLivePanSync(chartBodyPanDrag ? chartBodyPanDrag.currentLiveDx : 0);
+      return;
+    }
+    renderDrawings();
+  }
+
+  function getDrawingRenderScheduler() {
+    return function () { requestDrawingRender(); };
+  }
+
+  function getDrawingLayerPanDx() {
+    if (!chartBodyPanDrag) return 0;
+    return Number(chartBodyPanDrag.lastX || chartBodyPanDrag.startX || 0) - Number(chartBodyPanDrag.startX || 0);
+  }
+
+  function getDrawingLayerPanDy() {
+    if (!chartBodyPanDrag) return 0;
+    return Number(chartBodyPanDrag.lastY || chartBodyPanDrag.startY || 0) - Number(chartBodyPanDrag.startY || 0);
+  }
 
   function getDrawingEventTarget(event) {
     if (!event) return null;
@@ -2223,6 +2557,46 @@
   }
 
 
+
+  function installManualAutoscaleProvider() {
+    if (manualAutoscaleProviderReady || !candleSeries || typeof candleSeries.applyOptions !== "function") return;
+    manualAutoscaleProviderReady = true;
+    try {
+      candleSeries.applyOptions({
+        autoscaleInfoProvider: function (baseImplementation) {
+          if (manualMainPriceRange &&
+              Number.isFinite(Number(manualMainPriceRange.from)) &&
+              Number.isFinite(Number(manualMainPriceRange.to)) &&
+              Number(manualMainPriceRange.to) > Number(manualMainPriceRange.from)) {
+            return {
+              priceRange: {
+                minValue: Number(manualMainPriceRange.from),
+                maxValue: Number(manualMainPriceRange.to),
+              },
+            };
+          }
+
+          try {
+            return typeof baseImplementation === "function" ? baseImplementation() : null;
+          } catch (e) {
+            return null;
+          }
+        },
+      });
+    } catch (e) {}
+  }
+
+  function resetManualMainPriceRange(render) {
+    manualMainPriceRange = null;
+    try {
+      const priceScale = getPrimaryPriceScale();
+      if (priceScale && typeof priceScale.applyOptions === "function") {
+        priceScale.applyOptions({ autoScale: true });
+      }
+    } catch (e) {}
+    if (render !== false) renderDrawings();
+  }
+
   function getPrimaryPriceScale() {
     try {
       if (candleSeries && typeof candleSeries.priceScale === "function") return candleSeries.priceScale();
@@ -2252,6 +2626,10 @@
   }
 
   function getCurrentVisiblePriceRange() {
+    if (manualMainPriceRange && Number.isFinite(Number(manualMainPriceRange.from)) && Number.isFinite(Number(manualMainPriceRange.to)) && Number(manualMainPriceRange.to) > Number(manualMainPriceRange.from)) {
+      return { from: Number(manualMainPriceRange.from), to: Number(manualMainPriceRange.to) };
+    }
+
     const priceScale = getPrimaryPriceScale();
 
     try {
@@ -2259,6 +2637,22 @@
         const range = priceScale.getVisibleRange();
         if (range && Number.isFinite(Number(range.from)) && Number.isFinite(Number(range.to)) && Number(range.to) > Number(range.from)) {
           return { from: Number(range.from), to: Number(range.to) };
+        }
+      }
+    } catch (e) {}
+
+    // 가격축을 처음 클릭할 때 한 번 튀는 문제를 줄이기 위해,
+    // 데이터 기반 추정치보다 화면 좌표 기반 현재 가격 범위를 먼저 사용한다.
+    // LightweightCharts 버전에 따라 priceScale.getVisibleRange가 없거나 늦게 반영될 수 있다.
+    try {
+      const h = Math.max(1, getMainPaneHeight() || chartEl.clientHeight || chartWrap.clientHeight || 1);
+      if (candleSeries && typeof candleSeries.coordinateToPrice === "function") {
+        const topPrice = candleSeries.coordinateToPrice(0);
+        const bottomPrice = candleSeries.coordinateToPrice(h);
+        const from = Math.min(Number(topPrice), Number(bottomPrice));
+        const to = Math.max(Number(topPrice), Number(bottomPrice));
+        if (Number.isFinite(from) && Number.isFinite(to) && to > from) {
+          return { from, to };
         }
       }
     } catch (e) {}
@@ -2284,32 +2678,91 @@
     return { from: min - pad, to: max + pad };
   }
 
+  function isPriceAxisOverlayTarget(target) {
+    return !!(target && target.closest && target.closest(".bv-price-axis-drag-overlay"));
+  }
+
   function isPriceAxisPointer(event) {
     if (!event || !chartWrap || !chartEl) return false;
     if (normalizeDrawingTool(state.activeTool) !== "cursor" || drawingDrag) return false;
+
+    if (isPriceAxisOverlayTarget(event.target)) return true;
+
     if (event.target && event.target.closest && event.target.closest("button, a, input, select, textarea, .tv-interval-dropdown, .bv-drawing-toolbar, .indicator-panel, .group-panel, .my-stock-panel, .mobile-watchlist-panel")) return false;
 
     const rect = chartEl.getBoundingClientRect();
-    const axisWidth = Math.max(56, Math.min(88, rect.width * 0.08));
-    return event.clientX >= rect.right - axisWidth && event.clientX <= rect.right + 8 && event.clientY >= rect.top && event.clientY <= rect.bottom;
+    // LightweightCharts 내부 DOM 구조에 따라 price scale 영역이 chartEl 밖으로 잡히거나
+    // 캔버스 위에 겹쳐 잡힐 수 있어 오른쪽 끝 76px를 명확한 Y축 조작 영역으로 본다.
+    const axisWidth = Math.max(64, Math.min(92, rect.width * 0.075));
+    return event.clientX >= rect.right - axisWidth && event.clientX <= rect.right + 12 && event.clientY >= rect.top && event.clientY <= rect.bottom;
   }
 
-  function applyPriceAxisVisibleRange(range) {
-    const priceScale = getPrimaryPriceScale();
-    if (!priceScale || !range || !Number.isFinite(range.from) || !Number.isFinite(range.to) || range.to <= range.from) return false;
-
+  function getVisibleLogicalRangeSafe() {
     try {
-      if (typeof priceScale.applyOptions === "function") priceScale.applyOptions({ autoScale: false });
+      const range = chart.timeScale().getVisibleLogicalRange && chart.timeScale().getVisibleLogicalRange();
+      if (range && Number.isFinite(Number(range.from)) && Number.isFinite(Number(range.to))) {
+        return { from: Number(range.from), to: Number(range.to) };
+      }
+    } catch (e) {}
+    return null;
+  }
+
+  function setVisibleLogicalRangeSafe(range) {
+    if (!range || !Number.isFinite(Number(range.from)) || !Number.isFinite(Number(range.to)) || Number(range.to) <= Number(range.from)) return false;
+    try {
+      chart.timeScale().setVisibleLogicalRange({ from: Number(range.from), to: Number(range.to) });
+      return true;
+    } catch (e) {}
+    return false;
+  }
+
+  function forceChartRedrawKeepingTimeRange(range) {
+    const fixedRange = range || getVisibleLogicalRangeSafe();
+    if (fixedRange) {
+      requestAnimationFrame(function () {
+        setVisibleLogicalRangeSafe(fixedRange);
+        renderDrawings();
+      });
+    } else {
+      requestAnimationFrame(requestDrawingRender);
+    }
+  }
+
+  function applyPriceAxisVisibleRange(range, keepLogicalRange, options) {
+    options = options || {};
+    if (!range || !Number.isFinite(Number(range.from)) || !Number.isFinite(Number(range.to)) || Number(range.to) <= Number(range.from)) return false;
+
+    manualMainPriceRange = {
+      from: Number(range.from),
+      to: Number(range.to),
+    };
+
+    installManualAutoscaleProvider();
+
+    const priceScale = getPrimaryPriceScale();
+    try {
+      if (priceScale && typeof priceScale.applyOptions === "function") priceScale.applyOptions({ autoScale: false });
     } catch (e) {}
 
     try {
-      if (typeof priceScale.setVisibleRange === "function") {
-        priceScale.setVisibleRange({ from: range.from, to: range.to });
-        return true;
+      if (priceScale && typeof priceScale.setVisibleRange === "function") {
+        priceScale.setVisibleRange({ from: manualMainPriceRange.from, to: manualMainPriceRange.to });
       }
     } catch (e) {}
 
-    return false;
+    // 차트 본문 드래그에서는 LightweightCharts의 기본 X축 팬을 그대로 살려야 하므로
+    // logical range를 다시 고정하지 않는다. Y축 전용 조작일 때만 X축을 잠근다.
+    if (options.keepX && keepLogicalRange) {
+      if (options.render === false) {
+        setVisibleLogicalRangeSafe(keepLogicalRange);
+      } else {
+        forceChartRedrawKeepingTimeRange(keepLogicalRange);
+      }
+    } else if (options.render !== false) {
+      requestAnimationFrame(requestDrawingRender);
+    }
+
+    return true;
   }
 
   function handlePriceAxisPointerDown(event) {
@@ -2318,18 +2771,46 @@
     const startRange = getCurrentVisiblePriceRange();
     if (!startRange) return;
 
+    const logicalRange = getVisibleLogicalRangeSafe();
+
     priceAxisDrag = {
       pointerId: event.pointerId,
-      startY: event.clientY,
+      startY: Number(event.clientY),
       range: startRange,
+      logicalRange: logicalRange,
+      lastDy: 0,
     };
+
+    // 첫 move에서 자동 스케일 → 수동 스케일로 전환되며 점프하지 않도록
+    // pointerdown 시점의 화면 기준 가격 범위를 먼저 고정한다.
+    applyPriceAxisVisibleRange(startRange, logicalRange, { keepX: true, render: false });
+    if (logicalRange) setVisibleLogicalRangeSafe(logicalRange);
 
     event.preventDefault();
     event.stopPropagation();
+    if (typeof event.stopImmediatePropagation === "function") event.stopImmediatePropagation();
     document.documentElement.classList.add("bitgak-y-axis-scaling");
     chart.applyOptions({ handleScroll: false, handleScale: false });
 
-    try { chartWrap.setPointerCapture(event.pointerId); } catch (e) {}
+    try {
+      const captureTarget = isPriceAxisOverlayTarget(event.target) && priceAxisDragOverlay ? priceAxisDragOverlay : chartWrap;
+      captureTarget.setPointerCapture(event.pointerId);
+    } catch (e) {}
+  }
+
+  function flushPriceAxisScaleFrame() {
+    priceAxisRaf = null;
+    if (!priceAxisDrag || !priceAxisPendingRange) return;
+    const logicalRange = priceAxisDrag.logicalRange;
+    applyPriceAxisVisibleRange(priceAxisPendingRange, logicalRange, { keepX: true, render: false });
+    if (logicalRange) setVisibleLogicalRangeSafe(logicalRange);
+    requestDrawingRender();
+  }
+
+  function schedulePriceAxisScale(range) {
+    priceAxisPendingRange = range;
+    if (priceAxisRaf) return;
+    priceAxisRaf = requestAnimationFrame(flushPriceAxisScaleFrame);
   }
 
   function handlePriceAxisPointerMove(event) {
@@ -2337,16 +2818,13 @@
 
     event.preventDefault();
     event.stopPropagation();
+    if (typeof event.stopImmediatePropagation === "function") event.stopImmediatePropagation();
 
     const dy = Number(event.clientY) - Number(priceAxisDrag.startY);
-    const start = priceAxisDrag.range;
-    const center = (Number(start.from) + Number(start.to)) / 2;
-    const half = Math.max((Number(start.to) - Number(start.from)) / 2, 1);
-    const factor = Math.max(0.08, Math.min(12, Math.exp(dy * 0.012)));
-    const nextHalf = half * factor;
-
-    applyPriceAxisVisibleRange({ from: center - nextHalf, to: center + nextHalf });
-    renderDrawings();
+    // 미세 떨림은 무시하고, 큰 이동만 부드럽게 반영한다.
+    if (Math.abs(dy - Number(priceAxisDrag.lastDy || 0)) < 0.65) return;
+    priceAxisDrag.lastDy = dy;
+    schedulePriceAxisScale(scalePriceRangeByPixels(priceAxisDrag.range, dy));
   }
 
   function finishPriceAxisPointerDrag(event) {
@@ -2354,8 +2832,18 @@
 
     event && event.preventDefault && event.preventDefault();
     event && event.stopPropagation && event.stopPropagation();
+    if (event && typeof event.stopImmediatePropagation === "function") event.stopImmediatePropagation();
 
-    try { chartWrap.releasePointerCapture(priceAxisDrag.pointerId); } catch (e) {}
+    try {
+      if (priceAxisDragOverlay && priceAxisDragOverlay.hasPointerCapture && priceAxisDragOverlay.hasPointerCapture(priceAxisDrag.pointerId)) {
+        priceAxisDragOverlay.releasePointerCapture(priceAxisDrag.pointerId);
+      } else {
+        chartWrap.releasePointerCapture(priceAxisDrag.pointerId);
+      }
+    } catch (e) {}
+    if (priceAxisRaf) cancelAnimationFrame(priceAxisRaf);
+    priceAxisRaf = null;
+    priceAxisPendingRange = null;
     priceAxisDrag = null;
     document.documentElement.classList.remove("bitgak-y-axis-scaling");
     chart.applyOptions(normalChartInteractionOptions());
@@ -2365,13 +2853,199 @@
   function handlePriceAxisDoubleClick(event) {
     if (!isPriceAxisPointer(event)) return;
 
-    const priceScale = getPrimaryPriceScale();
-    try {
-      if (priceScale && typeof priceScale.applyOptions === "function") priceScale.applyOptions({ autoScale: true });
-    } catch (e) {}
     event.preventDefault();
     event.stopPropagation();
+    resetManualMainPriceRange(true);
+  }
+
+
+  function isPrimaryLeftMouseDrag(event) {
+    if (!event) return false;
+    if (event.pointerType === "touch") return false;
+    if (event.button !== undefined && event.button !== 0) return false;
+    if (event.buttons !== undefined && event.buttons !== 1) return false;
+    return true;
+  }
+
+  function isChartControlTarget(target) {
+    return !!(target && target.closest && target.closest(
+      "button, a, input, select, textarea, label, " +
+      ".tv-interval-dropdown, .bv-drawing-toolbar, .indicator-panel, .group-panel, .my-stock-panel, .mobile-watchlist-panel, " +
+      ".bv-tool-drawer, .bv-symbol-panel, .bv-header, .stock-search-panel, .bv-drawing-settings-modal, .bv-drawing-color-palette"
+    ));
+  }
+
+  function shouldStartChartBodyPan(event) {
+    if (!isPrimaryLeftMouseDrag(event)) return false;
+    if (normalizeDrawingTool(state.activeTool) !== "cursor" || drawingDrag || priceAxisDrag) return false;
+    if (isChartControlTarget(event.target)) return false;
+    if (isPriceAxisPointer(event)) return false;
+
+    const rect = chartEl.getBoundingClientRect();
+    if (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) return false;
+    if (!isClientPointInsideMainPane(event)) return false;
+
+    const hit = hitTestDrawingAtPoint(getLocalPoint(event));
+    if (hit && hit.isHandle) return false;
+
+    return true;
+  }
+
+  function shiftPriceRangeByPixels(startRange, dy) {
+    const height = Math.max(1, getMainPaneHeight() || chartEl.clientHeight || chartWrap.clientHeight || 1);
+    const span = Math.max(1, Number(startRange.to) - Number(startRange.from));
+
+    // TradingView style: 마우스를 위로 끌면 캔들도 위로 따라 올라가야 하므로
+    // 가격 범위를 같은 방향으로 이동시킨다. dy<0이면 range도 내려간다.
+    const shift = Number(dy || 0) * (span / height);
+    return {
+      from: Number(startRange.from) + shift,
+      to: Number(startRange.to) + shift,
+    };
+  }
+
+  function scalePriceRangeByPixels(startRange, dy) {
+    const center = (Number(startRange.from) + Number(startRange.to)) / 2;
+    const half = Math.max((Number(startRange.to) - Number(startRange.from)) / 2, 1);
+    // Y축 스케일은 너무 빠르면 한 번 튀는 느낌이 나므로 부드럽게 조정한다.
+    const factor = Math.max(0.42, Math.min(2.65, Math.exp(Number(dy || 0) * 0.00215)));
+    const nextHalf = half * factor;
+    return { from: center - nextHalf, to: center + nextHalf };
+  }
+
+  function handleChartBodyPanPointerDown(event) {
+    if (!shouldStartChartBodyPan(event)) return;
+
+    const startPoint = getClampedMainPaneClientPoint(event);
+
+    const startLogicalRange = getVisibleLogicalRangeSafe();
+    const referenceLogical = startLogicalRange && Number.isFinite(Number(startLogicalRange.to)) ? Number(startLogicalRange.to) : null;
+    const referenceX = Number.isFinite(Number(referenceLogical)) ? logicalToCoordinateSafe(referenceLogical) : null;
+
+    chartBodyPanDrag = {
+      pointerId: event.pointerId,
+      startX: startPoint.x,
+      startY: startPoint.y,
+      lastX: startPoint.x,
+      lastY: startPoint.y,
+      range: getCurrentVisiblePriceRange(),
+      startLogicalRange: startLogicalRange,
+      referenceLogical: referenceLogical,
+      referenceX: referenceX,
+      currentLiveDx: 0,
+      lastAppliedDy: 0,
+      axisLock: null,
+      liveTransform: true,
+    };
+
+    chartBodyPanPendingRange = null;
+    drawingRenderDeferred = false;
+    clearDrawingLayerLiveTransform();
+    document.documentElement.classList.add("bitgak-chart-body-panning");
+    if (chartWrap) chartWrap.classList.add("is-live-panning");
+
+    // 포인터가 차트 영역 밖으로 살짝 나가도 좌표가 튀지 않도록 chartWrap이 포인터를 계속 잡는다.
+    try { if (chartWrap && chartWrap.setPointerCapture) chartWrap.setPointerCapture(event.pointerId); } catch (e) {}
+    // preventDefault/stopPropagation을 하지 않는다. LightweightCharts 기본 X축 팬은 그대로 살리고,
+    // 여기서는 Y축 위치 이동만 추가한다.
+  }
+
+  function flushChartBodyPanFrame() {
+    chartBodyPanRaf = null;
+    if (!chartBodyPanDrag || !chartBodyPanPendingRange) return;
+
+    // 좌우 이동은 LightweightCharts 기본 팬이 처리한다.
+    // 세로 이동은 가격 범위만 바꾸고 SVG는 메인 차트 안에서 즉시 재계산한다.
+    // SVG 레이어 자체를 Y축으로 이동시키면 RSI/거래량 영역으로 침범한다.
+    applyPriceAxisVisibleRange(chartBodyPanPendingRange, null, { keepX: false, render: false });
+    if (chartBodyPanDrag.axisLock === "vertical") {
+      renderDrawings();
+    }
+  }
+
+  function scheduleChartBodyPanRange(range) {
+    chartBodyPanPendingRange = range;
+    if (chartBodyPanRaf) return;
+    chartBodyPanRaf = requestAnimationFrame(flushChartBodyPanFrame);
+  }
+
+  function handleChartBodyPanPointerMove(event) {
+    if (!chartBodyPanDrag || event.pointerId !== chartBodyPanDrag.pointerId) return;
+    if (event.buttons !== undefined && event.buttons !== 1) {
+      finishChartBodyPan(event);
+      return;
+    }
+
+    const rawClient = getEventClientPoint(event);
+    const point = getStableChartBodyPanPoint(event);
+    const eventKey = [event.timeStamp, rawClient && rawClient.x, rawClient && rawClient.y, event.buttons].join(":");
+    if (chartBodyPanDrag.lastMoveEventKey === eventKey) return;
+    chartBodyPanDrag.lastMoveEventKey = eventKey;
+
+    chartBodyPanDrag.lastX = point.x;
+    chartBodyPanDrag.lastY = point.y;
+
+    const dx = Number(point.x) - Number(chartBodyPanDrag.startX);
+    const dy = Number(point.y) - Number(chartBodyPanDrag.startY);
+    const absX = Math.abs(dx);
+    const absY = Math.abs(dy);
+
+    // 방향 잠금 강화:
+    // - 기본 차트 이동은 대부분 좌우 팬이므로 수평을 우선한다.
+    // - 세로 이동은 거의 수직으로 크게 끌 때만 작동하게 해서, 차트 밖으로 나갈 때의 Y 점프를 막는다.
+    if (!chartBodyPanDrag.axisLock) {
+      if (absX >= 6 && absX >= absY * 0.55) {
+        chartBodyPanDrag.axisLock = "horizontal";
+      } else if (absY >= 34 && absY > absX * 2.8) {
+        chartBodyPanDrag.axisLock = "vertical";
+      } else if (Math.max(absX, absY) >= 14) {
+        chartBodyPanDrag.axisLock = "horizontal";
+      }
+    }
+
+    if (chartBodyPanDrag.axisLock === "vertical") {
+      clearDrawingLayerLiveTransform();
+      if (Math.abs(dy - Number(chartBodyPanDrag.lastAppliedDy || 0)) >= 1.2) {
+        chartBodyPanDrag.lastAppliedDy = dy;
+        scheduleChartBodyPanRange(shiftPriceRangeByPixels(chartBodyPanDrag.range, dy));
+      }
+      return;
+    }
+
+    // 수평 팬에서는 X축만 임시 이동한다. Y축은 절대 이동하지 않아 보조지표로 넘치지 않는다.
+    // 즉시 pointer dx로 따라가게 하고, 다음 프레임에 실제 timeScale 이동량으로 보정한다.
+    scheduleDrawingLivePanSync(dx);
+  }
+
+  function finishChartBodyPan(event) {
+    if (!chartBodyPanDrag) return;
+    if (chartBodyPanRaf) cancelAnimationFrame(chartBodyPanRaf);
+    chartBodyPanRaf = null;
+    if (livePanSyncRaf) cancelAnimationFrame(livePanSyncRaf);
+    livePanSyncRaf = null;
+
+    // 마지막 대기 중인 Y축 이동 범위를 먼저 차트에 반영한다.
+    if (chartBodyPanPendingRange) {
+      applyPriceAxisVisibleRange(chartBodyPanPendingRange, null, { keepX: false, render: false });
+    }
+
+    try {
+      if (chartWrap && chartBodyPanDrag && chartWrap.hasPointerCapture && chartWrap.hasPointerCapture(chartBodyPanDrag.pointerId)) {
+        chartWrap.releasePointerCapture(chartBodyPanDrag.pointerId);
+      }
+    } catch (e) {}
+
+    chartBodyPanPendingRange = null;
+    chartBodyPanDrag = null;
+    document.documentElement.classList.remove("bitgak-chart-body-panning");
+    if (chartWrap) chartWrap.classList.remove("is-live-panning");
+    drawingRenderDeferred = false;
+
+    // 새 차트 좌표 기준으로 SVG를 다시 계산한다.
+    // transform을 먼저 제거하고 같은 프레임에서 다시 그려 종료 순간의 이중 이동/깜빡임을 줄인다.
+    clearDrawingLayerLiveTransform();
     renderDrawings();
+    requestAnimationFrame(renderDrawings);
   }
 
   function processDrawingToolTap(event) {
@@ -3002,14 +3676,14 @@
       style.id = "bitgakDrawingUiStyle";
       style.textContent = `
         #chartWrap, #tvChart { cursor: default; }
-        #drawingLayer { touch-action: none; pointer-events: none; overflow: visible; }
+        #drawingLayer { touch-action: none; pointer-events: none; overflow: hidden; }
         .drawing-mode #drawingLayer { pointer-events: auto; }
         #drawingLayer.has-drawings .bv-drawing-hit { cursor: default; pointer-events: none; }
         #drawingLayer.has-drawings .bv-drawing-handle { pointer-events: all; cursor: grab; filter: drop-shadow(0 1px 2px rgba(15,23,42,.24)); }
         #drawingLayer.has-drawings .bv-drawing-handle:active { cursor: grabbing; }
         #drawingLayer .bv-drawing-line, #drawingLayer .bv-drawing-preview, #drawingLayer .bv-drawing-fill, #drawingLayer .bv-drawing-axis-badge, #drawingLayer .bv-drawing-axis-badge-text, #drawingLayer .bv-drawing-crosshair-guide * { pointer-events: none; }
         #drawingLayer .bv-drawing-preview { opacity: .94; }
-        #chartWrap, #tvChart { overflow: visible; }
+        #chartWrap, #tvChart { overflow: hidden; }
         .drawing-mode #drawingLayer { cursor: crosshair; }
         .bv-drawing-settings-modal { position: fixed; inset: 0; z-index: 100000; display: none; place-items: center; background: rgba(15,23,42,.34); backdrop-filter: blur(6px); }
         .bv-drawing-settings-modal.open { display: grid; }
@@ -3071,6 +3745,98 @@
     });
   }
 
+  function clampNumberForRange(value, min, max) {
+    const n = Number(value);
+    if (!Number.isFinite(n)) return min;
+    return Math.max(min, Math.min(max, n));
+  }
+
+  function isWheelZoomControlTarget(target) {
+    return !!(target && target.closest && target.closest(
+      "button, a, input, select, textarea, .bv-header, .chart-card-top, .tv-interval-dropdown, .bv-drawing-toolbar, .bv-symbol-panel, .stock-search-panel, .indicator-panel, .group-panel, .my-stock-panel, .mobile-watchlist-panel, .bv-drawing-settings-modal, .bv-drawing-color-palette"
+    ));
+  }
+
+  function shouldUseRightAnchoredWheelZoom(event) {
+    if (!event || !chartWrap || !chartEl) return false;
+    if (normalizeDrawingTool(state.activeTool) !== "cursor" || drawingDrag || priceAxisDrag) return false;
+    if (isWheelZoomControlTarget(event.target)) return false;
+    if (isPriceAxisPointer(event)) return false;
+
+    const rect = chartEl.getBoundingClientRect();
+    return event.clientX >= rect.left && event.clientX <= rect.right && event.clientY >= rect.top && event.clientY <= rect.bottom;
+  }
+
+  function rightAnchoredWheelZoom(event) {
+    if (!shouldUseRightAnchoredWheelZoom(event)) return;
+
+    event.preventDefault();
+    event.stopPropagation();
+    if (typeof event.stopImmediatePropagation === "function") event.stopImmediatePropagation();
+
+    const range = getVisibleLogicalRangeSafe();
+    if (!range) return;
+
+    const currentSpan = Math.max(1, Number(range.to) - Number(range.from));
+    const rowCount = Math.max((state.rows || []).length, 80);
+    const minSpan = Math.max(8, Math.min(42, rowCount * 0.02));
+    const maxSpan = Math.max(80, rowCount + 120);
+
+    const normalizedDelta = clampNumberForRange(Number(event.deltaY || 0), -180, 180);
+    const factor = Math.exp(normalizedDelta * 0.00118);
+    const nextSpan = clampNumberForRange(currentSpan * factor, minSpan, maxSpan);
+
+    // TradingView식 휠 줌: 현재 커서 위치가 아니라 오른쪽 끝을 기준점으로 고정한다.
+    // 그래서 to는 그대로 두고 from만 움직인다.
+    const nextRange = {
+      from: Number(range.to) - nextSpan,
+      to: Number(range.to),
+    };
+
+    setVisibleLogicalRangeSafe(nextRange);
+
+    if (!wheelZoomRaf) {
+      wheelZoomRaf = requestAnimationFrame(function () {
+        wheelZoomRaf = null;
+        requestDrawingRender();
+      });
+    }
+  }
+
+
+  function handlePriceAxisWheel(event) {
+    if (!isPriceAxisPointer(event)) return;
+
+    event.preventDefault();
+    event.stopPropagation();
+    if (typeof event.stopImmediatePropagation === "function") event.stopImmediatePropagation();
+
+    const logicalRange = getVisibleLogicalRangeSafe();
+    const startRange = getCurrentVisiblePriceRange();
+    if (!startRange) return;
+
+    const normalizedDelta = clampNumberForRange(Number(event.deltaY || 0), -140, 140);
+    const nextRange = scalePriceRangeByPixels(startRange, normalizedDelta * 0.52);
+    applyPriceAxisVisibleRange(nextRange, logicalRange, { keepX: true, render: false });
+    if (logicalRange) setVisibleLogicalRangeSafe(logicalRange);
+    requestDrawingRender();
+  }
+
+  function ensurePriceAxisDragOverlay() {
+    if (priceAxisDragOverlay || !chartWrap) return;
+
+    priceAxisDragOverlay = document.createElement("div");
+    priceAxisDragOverlay.id = "bvPriceAxisDragOverlay";
+    priceAxisDragOverlay.className = "bv-price-axis-drag-overlay";
+    priceAxisDragOverlay.setAttribute("aria-hidden", "true");
+    chartWrap.appendChild(priceAxisDragOverlay);
+
+    priceAxisDragOverlay.addEventListener("pointerdown", handlePriceAxisPointerDown, true);
+    priceAxisDragOverlay.addEventListener("pointermove", handlePriceAxisPointerMove, true);
+    priceAxisDragOverlay.addEventListener("dblclick", handlePriceAxisDoubleClick, true);
+    priceAxisDragOverlay.addEventListener("wheel", handlePriceAxisWheel, { passive: false, capture: true });
+  }
+
   function setDrawingTool(tool, options) {
     options = options || {};
     const fixed = normalizeDrawingTool(tool);
@@ -3097,8 +3863,30 @@
     renderDrawings();
   }
 
-  // Lightweight Charts 기본 가격축 스케일러를 사용한다.
-  // 커스텀 Y축 드래그 핸들러는 차트 팬/십자선과 충돌할 수 있어 등록하지 않는다.
+  // TradingView-like interaction:
+  // - 차트 본문 드래그: 기본 X축 팬 + 커스텀 Y축 위치 이동
+  // - 차트 본문 휠 확대/축소: 오른쪽 끝 고정, 왼쪽 logical range만 변경
+  // - 오른쪽 가격축 드래그: X축 고정 + Y축 확대/축소
+  ensurePriceAxisDragOverlay();
+  chartWrap.addEventListener("wheel", handlePriceAxisWheel, { passive: false, capture: true });
+  chartEl.addEventListener("wheel", handlePriceAxisWheel, { passive: false, capture: true });
+  chartWrap.addEventListener("wheel", rightAnchoredWheelZoom, { passive: false, capture: true });
+  chartEl.addEventListener("wheel", rightAnchoredWheelZoom, { passive: false, capture: true });
+  chartWrap.addEventListener("pointerdown", handlePriceAxisPointerDown, true);
+  chartWrap.addEventListener("pointermove", handlePriceAxisPointerMove, true);
+  window.addEventListener("pointermove", handlePriceAxisPointerMove, true);
+  window.addEventListener("pointerup", finishPriceAxisPointerDrag, true);
+  window.addEventListener("pointercancel", finishPriceAxisPointerDrag, true);
+  chartWrap.addEventListener("dblclick", handlePriceAxisDoubleClick, true);
+
+  chartWrap.addEventListener("pointerdown", handleChartBodyPanPointerDown, true);
+  // pointermove는 capture 단계가 아니라 chartWrap bubble 단계에서 처리한다.
+  // 그래야 LightweightCharts가 먼저 X축 팬을 반영하고, 그 직후 Y축/드로잉을 맞출 수 있다.
+  chartWrap.addEventListener("pointermove", handleChartBodyPanPointerMove, false);
+  chartEl.addEventListener("pointermove", handleChartBodyPanPointerMove, false);
+  window.addEventListener("pointermove", handleChartBodyPanPointerMove, true);
+  window.addEventListener("pointerup", finishChartBodyPan, true);
+  window.addEventListener("pointercancel", finishChartBodyPan, true);
 
   chartWrap.addEventListener("pointerdown", handleChartWrapDrawingPointerDown, true);
   chartWrap.addEventListener("click", handleChartWrapDrawingClick, true);
@@ -3164,7 +3952,7 @@
   installDrawingUiSkin();
 
   chart.subscribeCrosshairMove(function (param) {
-    if (shouldDrawManualCrosshair() && param && param.time && param.point && Number.isFinite(param.point.x) && Number.isFinite(param.point.y)) {
+    if (shouldDrawManualCrosshair() && param && param.time && param.point && Number.isFinite(param.point.x) && Number.isFinite(param.point.y) && isLocalPointInsideMainPane(param.point)) {
       const price = candleSeries.coordinateToPrice(param.point.y);
       if (price !== null && price !== undefined && !Number.isNaN(Number(price))) {
         state.crosshairPoint = { x: param.point.x, y: param.point.y };
@@ -3200,10 +3988,15 @@
 
   let visibleRangeRenderRaf = null;
   chart.timeScale().subscribeVisibleTimeRangeChange(function () {
+    if (isChartBodyLivePanActive()) {
+      drawingRenderDeferred = true;
+      scheduleDrawingLivePanSync(chartBodyPanDrag ? chartBodyPanDrag.currentLiveDx : 0);
+      return;
+    }
     if (visibleRangeRenderRaf) return;
     visibleRangeRenderRaf = requestAnimationFrame(function () {
       visibleRangeRenderRaf = null;
-      renderDrawings();
+      requestDrawingRender();
     });
   });
 
@@ -3213,8 +4006,7 @@
 
     chart.applyOptions({ width, height });
 
-    drawingLayer.setAttribute("width", width);
-    drawingLayer.setAttribute("height", height);
+    syncDrawingLayerBounds();
 
     layoutPanes();
     renderDrawings();

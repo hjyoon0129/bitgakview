@@ -2,7 +2,7 @@
   position: absolute;
   top: calc(100% + 10px);
   left: 0;
-  width: min(720px, calc(100vw - 32px));
+  width: min(680px, calc(100vw - 36px));
   max-height: 430px;
   overflow-y: auto;
   padding: 8px;
@@ -14,7 +14,9 @@
   z-index: 99999;
 }
 
-.stock-search-panel.show {
+.stock-search-panel.show,
+.stock-search-panel.active,
+.stock-search-panel.is-open {
   display: block;
 }
 
@@ -23,6 +25,7 @@
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: 12px;
+  min-height: 60px;
   padding: 13px 14px;
   border-radius: 14px;
   color: #eaf2ff;
@@ -72,12 +75,12 @@
   font-weight: 850;
 }
 
-.bv-search-live {
+.bv-search-live,
+.bv-search,
+.home-search-input-wrap {
   position: relative;
 }
 
-
-/* Header search dropdown polish */
 .bv-header .stock-search-panel {
   width: min(680px, calc(100vw - 36px));
   left: 0;

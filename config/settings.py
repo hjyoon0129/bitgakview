@@ -89,8 +89,7 @@ INSTALLED_APPS = [
     "apps.support",
     "apps.access",
     "apps.analytics.apps.AnalyticsConfig",
-
-
+    "apps.insights.apps.InsightsConfig",
 ]
 
 MIDDLEWARE = [

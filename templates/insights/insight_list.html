@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}빗각관점 | BitgakView{% endblock %}
+
+{% block extra_css %}
+  {{ block.super }}
+  {% include "insights/_insight_styles.html" %}
+{% endblock %}
+
+{% block content %}
+<section class="insight-page">
+  <header class="insight-hero">
+    <div>
+      <p class="insight-kicker">ALL VIEWPOINTS</p>
+      <h1>전체 관점</h1>
+      <p>빗각 흐름, 지지선, 저항선, 시장 관점을 글과 이미지 중심으로 기록합니다.</p>
+    </div>
+
+    {% if can_manage_insights %}
+      <div class="insight-hero-actions">
+        <a class="insight-btn primary" href="{% url 'insights:create' %}">글쓰기</a>
+      </div>
+    {% endif %}
+  </header>
+
+  <div class="insight-search-row">
+    <form class="insight-search-form" method="get" action="{% url 'insights:list' %}">
+      <input type="search" name="q" value="{{ q }}" placeholder="제목, 내용 검색" autocomplete="off">
+      <button type="submit">검색</button>
+    </form>
+    <span class="insight-count">{{ posts|length }}개</span>
+  </div>
+
+  {% if posts %}
+    <div class="insight-grid">
+      {% for item in posts %}
+        {% include "insights/_card.html" with item=item can_manage_insights=can_manage_insights only %}
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="insight-empty-box">
+      아직 등록된 빗각관점이 없습니다.
+    </div>
+  {% endif %}
+</section>
+{% endblock %}
+
+{% block extra_js %}
+  {{ block.super }}
+  {% include "insights/_insight_scripts.html" %}
+{% endblock %}

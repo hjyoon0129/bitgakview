@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}빗각관점 삭제 | BitgakView{% endblock %}
+
+{% block extra_css %}
+  {{ block.super }}
+  {% include "insights/_insight_styles.html" %}
+{% endblock %}
+
+{% block content %}
+<section class="insight-delete-page">
+  <header class="insight-hero">
+    <div>
+      <p class="insight-kicker">DELETE VIEWPOINT</p>
+      <h1>삭제 확인</h1>
+      <p>삭제하면 복구할 수 없습니다.</p>
+    </div>
+  </header>
+
+  <div class="insight-content-box" style="margin-top:18px;">
+    <p><strong>{{ post.title }}</strong> 글을 삭제할까요?</p>
+
+    <form method="post" class="insight-bottom-actions">
+      {% csrf_token %}
+      <button class="insight-btn danger" type="submit">삭제하기</button>
+      <a class="insight-btn ghost" href="{{ post.get_absolute_url }}">취소</a>
+    </form>
+  </div>
+</section>
+{% endblock %}

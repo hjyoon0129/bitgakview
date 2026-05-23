@@ -754,6 +754,8 @@
       target.closest("#openIndicatorBtnSide") ||
       target.closest("#indicatorQuickSearchBtn") ||
       target.closest("#addCurrentStockBtn") ||
+      target.closest("#mobileWatchAddCurrentBtn") ||
+      target.closest("[data-watchlist-add]") ||
       target.closest("#createGroupBtn") ||
       target.closest("#saveGroupBtn") ||
       target.closest("#mobileAddIndicatorBtn")
@@ -771,7 +773,9 @@
 
   function isWatchlistAddTarget(target) {
     return Boolean(
-      target.closest("#addCurrentStockBtn")
+      target.closest("#addCurrentStockBtn") ||
+      target.closest("#mobileWatchAddCurrentBtn") ||
+      target.closest("[data-watchlist-add]")
     );
   }
 

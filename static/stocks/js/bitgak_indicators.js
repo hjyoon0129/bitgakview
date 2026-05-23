@@ -869,6 +869,46 @@
     };
   }
 
+  function oscillatorScaleOptions() {
+    return {
+      autoscaleInfoProvider: oscillatorAutoscaleInfo(),
+      priceScaleId: "right",
+      priceFormat: { type: "price", precision: 2, minMove: 0.01 },
+    };
+  }
+
+  function forceOscillatorPaneRange(seriesList, minValue, maxValue) {
+    const list = Array.isArray(seriesList) ? seriesList.filter(Boolean) : [];
+    if (!list.length) return;
+
+    const min = Number.isFinite(Number(minValue)) ? Number(minValue) : 0;
+    const max = Number.isFinite(Number(maxValue)) ? Number(maxValue) : 100;
+
+    function apply() {
+      list.forEach(function (series) {
+        if (!series || typeof series.priceScale !== "function") return;
+        try {
+          const ps = series.priceScale();
+          if (!ps) return;
+          if (typeof ps.applyOptions === "function") {
+            ps.applyOptions({
+              autoScale: false,
+              scaleMargins: { top: 0.16, bottom: 0.08 },
+            });
+          }
+          if (typeof ps.setVisibleRange === "function") {
+            ps.setVisibleRange({ from: min, to: max });
+          }
+        } catch (e) {}
+      });
+    }
+
+    apply();
+    requestAnimationFrame(apply);
+    setTimeout(apply, 80);
+    setTimeout(apply, 180);
+  }
+
   function addPaneLine(paneType, color, width, extraOptions) {
     const options = Object.assign({
       color,
@@ -1710,9 +1750,7 @@
       let rsiMaData = [];
 
       if (indicator.showRsi !== false) {
-        const rsiSeries = addPaneLine(paneKey, indicator.color || "#8b5cf6", indicator.width || 2, {
-          priceFormat: { type: "price", precision: 2, minMove: 0.01 },
-        });
+        const rsiSeries = addPaneLine(paneKey, indicator.color || "#8b5cf6", indicator.width || 2, oscillatorScaleOptions());
         rsiSeries.setData(rsiData);
         created.push(rsiSeries);
       }
@@ -1720,34 +1758,29 @@
       if (indicator.showRsiMa !== false) {
         const maData = calcSeriesMA(rsiData, Number(indicator.maPeriod || 14));
         rsiMaData = maData;
-        const maSeries = addPaneLine(paneKey, indicator.maColor || "#facc15", 1, {
-          priceFormat: { type: "price", precision: 2, minMove: 0.01 },
-        });
+        const maSeries = addPaneLine(paneKey, indicator.maColor || "#facc15", 1, oscillatorScaleOptions());
         maSeries.setData(maData);
         created.push(maSeries);
       }
 
       if (indicator.showUpper !== false) {
-        const upperLine = addPaneLine(paneKey, indicator.upperColor || "rgba(148, 163, 184, 0.78)", 1, {
+        const upperLine = addPaneLine(paneKey, indicator.upperColor || "rgba(148, 163, 184, 0.78)", 1, Object.assign({
           lineStyle: 2,
-          priceFormat: { type: "price", precision: 2, minMove: 0.01 },
-        });
+        }, oscillatorScaleOptions()));
         upperLine.setData(buildConstantLine(rows, Number(indicator.upper || 70)));
         created.push(upperLine);
       }
       if (indicator.showMiddle !== false) {
-        const middleLine = addPaneLine(paneKey, indicator.middleColor || "rgba(148, 163, 184, 0.48)", 1, {
+        const middleLine = addPaneLine(paneKey, indicator.middleColor || "rgba(148, 163, 184, 0.48)", 1, Object.assign({
           lineStyle: 2,
-          priceFormat: { type: "price", precision: 2, minMove: 0.01 },
-        });
+        }, oscillatorScaleOptions()));
         middleLine.setData(buildConstantLine(rows, Number(indicator.middle || 50)));
         created.push(middleLine);
       }
       if (indicator.showLower !== false) {
-        const lowerLine = addPaneLine(paneKey, indicator.lowerColor || "rgba(148, 163, 184, 0.78)", 1, {
+        const lowerLine = addPaneLine(paneKey, indicator.lowerColor || "rgba(148, 163, 184, 0.78)", 1, Object.assign({
           lineStyle: 2,
-          priceFormat: { type: "price", precision: 2, minMove: 0.01 },
-        });
+        }, oscillatorScaleOptions()));
         lowerLine.setData(buildConstantLine(rows, Number(indicator.lower || 30)));
         created.push(lowerLine);
       }
@@ -1755,6 +1788,7 @@
       indicator.__legendData = { rsi: rsiData, ma: rsiMaData };
       setAdaptivePaneLabel(paneKey, "RSI", indicator.color || "#8b5cf6");
       indicator.series = created;
+      forceOscillatorPaneRange(created, 0, 100);
       return;
     }
 
@@ -1825,6 +1859,7 @@
       indicator.__legendData = { k: data.k, d: data.d };
       setAdaptivePaneLabel(paneKey, "Stoch", indicator.color || "#3b82f6");
       indicator.series = created;
+      forceOscillatorPaneRange(created, 0, 100);
       return;
     }
 
@@ -1903,6 +1938,14 @@
   function rebuildAll() {
     const activePaneTypes = getActiveBottomPaneTypes();
 
+    // 보조지표를 새로 구성하기 전에 기존 series를 먼저 제거한다.
+    // 거래량 pane이 남아있는 상태에서 RSI/Stoch를 추가하면 일부 브라우저에서 이전 volume 축이
+    // RSI pane에 남아 0~100 축이 깨지는 문제가 생긴다.
+    indicators.forEach(function (indicator) {
+      clearSeries(indicator);
+      if (indicator && indicator.type === "volume") api.setVolumeVisible(false);
+    });
+
     clearAdaptivePaneLabels(activePaneTypes);
 
     if (api.configureIndicatorPanes) api.configureIndicatorPanes(activePaneTypes);
@@ -1922,6 +1965,14 @@
     clearAdaptivePaneLabels(getActiveBottomPaneTypes());
     updatePaneLegendValues();
     schedulePaneLabelRefresh();
+
+    // LightweightCharts v5는 보조창을 재구성한 직후 첫 프레임에서 이전 price scale이 남는 경우가 있다.
+    // 특히 거래량 표시 후 RSI/Stoch를 켤 때 축이 거래량 범위로 잡히지 않도록 한 프레임 뒤 다시 동기화한다.
+    requestAnimationFrame(function () {
+      try { if (api.syncPaneTimeScales) api.syncPaneTimeScales(); } catch (e) {}
+      updatePaneLegendValues();
+      schedulePaneLabelRefresh();
+    });
   }
 
   function buildIndicatorRowsHtml(emptyMessage) {

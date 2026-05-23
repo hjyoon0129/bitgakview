@@ -1,0 +1,37 @@
+<article class="insight-card" data-insight-card data-card-url="{{ item.get_absolute_url }}">
+  <a class="insight-card-main" href="{{ item.get_absolute_url }}" aria-label="{{ item.title }} 보기">
+    <div class="insight-card-media">
+      {% if item.image_url %}
+        <img src="{{ item.image_url }}" alt="{{ item.title }}" loading="lazy">
+      {% else %}
+        <div class="insight-card-placeholder">
+          <span>BITGAK</span>
+          <span>VIEWPOINT</span>
+        </div>
+      {% endif %}
+    </div>
+
+    <div class="insight-card-body">
+      <div class="insight-card-meta">
+        <span class="insight-pill">{{ item.published_date|date:"Y.m.d" }}</span>
+        {% if item.has_youtube %}
+          <span class="insight-pill muted">유튜브 링크</span>
+        {% endif %}
+      </div>
+
+      <h3>{{ item.title }}</h3>
+      <p class="insight-card-summary">{{ item.excerpt|default:"관점 노트" }}</p>
+    </div>
+  </a>
+
+  <div class="insight-card-foot">
+    <a class="insight-read-more" href="{{ item.get_absolute_url }}">내용 보기</a>
+
+    {% if can_manage_insights %}
+      <div class="insight-card-actions">
+        <a class="insight-mini-btn" href="{% url 'insights:update' item.slug %}">수정</a>
+        <a class="insight-mini-btn danger" href="{% url 'insights:delete' item.slug %}">삭제</a>
+      </div>
+    {% endif %}
+  </div>
+</article>

@@ -1,0 +1,26 @@
+{% include "insights/_insight_assets.html" %}
+{% if insights %}
+<section class="insight-carousel" data-insight-carousel>
+  <div class="insight-carousel-head">
+    <div>
+      <p class="insight-kicker">BITGAK VIEWPOINT</p>
+      <h2>최근 빗각관점</h2>
+      <p>작성한 관점을 캐러셀로 넘겨보세요.</p>
+    </div>
+
+    <div class="insight-carousel-controls">
+      <a class="insight-control-link" href="{% url 'insights:list' %}">전체보기</a>
+      <button class="insight-control-btn" type="button" data-insight-prev aria-label="이전">‹</button>
+      <button class="insight-control-btn" type="button" data-insight-next aria-label="다음">›</button>
+    </div>
+  </div>
+
+  <div class="insight-carousel-viewport">
+    <div class="insight-carousel-track" data-insight-track>
+      {% for item in insights %}
+        {% include "insights/_card.html" with item=item can_manage_insights=False only %}
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endif %}

@@ -5127,3 +5127,576 @@
 .bitgak-chart-body #tvChart {
   cursor: default;
 }
+
+/* =========================================================
+   FINAL mobile watchlist restore + TradingView drag cursors
+   ========================================================= */
+.bitgak-chart-body .bv-mobile-watch-actions {
+  display: none !important;
+}
+
+@media (max-width: 760px) {
+  .bitgak-chart-body .bv-app {
+    grid-template-rows: 156px minmax(0, 1fr) !important;
+  }
+
+  .bitgak-chart-body .bv-header {
+    height: 156px !important;
+    min-height: 156px !important;
+    display: grid !important;
+    grid-template-columns: 32px minmax(0, 1fr) 62px !important;
+    grid-template-rows: 38px 40px 40px !important;
+    row-gap: 8px !important;
+    column-gap: 8px !important;
+    align-items: center !important;
+  }
+
+  .bitgak-chart-body .bv-logo-area {
+    grid-column: 1 / 2 !important;
+    grid-row: 1 / 2 !important;
+  }
+
+  .bitgak-chart-body .bv-search {
+    grid-column: 2 / 3 !important;
+    grid-row: 1 / 2 !important;
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  .bitgak-chart-body .bv-header-actions {
+    grid-column: 3 / 4 !important;
+    grid-row: 1 / 2 !important;
+    display: flex !important;
+    margin-left: 0 !important;
+  }
+
+  .bitgak-chart-body .bv-drawer-actions {
+    grid-column: 1 / 4 !important;
+    grid-row: 2 / 3 !important;
+    width: 100% !important;
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
+    gap: 8px !important;
+  }
+
+  .bitgak-chart-body .bv-mobile-watch-actions {
+    grid-column: 1 / 4 !important;
+    grid-row: 3 / 4 !important;
+    display: block !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    height: 40px !important;
+    position: static !important;
+    inset: auto !important;
+    transform: none !important;
+    z-index: auto !important;
+    writing-mode: horizontal-tb !important;
+  }
+
+  .bitgak-chart-body .bv-mobile-watch-btn {
+    width: 100% !important;
+    height: 40px !important;
+    min-height: 40px !important;
+    padding: 0 14px !important;
+    border-radius: 14px !important;
+    border: 1px solid rgba(45, 212, 191, 0.36) !important;
+    background: linear-gradient(135deg, rgba(37, 99, 235, 0.94), rgba(20, 184, 166, 0.88)) !important;
+    color: #ffffff !important;
+    font-size: 14px !important;
+    font-weight: 1000 !important;
+    letter-spacing: -0.03em !important;
+    display: inline-flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 8px !important;
+    writing-mode: horizontal-tb !important;
+    text-orientation: mixed !important;
+    white-space: nowrap !important;
+    line-height: 1 !important;
+    text-align: center !important;
+    overflow: hidden !important;
+  }
+
+  .bitgak-chart-body .mobile-watchlist-badge {
+    min-width: 24px !important;
+    height: 22px !important;
+    padding: 0 8px !important;
+    border-radius: 999px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    background: rgba(255, 255, 255, 0.20) !important;
+    color: #ffffff !important;
+    font-size: 12px !important;
+    font-weight: 1000 !important;
+    line-height: 1 !important;
+    white-space: nowrap !important;
+  }
+
+  .bitgak-chart-body .bv-layout,
+  .bitgak-chart-body .bv-layout-full {
+    height: calc(100vh - 156px) !important;
+  }
+}
+
+.bitgak-y-axis-scaling,
+.bitgak-y-axis-scaling * {
+  cursor: ns-resize !important;
+  user-select: none !important;
+}
+
+.bitgak-chart-body-panning,
+.bitgak-chart-body-panning * {
+  cursor: grabbing !important;
+  user-select: none !important;
+}
+
+/* =========================================================
+   TradingView-like X/Y scale capture final
+   - 오른쪽 가격축 영역은 투명 캡처 레이어로 Y축 스케일만 처리
+   - 일반 차트 휠은 JS에서 오른쪽 끝 고정 X축 줌으로 처리
+   ========================================================= */
+.bitgak-chart-body .chart-wrap,
+.bitgak-chart-body .chart-wrap-v5 {
+  position: relative !important;
+}
+
+.bitgak-chart-body .bv-price-axis-drag-overlay {
+  position: absolute !important;
+  top: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  width: clamp(64px, 7.5vw, 92px) !important;
+  z-index: 38 !important;
+  display: block !important;
+  background: transparent !important;
+  cursor: ns-resize !important;
+  pointer-events: auto !important;
+  touch-action: none !important;
+  user-select: none !important;
+}
+
+.bitgak-chart-body .bv-price-axis-drag-overlay:hover {
+  background: linear-gradient(90deg, transparent, rgba(37, 99, 235, 0.035)) !important;
+}
+
+.bitgak-y-axis-scaling .bv-price-axis-drag-overlay {
+  background: linear-gradient(90deg, transparent, rgba(37, 99, 235, 0.065)) !important;
+}
+
+
+/* =========================================================
+   FINAL OVERRIDE 2026-05-19
+   - 모바일 관심지표 버튼 세로 깨짐 방지
+   - 오른쪽 가격축 캡처 레이어 우선순위 보강
+   ========================================================= */
+.bitgak-chart-body .bv-price-axis-drag-overlay {
+  position: absolute !important;
+  top: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  width: max(76px, min(96px, 8vw)) !important;
+  z-index: 999 !important;
+  display: block !important;
+  background: transparent !important;
+  cursor: ns-resize !important;
+  pointer-events: auto !important;
+  touch-action: none !important;
+  user-select: none !important;
+}
+
+.bitgak-chart-body .bv-price-axis-drag-overlay:hover {
+  background: linear-gradient(90deg, transparent, rgba(37, 99, 235, 0.045)) !important;
+}
+
+.bitgak-y-axis-scaling,
+.bitgak-y-axis-scaling * {
+  cursor: ns-resize !important;
+  user-select: none !important;
+}
+
+.bitgak-chart-body-panning,
+.bitgak-chart-body-panning * {
+  user-select: none !important;
+}
+
+.bitgak-chart-body .bv-mobile-watch-actions {
+  display: none !important;
+}
+
+@media (min-width: 901px) {
+  .bitgak-chart-body .bv-mobile-watch-actions {
+    display: none !important;
+  }
+}
+
+@media (max-width: 900px) {
+  .bitgak-chart-body .bv-app {
+    grid-template-rows: 156px minmax(0, 1fr) !important;
+  }
+
+  .bitgak-chart-body .bv-header {
+    height: 156px !important;
+    min-height: 156px !important;
+    display: grid !important;
+    grid-template-columns: 32px minmax(0, 1fr) 64px !important;
+    grid-template-rows: 38px 40px 40px !important;
+    gap: 8px !important;
+    align-items: center !important;
+  }
+
+  .bitgak-chart-body .bv-logo-area {
+    grid-column: 1 / 2 !important;
+    grid-row: 1 / 2 !important;
+    min-width: 0 !important;
+  }
+
+  .bitgak-chart-body .bv-search {
+    grid-column: 2 / 3 !important;
+    grid-row: 1 / 2 !important;
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  .bitgak-chart-body .bv-header-actions {
+    grid-column: 3 / 4 !important;
+    grid-row: 1 / 2 !important;
+    display: flex !important;
+    justify-content: flex-end !important;
+    margin-left: 0 !important;
+    min-width: 0 !important;
+  }
+
+  .bitgak-chart-body .bv-drawer-actions {
+    grid-column: 1 / 4 !important;
+    grid-row: 2 / 3 !important;
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
+    gap: 8px !important;
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  .bitgak-chart-body .bv-mobile-watch-actions {
+    grid-column: 1 / 4 !important;
+    grid-row: 3 / 4 !important;
+    display: flex !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    height: 40px !important;
+    position: static !important;
+    inset: auto !important;
+    transform: none !important;
+    writing-mode: horizontal-tb !important;
+    text-orientation: mixed !important;
+  }
+
+  .bitgak-chart-body .bv-mobile-watch-btn {
+    width: 100% !important;
+    max-width: 100% !important;
+    height: 40px !important;
+    min-height: 40px !important;
+    padding: 0 14px !important;
+    border-radius: 14px !important;
+    border: 1px solid rgba(45, 212, 191, 0.36) !important;
+    background: linear-gradient(135deg, rgba(37, 99, 235, 0.94), rgba(20, 184, 166, 0.88)) !important;
+    color: #ffffff !important;
+    display: inline-flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 8px !important;
+    writing-mode: horizontal-tb !important;
+    text-orientation: mixed !important;
+    white-space: nowrap !important;
+    line-height: 1 !important;
+    overflow: hidden !important;
+  }
+
+  .bitgak-chart-body .bv-mobile-watch-label {
+    display: inline-block !important;
+    writing-mode: horizontal-tb !important;
+    text-orientation: mixed !important;
+    white-space: nowrap !important;
+    font-size: 14px !important;
+    font-weight: 1000 !important;
+    line-height: 1 !important;
+  }
+
+  .bitgak-chart-body .mobile-watchlist-badge {
+    flex: 0 0 auto !important;
+    min-width: 24px !important;
+    height: 22px !important;
+    padding: 0 8px !important;
+    border-radius: 999px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    background: rgba(255, 255, 255, 0.20) !important;
+    color: #ffffff !important;
+    font-size: 12px !important;
+    font-weight: 1000 !important;
+    line-height: 1 !important;
+    white-space: nowrap !important;
+  }
+}
+
+/* =========================================================
+   Smooth pan / zoom final tuning
+   - 드로잉은 임시 transform이 아니라 실제 차트 좌표로 즉시 재계산
+   - 휠/가격축 조작은 JS에서 저속 계수로 처리
+   ========================================================= */
+.bitgak-chart-body .drawing-layer {
+  transform: translate3d(0, 0, 0);
+  transform-origin: 0 0;
+  backface-visibility: hidden;
+  will-change: auto;
+  contain: layout paint style;
+}
+
+.bitgak-chart-body-panning .drawing-layer {
+  will-change: contents !important;
+  transition: none !important;
+}
+
+.bitgak-chart-body-panning .chart-wrap,
+.bitgak-chart-body-panning .tv-chart,
+.bitgak-y-axis-scaling .chart-wrap,
+.bitgak-y-axis-scaling .tv-chart {
+  cursor: inherit !important;
+}
+
+.bitgak-chart-body .bv-price-axis-drag-overlay {
+  cursor: ns-resize !important;
+}
+
+/* =========================================================
+   FINAL sync: chart pan + drawing overlay stability
+   ========================================================= */
+.bitgak-chart-body .drawing-layer,
+.bitgak-chart-body #drawingLayer {
+  overflow: visible !important;
+  transform-origin: 0 0 !important;
+  backface-visibility: hidden !important;
+  contain: none !important;
+  transition: none !important;
+}
+
+.bitgak-chart-body-panning .drawing-layer,
+.bitgak-chart-body-panning #drawingLayer {
+  will-change: transform !important;
+  pointer-events: none !important;
+  transition: none !important;
+}
+
+.bitgak-chart-body:not(.bitgak-chart-body-panning) .drawing-layer,
+.bitgak-chart-body:not(.bitgak-chart-body-panning) #drawingLayer {
+  will-change: auto !important;
+}
+
+/* =========================================================
+   Drag / flicker performance safety
+   ========================================================= */
+.bitgak-chart-body .chart-wrap,
+.bitgak-chart-body .chart-wrap-v5,
+.bitgak-chart-body .tv-chart,
+.bitgak-chart-body .tv-chart-v5,
+.bitgak-chart-body .drawing-layer {
+  backface-visibility: hidden;
+  transform: translateZ(0);
+}
+
+html.bitgak-chart-body-panning,
+html.bitgak-chart-body-panning body,
+html.bitgak-chart-body-panning .chart-wrap,
+html.bitgak-chart-body-panning .tv-chart {
+  cursor: grabbing !important;
+  user-select: none !important;
+}
+
+html.bitgak-chart-body-panning .drawing-layer {
+  will-change: transform;
+}
+
+.bitgak-chart-body .chart-loading {
+  pointer-events: none;
+}
+
+/* 검색 버튼 세로 깨짐 방지: 홈/차트 공통 최종 방어 */
+.home-search-btn,
+#stockSearchBtn.home-search-btn {
+  writing-mode: horizontal-tb !important;
+  text-orientation: mixed !important;
+  white-space: nowrap !important;
+  word-break: keep-all !important;
+  overflow-wrap: normal !important;
+}
+
+/* =========================================================
+   Final chart drag/wheel performance safety 20260523
+   ========================================================= */
+.bitgak-chart-body .drawing-layer {
+  transform-origin: 0 0;
+  backface-visibility: hidden;
+  contain: layout paint style;
+}
+
+html.bitgak-chart-body-panning .bitgak-chart-body .drawing-layer,
+.bitgak-chart-body .drawing-layer.is-live-panning,
+.bitgak-chart-body .chart-wrap.is-live-panning .drawing-layer {
+  transition: none !important;
+  will-change: transform !important;
+  pointer-events: none;
+}
+
+.bitgak-chart-body .tv-chart,
+.bitgak-chart-body .tv-chart canvas,
+.bitgak-chart-body .chart-wrap {
+  backface-visibility: hidden;
+}
+
+.bitgak-chart-body .chart-wrap.is-live-panning,
+html.bitgak-chart-body-panning .bitgak-chart-body .chart-wrap {
+  cursor: grabbing;
+  user-select: none;
+}
+
+
+/* =========================================================
+   Drawing pane hard lock v2
+   - SVG drawing layer is clipped to the main price pane only.
+   - Indicator panes such as RSI/Volume stay clean.
+   - JS updates the exact height inline; these rules prevent older CSS from reopening overflow.
+   ========================================================= */
+.bitgak-chart-body .chart-wrap,
+.bitgak-chart-body .chart-wrap-v5,
+.bitgak-chart-body #chartWrap {
+  overflow: hidden !important;
+}
+
+.bitgak-chart-body .tv-chart,
+.bitgak-chart-body .tv-chart-v5,
+.bitgak-chart-body #tvChart {
+  overflow: hidden !important;
+}
+
+.bitgak-chart-body .drawing-layer,
+.bitgak-chart-body #drawingLayer {
+  position: absolute !important;
+  left: 0 !important;
+  top: 0 !important;
+  right: auto !important;
+  bottom: auto !important;
+  overflow: hidden !important;
+  contain: paint;
+  clip-path: inset(0 0 0 0);
+}
+
+.bitgak-chart-body #drawingLayer.is-live-panning {
+  overflow: hidden !important;
+}
+
+
+/* =========================================================
+   Drawing pane vertical-lock v3
+   - 드로잉 SVG는 가격 메인 차트 영역에서만 보임
+   - live panning 중에도 Y축 transform을 JS에서 금지하고 CSS에서도 클립을 유지
+   ========================================================= */
+.bitgak-chart-body .drawing-layer,
+.bitgak-chart-body #drawingLayer {
+  overflow: hidden !important;
+  contain: paint !important;
+  clip-path: inset(0 0 0 0) !important;
+  transform-origin: 0 0 !important;
+}
+
+.bitgak-chart-body #drawingLayer.is-live-panning {
+  overflow: hidden !important;
+  pointer-events: none !important;
+  transition: none !important;
+}
+
+html.bitgak-chart-body-panning,
+html.bitgak-chart-body-panning body,
+html.bitgak-chart-body-panning .chart-wrap,
+html.bitgak-chart-body-panning .tv-chart,
+.bitgak-chart-body .chart-wrap.is-live-panning {
+  cursor: grabbing !important;
+  user-select: none !important;
+}
+
+/* =========================================================
+   Drawing pane hard lock v4
+   - 어떤 이전 CSS가 있어도 드로잉은 메인 가격 차트 SVG 안에서만 보이게 고정
+   - live pan 중에도 Y축 transform/overflow 해제를 금지
+   ========================================================= */
+.bitgak-chart-body #drawingLayer,
+.bitgak-chart-body .drawing-layer {
+  position: absolute !important;
+  left: 0 !important;
+  top: 0 !important;
+  right: auto !important;
+  bottom: auto !important;
+  overflow: hidden !important;
+  contain: paint !important;
+  clip-path: inset(0 0 0 0) !important;
+  transform-origin: 0 0 !important;
+  transition: none !important;
+}
+
+.bitgak-chart-body #drawingLayer .bv-drawing-content-layer,
+.bitgak-chart-body .drawing-layer .bv-drawing-content-layer {
+  clip-path: inherit;
+}
+
+.bitgak-chart-body #drawingLayer.is-live-panning,
+.bitgak-chart-body .drawing-layer.is-live-panning,
+.bitgak-chart-body .chart-wrap.is-live-panning #drawingLayer,
+.bitgak-chart-body .chart-wrap.is-live-panning .drawing-layer {
+  overflow: hidden !important;
+  pointer-events: none !important;
+  transition: none !important;
+}
+
+html.bitgak-chart-body-panning,
+html.bitgak-chart-body-panning body,
+html.bitgak-chart-body-panning .chart-wrap,
+html.bitgak-chart-body-panning .tv-chart,
+.bitgak-chart-body .chart-wrap.is-live-panning {
+  cursor: grabbing !important;
+  user-select: none !important;
+}
+
+/* =========================================================
+   Axis wheel + drawing live sync v5
+   - Y축 조작 중 첫 클릭 튐 완화
+   - 드로잉 레이어는 X축 transform만 부드럽게 사용
+   ========================================================= */
+.bitgak-chart-body #drawingLayer,
+.bitgak-chart-body .drawing-layer {
+  transition: none !important;
+  transform-origin: 0 0 !important;
+  overflow: hidden !important;
+  contain: paint !important;
+  will-change: auto;
+}
+
+.bitgak-chart-body #drawingLayer.is-live-panning,
+.bitgak-chart-body .drawing-layer.is-live-panning,
+.bitgak-chart-body .chart-wrap.is-live-panning #drawingLayer,
+.bitgak-chart-body .chart-wrap.is-live-panning .drawing-layer {
+  will-change: transform !important;
+  transition: none !important;
+  pointer-events: none !important;
+  overflow: hidden !important;
+}
+
+html.bitgak-y-axis-scaling,
+html.bitgak-y-axis-scaling body,
+html.bitgak-y-axis-scaling .chart-wrap,
+html.bitgak-y-axis-scaling .tv-chart,
+.bitgak-chart-body .bv-price-axis-drag-overlay {
+  cursor: ns-resize !important;
+  user-select: none !important;
+}

@@ -8,13 +8,8 @@
 
   <style>
     @import url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css");
-
-    * {
-      box-sizing: border-box;
-    }
-
-    html,
-    body {
+    * { box-sizing: border-box; }
+    html, body {
       margin: 0;
       min-height: 100%;
       background: #07101d;
@@ -24,22 +19,9 @@
       -webkit-font-smoothing: antialiased;
       text-rendering: optimizeLegibility;
     }
-
-    body {
-      overflow-x: hidden;
-    }
-
-    a {
-      color: inherit;
-      text-decoration: none;
-    }
-
-    button,
-    input,
-    select,
-    textarea {
-      font-family: inherit;
-    }
+    body { overflow-x: hidden; }
+    a { color: inherit; text-decoration: none; }
+    button, input, select, textarea { font-family: inherit; }
 
     .site-header {
       height: 64px;
@@ -54,7 +36,6 @@
       top: 0;
       z-index: 1000;
     }
-
     .site-logo {
       display: inline-flex;
       align-items: center;
@@ -68,7 +49,6 @@
       font-weight: 1000;
       letter-spacing: -0.04em;
     }
-
     .site-logo-mark {
       width: 30px;
       height: 30px;
@@ -82,20 +62,8 @@
       background: linear-gradient(135deg, #67e8f9, #2dd4bf);
       box-shadow: 0 0 20px rgba(45, 212, 191, 0.38);
     }
-
-    .site-logo-text {
-      display: block;
-      white-space: nowrap;
-      line-height: 1;
-    }
-
-    .site-nav {
-      margin-left: auto;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
+    .site-logo-text { display: block; white-space: nowrap; line-height: 1; }
+    .site-nav { margin-left: auto; display: flex; align-items: center; gap: 8px; }
     .site-nav a {
       height: 34px;
       padding: 0 14px;
@@ -109,22 +77,11 @@
       align-items: center;
       justify-content: center;
       transition: 0.16s ease;
+      white-space: nowrap;
     }
-
-    .site-nav a:hover {
-      border-color: rgba(96, 165, 250, 0.4);
-      background: #13223a;
-    }
-
-    .site-main {
-      width: 100%;
-      min-height: calc(100vh - 64px);
-    }
-
-    .bitgak-chart-body .site-header {
-      display: none !important;
-    }
-
+    .site-nav a:hover { border-color: rgba(96, 165, 250, 0.4); background: #13223a; }
+    .site-main { width: 100%; min-height: calc(100vh - 64px); }
+    .bitgak-chart-body .site-header { display: none !important; }
     .bitgak-chart-body .site-main {
       width: 100% !important;
       min-height: 100vh !important;
@@ -132,59 +89,33 @@
       padding: 0 !important;
       margin: 0 !important;
     }
-
-    .bitgak-chart-body {
-      overflow: hidden;
-    }
-
+    .bitgak-chart-body { overflow: hidden; }
     @media (max-width: 760px) {
-      .site-header {
-        height: 58px;
-        padding: 0 14px;
-      }
-
-      .site-logo {
-        min-width: auto;
-      }
-
-      .site-logo-text {
-        display: none;
-      }
-
-      .site-nav a {
-        height: 32px;
-        padding: 0 12px;
-        font-size: 12px;
-      }
-
-      .site-main {
-        min-height: calc(100vh - 58px);
-      }
+      .site-header { height: 58px; padding: 0 14px; }
+      .site-logo { min-width: auto; }
+      .site-logo-text { display: none; }
+      .site-nav a { height: 32px; padding: 0 12px; font-size: 12px; }
+      .site-main { min-height: calc(100vh - 58px); }
     }
-
-
-    .site-nav a:first-child:last-child {
-      border-color: rgba(37, 99, 235, 0.78);
-      background: linear-gradient(135deg, #2563eb, #0ea5e9);
-      color: #ffffff;
-      box-shadow: 0 10px 24px rgba(37, 99, 235, 0.20);
-    }
-
   </style>
 
   {% include "support/support_style.html" %}
+  <link rel="stylesheet" href="{% static 'insights/insights.css' %}">
   {% block extra_css %}{% endblock %}
 </head>
-
 <body class="{% block body_class %}{% endblock %}">
   <header class="site-header">
     <a class="site-logo" href="{% url 'stocks:search' %}">
       <span class="site-logo-mark">B</span>
       <span class="site-logo-text">BitgakView</span>
     </a>
-
-    <nav class="site-nav">
-      <a href="#">로그인</a>
+    <nav class="site-nav" aria-label="주요 메뉴">
+      <a href="{% url 'stocks:search' %}">홈</a>
+      {% if request.user.is_authenticated %}
+        <a href="/accounts/logout/">로그아웃</a>
+      {% else %}
+        <a href="/accounts/login/?next={{ request.get_full_path|urlencode }}">로그인</a>
+      {% endif %}
     </nav>
   </header>
 
@@ -199,8 +130,7 @@
   </main>
 
   {% include "support/_footer.html" %}
-
+  <script src="{% static 'insights/insights.js' %}" defer></script>
   {% block extra_js %}{% endblock %}
 </body>
-
 </html>

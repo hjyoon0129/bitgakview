@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{% if mode == "update" %}빗각관점 수정{% else %}빗각관점 글쓰기{% endif %} | BitgakView{% endblock %}
+
+{% block extra_css %}
+  {{ block.super }}
+  {% include "insights/_insight_styles.html" %}
+{% endblock %}
+
+{% block content %}
+<section class="insight-form-page">
+  <header class="insight-hero">
+    <div>
+      <p class="insight-kicker">{% if mode == "update" %}EDIT VIEWPOINT{% else %}WRITE VIEWPOINT{% endif %}</p>
+      <h1>{% if mode == "update" %}빗각관점 수정{% else %}빗각관점 글쓰기{% endif %}</h1>
+      <p>제목, 대표 이미지, 본문 중심으로 관점을 작성합니다. 유튜브 URL은 선택사항입니다.</p>
+    </div>
+  </header>
+
+  <form class="insight-form-card" method="post" enctype="multipart/form-data" data-insight-image-editor>
+    {% csrf_token %}
+    <input type="hidden" name="delete_cover_image" value="0" data-delete-cover-image>
+
+    <div class="insight-form-main">
+      {% if form.non_field_errors %}
+        <div class="insight-errors">{{ form.non_field_errors }}</div>
+      {% endif %}
+
+      <div class="insight-field">
+        <label for="{{ form.title.id_for_label }}">제목</label>
+        {{ form.title }}
+        {% for error in form.title.errors %}<div class="insight-errors">{{ error }}</div>{% endfor %}
+      </div>
+
+      <div class="insight-field">
+        <label for="{{ form.content.id_for_label }}">본문</label>
+        {{ form.content }}
+        {% for error in form.content.errors %}<div class="insight-errors">{{ error }}</div>{% endfor %}
+      </div>
+
+      <div class="insight-field">
+        <label for="{{ form.youtube_url.id_for_label }}">유튜브 URL <span>선택사항</span></label>
+        {{ form.youtube_url }}
+        <p class="insight-help">입력하면 상세 글 하단 왼쪽에 링크 버튼만 표시됩니다.</p>
+        {% for error in form.youtube_url.errors %}<div class="insight-errors">{{ error }}</div>{% endfor %}
+      </div>
+
+      <div class="insight-form-actions">
+        <a class="insight-btn ghost" href="{% if post %}{{ post.get_absolute_url }}{% else %}{% url 'insights:list' %}{% endif %}">취소</a>
+        <button class="insight-btn primary" type="submit">{% if mode == "update" %}수정하기{% else %}등록하기{% endif %}</button>
+      </div>
+    </div>
+
+    <aside class="insight-image-editor">
+      <h3>대표 이미지</h3>
+      <p>글 카드와 상세페이지에 표시됩니다. 저장 전에도 즉시 미리보기가 바뀝니다.</p>
+
+      <div class="insight-preview {% if post and post.image_url %}has-image{% endif %}" data-image-preview>
+        <img
+          data-image-preview-img
+          {% if post and post.image_url %}src="{{ post.image_url }}"{% endif %}
+          alt="대표 이미지 미리보기"
+        >
+        <div class="insight-preview-empty" data-image-preview-empty>
+          이미지 없음
+          <small>차트 캡처, 썸네일, 분석 이미지를 올려보세요.</small>
+        </div>
+        <span class="insight-status-badge" data-image-status></span>
+      </div>
+
+      <div class="insight-file-input-wrap">
+        {{ form.cover_image }}
+      </div>
+
+      <div class="insight-image-actions">
+        <button class="insight-btn primary" type="button" data-image-select>이미지 선택</button>
+        <button class="insight-btn danger" type="button" data-image-delete>이미지 삭제</button>
+        <button class="insight-btn ghost wide" type="button" data-image-cancel>선택/삭제 취소</button>
+      </div>
+
+      <p class="insight-help" data-image-help>
+        {% if post and post.cover_image %}
+          현재 파일: {{ post.cover_image.name }}
+        {% else %}
+          이미지 없이도 글은 등록됩니다.
+        {% endif %}
+      </p>
+
+      {% for error in form.cover_image.errors %}<div class="insight-errors">{{ error }}</div>{% endfor %}
+    </aside>
+  </form>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+  {{ block.super }}
+  {% include "insights/_insight_scripts.html" %}
+{% endblock %}

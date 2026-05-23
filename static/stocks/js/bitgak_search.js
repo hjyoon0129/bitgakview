@@ -10,13 +10,14 @@
 
   const API_URL = "/stocks/api/search/";
   const MIN_QUERY_LEN = 1;
-  const DEBOUNCE_MS = 180;
+  const DEBOUNCE_MS = 70;
 
   let timer = null;
   let activeIndex = -1;
   let currentItems = [];
   let lastQuery = "";
   let requestSeq = 0;
+  let activeController = null;
   const memoryCache = new Map();
 
   function escapeHtml(value) {
@@ -33,17 +34,21 @@
   }
 
   function closePanel() {
-    panel.classList.remove("show");
+    panel.classList.remove("show", "active", "is-open");
     panel.innerHTML = "";
     activeIndex = -1;
   }
 
   function openPanel() {
-    panel.classList.add("show");
+    panel.classList.add("show", "active", "is-open");
+  }
+
+  function getItemHref(item) {
+    return item.href || ("/stocks/" + encodeURIComponent(item.code || "") + "/");
   }
 
   function itemTemplate(item, index) {
-    const href = item.href || ("/stocks/" + encodeURIComponent(item.code || "") + "/");
+    const href = getItemHref(item);
     const derivativeBadge = item.is_derivative ? '<span class="stock-search-market derivative">ETF/ETN</span>' : "";
     return `
       <a class="stock-search-item" href="${escapeHtml(href)}" data-search-index="${index}">
@@ -75,7 +80,6 @@
   function setActive(index) {
     const rows = Array.from(panel.querySelectorAll(".stock-search-item"));
     rows.forEach(function (row) { row.classList.remove("active"); });
-
     if (!rows.length) return;
 
     activeIndex = Math.max(0, Math.min(index, rows.length - 1));
@@ -91,14 +95,24 @@
     }
 
     const q = normalize(input.value);
-    if (q) window.location.href = "/stocks/?q=" + encodeURIComponent(q);
+    if (!q) return;
+
+    // 차트 상세 화면에서 검색 실패 시 홈 검색결과로 튀는 것을 막고, 가능하면 API 재조회 후 첫 종목으로 이동한다.
+    fetchResults(q, true).then(function () {
+      const first = panel.querySelector(".stock-search-item");
+      if (first) {
+        window.location.href = first.getAttribute("href");
+      } else {
+        input.focus();
+      }
+    });
   }
 
-  async function fetchResults(query) {
+  async function fetchResults(query, immediate) {
     const q = normalize(query);
 
     if (q.length < MIN_QUERY_LEN) {
-      render([], q);
+      closePanel();
       return;
     }
 
@@ -109,11 +123,22 @@
 
     const seq = ++requestSeq;
 
+    if (activeController) {
+      try { activeController.abort(); } catch (e) {}
+    }
+    activeController = window.AbortController ? new AbortController() : null;
+
+    if (!immediate) {
+      panel.innerHTML = '<div class="stock-search-empty">검색 중...</div>';
+      openPanel();
+    }
+
     try {
       const url = API_URL + "?q=" + encodeURIComponent(q) + "&limit=40";
       const res = await fetch(url, {
         headers: { "X-Requested-With": "XMLHttpRequest" },
         cache: "no-store",
+        signal: activeController ? activeController.signal : undefined,
       });
 
       if (!res.ok) throw new Error("search api failed");
@@ -125,6 +150,7 @@
       memoryCache.set(q, items);
       render(items, q);
     } catch (error) {
+      if (error && error.name === "AbortError") return;
       if (seq !== requestSeq) return;
       panel.innerHTML = '<div class="stock-search-empty">검색 데이터를 불러오지 못했습니다.</div>';
       openPanel();
@@ -142,7 +168,7 @@
     }
 
     timer = window.setTimeout(function () {
-      fetchResults(q);
+      fetchResults(q, false);
     }, DEBOUNCE_MS);
   }
 
@@ -177,25 +203,30 @@
       return;
     }
 
-    if (event.key === "Escape") {
-      closePanel();
-    }
+    if (event.key === "Escape") closePanel();
   });
 
-  button && button.addEventListener("click", function (event) {
-    event.preventDefault();
-    const q = normalize(input.value);
-    if (!q) {
-      input.focus();
-      return;
-    }
+  if (button) {
+    button.addEventListener("click", function (event) {
+      event.preventDefault();
+      const q = normalize(input.value);
+      if (!q) {
+        input.focus();
+        return;
+      }
+      goFirstOrSearch();
+    });
+  }
 
-    if (currentItems.length) goFirstOrSearch();
-    else fetchResults(q).then(goFirstOrSearch);
+  panel.addEventListener("mousedown", function (event) {
+    const item = event.target.closest(".stock-search-item");
+    if (!item) return;
+    event.preventDefault();
+    window.location.href = item.getAttribute("href");
   });
 
   document.addEventListener("click", function (event) {
-    if (event.target.closest(".bv-search-live")) return;
+    if (event.target.closest(".bv-search-live") || event.target.closest(".home-search-form")) return;
     closePanel();
   });
 })();

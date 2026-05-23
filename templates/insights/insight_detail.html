@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ post.title }} | BitgakView{% endblock %}
+
+{% block extra_css %}
+  {{ block.super }}
+  {% include "insights/_insight_styles.html" %}
+{% endblock %}
+
+{% block content %}
+<section class="insight-detail-page">
+  <header class="insight-detail-head">
+    <div>
+      <p class="insight-kicker">BITGAK VIEWPOINT</p>
+      <h1>{{ post.title }}</h1>
+
+      <div class="insight-card-meta">
+        <span class="insight-pill">{{ post.published_date|date:"Y.m.d" }}</span>
+        {% if post.has_youtube %}
+          <span class="insight-pill muted">유튜브 링크 포함</span>
+        {% endif %}
+      </div>
+    </div>
+
+    {% if can_manage_insights %}
+      <div class="insight-detail-actions-top">
+        <a class="insight-btn ghost" href="{% url 'insights:update' post.slug %}">수정</a>
+        <a class="insight-btn danger" href="{% url 'insights:delete' post.slug %}">삭제</a>
+      </div>
+    {% endif %}
+  </header>
+
+  <div class="insight-notice">
+    {{ post.risk_notice }}
+  </div>
+
+  {% if post.image_url %}
+    <figure class="insight-detail-image">
+      <img src="{{ post.image_url }}" alt="{{ post.title }}">
+    </figure>
+  {% endif %}
+
+  <article class="insight-content-box">
+    {{ post.content|linebreaks }}
+  </article>
+
+  <div class="insight-bottom-actions">
+    {% if post.youtube_url %}
+      <a class="insight-btn primary" href="{{ post.youtube_url }}" target="_blank" rel="noopener">유튜브 링크 열기</a>
+    {% endif %}
+    <a class="insight-btn ghost" href="{% url 'insights:list' %}">목록으로</a>
+  </div>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+  {{ block.super }}
+  {% include "insights/_insight_scripts.html" %}
+{% endblock %}

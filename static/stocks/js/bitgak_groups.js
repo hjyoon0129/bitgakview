@@ -89,6 +89,22 @@
     return !!(window.BITGAK_ACCESS && window.BITGAK_ACCESS.is_authenticated);
   }
 
+  function requireLoginForWatchlist() {
+    if (isAuthenticated()) return true;
+
+    if (window.BitgakAccessLock && typeof window.BitgakAccessLock.open === "function") {
+      window.BitgakAccessLock.open("login", {
+        title: "로그인 후 사용할 수 있습니다",
+        message: "관심종목 저장은 로그인 후 사용할 수 있습니다. 로그인하면 PC와 모바일에서 같은 관심종목을 불러옵니다.",
+      });
+    } else {
+      const next = encodeURIComponent(window.location.pathname + window.location.search);
+      window.location.href = "/accounts/login/?next=" + next;
+    }
+
+    return false;
+  }
+
   function normalizeStockItem(item) {
     item = item || {};
     const code = String(item.code || item.stock_code || "").trim();
@@ -273,7 +289,10 @@
     saveGroups();
   }
 
-  function addCurrentStockToSelectedGroup() {
+  function addCurrentStockToSelectedGroup(event) {
+    if (event && event.preventDefault) event.preventDefault();
+    if (!requireLoginForWatchlist()) return;
+
     const group = getSelectedGroup();
 
     const exists = group.items.some(function (item) {
