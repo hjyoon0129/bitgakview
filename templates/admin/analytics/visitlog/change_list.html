@@ -1,11 +1,13 @@
 {% extends "admin/change_list.html" %}
 
+{% block object-tools %}{% endblock %}
+
 {% block content %}
 <style>
-  .bv-dashboard { margin: 0 0 28px; }
+  .bv-dashboard { margin: 0 0 28px; max-width: 1320px; }
   .bv-title { font-size: 28px; font-weight: 800; margin: 0 0 8px; }
   .bv-desc { color: #aaa; margin-bottom: 24px; line-height: 1.6; }
-  .bv-card-wrap { display: flex; gap: 16px; flex-wrap: wrap; margin: 18px 0 28px; }
+  .bv-card-wrap { display: flex; gap: 16px; flex-wrap: wrap; margin: 18px 0 24px; }
   .bv-card { min-width: 150px; padding: 18px 20px; border-radius: 14px; background: #1f2933; border: 1px solid #374151; }
   .bv-card.green { background: #123524; }
   .bv-card.yellow { background: #3a3215; }
@@ -13,7 +15,7 @@
   .bv-card.blue { background: #0f3443; }
   .bv-card strong { display: block; color: #ddd; font-size: 13px; margin-bottom: 8px; }
   .bv-card span { font-size: 30px; font-weight: 800; color: #fff; }
-  .bv-grid { display: grid; grid-template-columns: minmax(320px, 1fr) minmax(320px, 1fr); gap: 20px; margin-bottom: 28px; }
+  .bv-grid { display: grid; grid-template-columns: minmax(320px, 1fr) minmax(320px, 1fr); gap: 20px; margin-bottom: 22px; }
   .bv-panel { background: #151a21; border: 1px solid #303946; border-radius: 14px; padding: 18px; overflow-x: auto; }
   .bv-panel h2 { margin: 0 0 14px; font-size: 18px; }
   .bv-table { width: 100%; border-collapse: collapse; }
@@ -24,8 +26,13 @@
   .bv-bot { background: #3a3215; color: #ffd36a; }
   .bv-suspicious { background: #3a1822; color: #ff8da1; }
   .bv-blocked { background: #2c182f; color: #dfa5ff; }
-  .bv-note { padding: 14px 16px; border-radius: 12px; background: #18212b; border: 1px solid #344250; color: #bbb; margin: 0 0 28px; line-height: 1.65; }
-  .bv-raw-title { margin: 34px 0 16px; font-size: 20px; font-weight: 800; }
+  .bv-note { padding: 14px 16px; border-radius: 12px; background: #18212b; border: 1px solid #344250; color: #bbb; margin: 0 0 22px; line-height: 1.65; }
+  .bv-actions { display: flex; flex-wrap: wrap; gap: 10px; margin: 0 0 22px; }
+  .bv-actions form { display: inline; }
+  .bv-btn { cursor: pointer; border: 1px solid #3d4b5c; border-radius: 999px; background: #202a36; color: #e5e7eb; padding: 9px 14px; font-weight: 700; }
+  .bv-btn:hover { background: #293647; }
+  .bv-btn.danger { border-color: #7f1d1d; background: #3a1822; color: #ffb4c0; }
+  .bv-btn.danger:hover { background: #4a1d2a; }
   .bv-muted { color: #a7b0bb; font-size: 12px; }
   @media (max-width: 900px) { .bv-grid { grid-template-columns: 1fr; } }
 </style>
@@ -33,8 +40,8 @@
 <div class="bv-dashboard">
   <h1 class="bv-title">Visitor Analytics</h1>
   <p class="bv-desc">
-    서버 부하를 줄이기 위해 static/media/admin/API/검색봇은 기본적으로 DB 기록하지 않습니다.<br>
-    일반 사용자는 같은 IP + 경로 + 브라우저 기준으로 일정 시간 묶어서 request_count만 누적합니다.
+    Raw Visit Logs 원본 목록은 관리자 화면에서 제거했습니다.<br>
+    이제 아래 요약 통계와 정리 버튼만 표시됩니다.
   </p>
 
   <div class="bv-card-wrap">
@@ -43,14 +50,29 @@
     <div class="bv-card green"><strong>Human Requests</strong><span>{{ human_today }}</span></div>
     <div class="bv-card yellow"><strong>Bot Blocked</strong><span>{{ bot_today }}</span></div>
     <div class="bv-card red"><strong>Suspicious / Blocked</strong><span>{{ suspicious_today }}</span></div>
-    <div class="bv-card"><strong>Compact Log Rows</strong><span>{{ total_all }}</span></div>
+    <div class="bv-card"><strong>Stored Log Rows</strong><span>{{ total_all }}</span></div>
+  </div>
+
+  <div class="bv-actions">
+    <form method="post" action="{{ clear_today_url }}">
+      {% csrf_token %}
+      <button type="submit" class="bv-btn">오늘 로그 삭제</button>
+    </form>
+    <form method="post" action="{{ clear_old_url }}">
+      {% csrf_token %}
+      <button type="submit" class="bv-btn">30일 이전 삭제</button>
+    </form>
+    <form method="post" action="{{ clear_all_url }}" onsubmit="return confirm('전체 방문 로그를 모두 삭제할까요? 이 작업은 되돌릴 수 없습니다.');">
+      {% csrf_token %}
+      <button type="submit" class="bv-btn danger">전체 로그 삭제</button>
+    </form>
   </div>
 
   <div class="bv-note">
-    <strong>부하 절감 방식</strong><br>
-    /stocks/api/, /api/, /static/, /media/, 관리자 페이지, robots/sitemap은 로그 제외됩니다.
+    <strong>현재 방식</strong><br>
+    /stocks/api/, /api/, /static/, /media/, 관리자 페이지, robots/sitemap은 로그에서 제외됩니다.
     Google/Naver/Bing 봇은 허용하지만 DB에 저장하지 않습니다.
-    악성 봇/공격성 경로는 차단하고 IP 확인용으로만 1시간에 1번 저장합니다.
+    악성 봇/공격성 경로는 차단하고 IP 확인용으로만 제한 저장합니다.
   </div>
 
   <div class="bv-grid">
@@ -123,39 +145,30 @@
     </div>
   </div>
 
-  <div class="bv-grid">
-    <div class="bv-panel">
-      <h2>Recent Human Visitors</h2>
-      <table class="bv-table">
-        <thead><tr><th>Last Seen</th><th>IP</th><th>Path</th><th>Count</th></tr></thead>
-        <tbody>
-          {% for row in recent_human_rows %}
-          <tr><td>{{ row.last_seen_at }}</td><td>{{ row.ip_address }}</td><td>{{ row.path }}</td><td>{{ row.request_count }}</td></tr>
-          {% empty %}<tr><td colspan="4">No human visitors today.</td></tr>{% endfor %}
-        </tbody>
-      </table>
-    </div>
-
-    <div class="bv-panel">
-      <h2>Suspicious / Blocked Today</h2>
-      <table class="bv-table">
-        <thead><tr><th>IP</th><th>Path</th><th>Type</th><th>Reason</th><th>Count</th></tr></thead>
-        <tbody>
-          {% for row in suspicious_rows %}
-          <tr>
-            <td>{{ row.ip_address }}</td><td>{{ row.path }}</td>
-            <td>{% if row.bot_status == "bot" %}<span class="bv-badge bv-bot">Bot</span>{% elif row.bot_status == "blocked" %}<span class="bv-badge bv-blocked">Blocked</span>{% else %}<span class="bv-badge bv-suspicious">Suspicious</span>{% endif %}</td>
-            <td>{{ row.reason|default:"-" }}</td><td>{{ row.count }}</td>
-          </tr>
-          {% empty %}<tr><td colspan="5">No suspicious access today.</td></tr>{% endfor %}
-        </tbody>
-      </table>
-    </div>
+  <div class="bv-panel">
+    <h2>Suspicious / Blocked Today</h2>
+    <table class="bv-table">
+      <thead><tr><th>IP</th><th>Path</th><th>Type</th><th>Reason</th><th>Count</th></tr></thead>
+      <tbody>
+        {% for row in suspicious_rows %}
+        <tr>
+          <td>{{ row.ip_address }}</td>
+          <td>{{ row.path }}</td>
+          <td>
+            {% if row.bot_status == "bot" %}<span class="bv-badge bv-bot">Bot</span>
+            {% elif row.bot_status == "blocked" %}<span class="bv-badge bv-blocked">Blocked</span>
+            {% else %}<span class="bv-badge bv-suspicious">Suspicious</span>{% endif %}
+          </td>
+          <td>{{ row.reason|default:"-" }}</td>
+          <td>{{ row.count }}</td>
+        </tr>
+        {% empty %}<tr><td colspan="5">No suspicious access today.</td></tr>{% endfor %}
+      </tbody>
+    </table>
   </div>
 
-  <h2 class="bv-raw-title">Compact Raw Visit Logs</h2>
-  <p class="bv-muted">아래 원본 목록은 모든 요청이 아니라 중복 제거 후 압축 저장된 행입니다.</p>
+  <p class="bv-muted" style="margin-top:16px;">
+    Django 기본 Raw Visit Logs 목록은 표시하지 않습니다.
+  </p>
 </div>
-
-{{ block.super }}
 {% endblock %}
