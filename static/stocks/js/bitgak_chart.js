@@ -2508,14 +2508,6 @@
     state.startPoint = null;
     state.fiboStage = 0;
 
-    if (isMobileViewport()) {
-      // 모바일에서는 연속 그리기가 켜져 있어도 한 번 그리고 바로 십자/커서로 복귀한다.
-      state.continuousDrawing = false;
-      syncDrawingContinuousButtons();
-      setDrawingTool("cursor", { keepSelection: true });
-      return;
-    }
-
     if (state.continuousDrawing && normalizeDrawingTool(state.activeTool) === fixed.type) {
       setDrawingTool(fixed.type, { keepSelection: true });
     } else {
@@ -2525,7 +2517,42 @@
 
   let drawingPointerCandidate = null;
   let suppressNextDrawingClick = false;
+  let drawingLastHandledTap = null;
   let lastDrawingClick = { id: null, time: 0 };
+
+  function rememberHandledDrawingPointerTap(event) {
+    const client = getEventClientPoint(event);
+    drawingLastHandledTap = {
+      time: Date.now(),
+      x: client ? Number(client.x) : 0,
+      y: client ? Number(client.y) : 0,
+      pointerId: event && event.pointerId !== undefined ? event.pointerId : null,
+      tool: normalizeDrawingTool(state.activeTool),
+    };
+  }
+
+  function isNativeClickFromHandledDrawingPointerTap(event) {
+    if (!drawingLastHandledTap || !event) return false;
+
+    const client = getEventClientPoint(event);
+    const now = Date.now();
+    const dt = now - Number(drawingLastHandledTap.time || 0);
+    const x = client ? Number(client.x) : 0;
+    const y = client ? Number(client.y) : 0;
+    const dist = Math.hypot(x - Number(drawingLastHandledTap.x || 0), y - Number(drawingLastHandledTap.y || 0));
+
+    // pointerup에서 이미 드로잉 포인트를 처리한 직후 브라우저가 생성하는
+    // native click만 정확히 버린다. 빠른 두 번째 실제 클릭은 pointerup에서 다시 처리되므로 막지 않는다.
+    if (dt >= 0 && dt < 520 && dist < 24) {
+      drawingLastHandledTap = null;
+      if (event.preventDefault) event.preventDefault();
+      if (event.stopPropagation) event.stopPropagation();
+      return true;
+    }
+
+    if (dt > 900) drawingLastHandledTap = null;
+    return false;
+  }
   let crosshairRaf = null;
   let priceAxisDrag = null;
   let chartBodyPanDrag = null;
@@ -2839,6 +2866,7 @@
   }
 
   function handleChartWrapDrawingClick(event) {
+    if (isNativeClickFromHandledDrawingPointerTap(event)) return;
     if (normalizeDrawingTool(state.activeTool) !== "cursor") return;
     if (suppressClickAfterDrag) {
       suppressClickAfterDrag = false;
@@ -3435,36 +3463,6 @@
     requestAnimationFrame(renderDrawings);
   }
 
-
-  function makeDefaultFiboThirdValue(startValue, endValue) {
-    const p1 = valueToPoint(startValue);
-    const p2 = valueToPoint(endValue);
-    const size = getLayerSize();
-    if (!p1 || !p2) return endValue || startValue;
-
-    const dx = p2.x - p1.x;
-    const dy = p2.y - p1.y;
-    const len = Math.sqrt(dx * dx + dy * dy);
-    if (!len) return endValue || startValue;
-
-    const nx = -dy / len;
-    const ny = dx / len;
-    let distance = Math.max(62, Math.min(150, size.height * 0.17));
-    let tx = p1.x + nx * distance;
-    let ty = p1.y + ny * distance;
-
-    if (ty < 8 || ty > size.height - 8) {
-      distance = -distance;
-      tx = p1.x + nx * distance;
-      ty = p1.y + ny * distance;
-    }
-
-    tx = clampNumber(tx, 2, Math.max(2, size.width - 2));
-    ty = clampNumber(ty, 2, Math.max(2, size.height - 2));
-
-    return pointToChartValue({ x: tx, y: ty }) || endValue || startValue;
-  }
-
   function processDrawingToolTap(event) {
     const active = normalizeDrawingTool(state.activeTool);
     if (active === "cursor") return false;
@@ -3584,6 +3582,7 @@
   }
 
   function handleDrawingClick(event) {
+    if (isNativeClickFromHandledDrawingPointerTap(event)) return;
     if (suppressClickAfterDrag) {
       suppressClickAfterDrag = false;
       return;
@@ -3645,36 +3644,6 @@
       drawingLayer.style.cursor = "crosshair";
     }
 
-    if (!drawingDrag && drawingPointerCandidate && active !== "cursor" && resolved) {
-      const dx = Number(event.clientX || 0) - Number(drawingPointerCandidate.startClientX || 0);
-      const dy = Number(event.clientY || 0) - Number(drawingPointerCandidate.startClientY || 0);
-      const moved = Math.hypot(dx, dy) >= 4;
-
-      if (moved && ["trend", "extend", "circle", "fibo"].includes(active)) {
-        if (!state.tempDrawing || state.tempDrawing.type !== active) {
-          state.tempDrawing = normalizeDrawing({
-            id: makeDrawingId(active),
-            type: active,
-            start: drawingPointerCandidate.startValue || resolved.value,
-            end: resolved.value,
-            third: active === "fibo" ? null : undefined,
-          });
-          state.fiboStage = active === "fibo" ? 1 : 0;
-          state.isDrawing = true;
-          state.startPoint = drawingPointerCandidate.startValue || resolved.value;
-        }
-
-        if (active === "fibo") {
-          state.tempDrawing.end = resolved.value;
-        } else {
-          state.tempDrawing.end = resolved.value;
-        }
-
-        renderDrawings();
-        return;
-      }
-    }
-
     if (drawingDrag) return;
 
     if (state.tempDrawing && resolved) {
@@ -3693,13 +3662,10 @@
     const active = normalizeDrawingTool(state.activeTool);
 
     if (active !== "cursor") {
-      const resolved = pointFromEvent(event);
       drawingPointerCandidate = {
         pointerId: event.pointerId,
         startClientX: event.clientX,
         startClientY: event.clientY,
-        startValue: resolved ? resolved.value : null,
-        tool: active,
       };
       try { drawingLayer.setPointerCapture(event.pointerId); } catch (e) {}
       event.preventDefault();
@@ -3774,63 +3740,27 @@
 
   function handleDrawingPointerUp(event) {
     if (!drawingDrag && drawingPointerCandidate && normalizeDrawingTool(state.activeTool) !== "cursor") {
-      const active = normalizeDrawingTool(state.activeTool);
-      const candidate = drawingPointerCandidate;
-      const dx = Number(event.clientX || 0) - Number(candidate.startClientX || 0);
-      const dy = Number(event.clientY || 0) - Number(candidate.startClientY || 0);
-      const isTap = Math.hypot(dx, dy) < 12;
-      const resolved = pointFromEvent(event);
+      if (event.pointerId !== undefined && drawingPointerCandidate.pointerId !== undefined && event.pointerId !== drawingPointerCandidate.pointerId) return;
 
-      try { drawingLayer.releasePointerCapture(candidate.pointerId); } catch (e) {}
+      const dx = event.clientX - drawingPointerCandidate.startClientX;
+      const dy = event.clientY - drawingPointerCandidate.startClientY;
+      const isTap = Math.hypot(dx, dy) < 12;
+      try { drawingLayer.releasePointerCapture(drawingPointerCandidate.pointerId); } catch (e) {}
       drawingPointerCandidate = null;
 
+      event.preventDefault();
+      event.stopPropagation();
+
       if (isTap) {
-        suppressNextDrawingClick = true;
-        processDrawingToolTap(event);
+        if (processDrawingToolTap(event)) rememberHandledDrawingPointerTap(event);
         return;
       }
 
-      if (resolved) {
-        event.preventDefault();
-        event.stopPropagation();
-
-        if (active === "hline") {
-          completeDrawing({ id: makeDrawingId("hline"), type: "hline", start: resolved.value });
-          return;
-        }
-
-        if (active === "vline") {
-          completeDrawing({ id: makeDrawingId("vline"), type: "vline", start: resolved.value });
-          return;
-        }
-
-        if (["trend", "extend", "circle"].includes(active)) {
-          const startValue = candidate.startValue || resolved.value;
-          const drawing = state.tempDrawing && state.tempDrawing.type === active
-            ? state.tempDrawing
-            : normalizeDrawing({ id: makeDrawingId(active), type: active, start: startValue, end: resolved.value });
-          drawing.end = resolved.value;
-          completeDrawing(drawing);
-          return;
-        }
-
-        if (active === "fibo") {
-          const startValue = candidate.startValue || resolved.value;
-          const drawing = state.tempDrawing && state.tempDrawing.type === "fibo"
-            ? state.tempDrawing
-            : normalizeDrawing({ id: makeDrawingId("fibo"), type: "fibo", start: startValue, end: resolved.value, third: null });
-          drawing.end = resolved.value;
-          drawing.third = drawing.third || makeDefaultFiboThirdValue(drawing.start, drawing.end);
-          completeDrawing(drawing);
-          return;
-        }
+      // 첫 점이 이미 잡혀 있는 상태에서 드래그 후 놓으면 현재 단계만 확정한다.
+      // 추세선/연장선/원형은 완성, 피보나치는 1단계면 기준선 고정, 2단계면 채널 완성이다.
+      if (state.tempDrawing) {
+        if (processDrawingToolTap(event)) rememberHandledDrawingPointerTap(event);
       }
-
-      state.tempDrawing = null;
-      state.isDrawing = false;
-      state.startPoint = null;
-      state.fiboStage = 0;
-      renderDrawings();
       return;
     }
 
