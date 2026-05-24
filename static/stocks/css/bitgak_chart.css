@@ -6210,67 +6210,86 @@ html.bitgak-y-axis-scaling .tv-chart,
   }
 }
 
-
 /* =========================================================
-   Final mobile drawing toolbar + one-hand drawing UX 20260524
-   - S24 Ultra / narrow Android에서 드로잉 도구가 오른쪽으로 깨지는 현상 방지
-   - 드로잉 툴바는 차트 상단 1줄 안에 강제 수납
+   Compact desktop chart toolbar fix 20260524
+   - PC 브라우저 창을 줄였을 때 1121~1460px 구간에서
+     드로잉 툴바가 OHLC/차트와 겹치거나 작게 스크롤되는 문제 방지
+   - 1120px 이하 태블릿/모바일 최적화 규칙은 그대로 유지
    ========================================================= */
-@media (max-width: 760px) {
+@media (min-width: 1121px) and (max-width: 1460px) {
   .bitgak-chart-body .chart-card-top {
+    flex: 0 0 auto !important;
+    height: auto !important;
+    min-height: 86px !important;
+    padding: 9px 12px 8px !important;
     display: grid !important;
-    grid-template-columns: auto auto auto minmax(0, 1fr) !important;
-    grid-auto-rows: minmax(30px, auto) !important;
+    grid-template-columns: minmax(142px, max-content) auto auto auto minmax(0, 1fr) !important;
+    grid-template-rows: 34px 36px !important;
+    grid-template-areas:
+      "title interval search active ."
+      "tools tools tools tools tools" !important;
     align-items: center !important;
-    gap: 7px 7px !important;
-    padding: 9px 9px 4px !important;
+    align-content: start !important;
+    gap: 8px 10px !important;
     overflow: visible !important;
+    z-index: 85 !important;
   }
 
   .bitgak-chart-body .chart-title {
-    grid-column: 1 / -1 !important;
-    width: 100% !important;
+    grid-area: title !important;
+    width: auto !important;
     min-width: 0 !important;
-    max-width: 100% !important;
+    max-width: min(230px, 24vw) !important;
     font-size: 14px !important;
-    line-height: 1.25 !important;
-    white-space: nowrap !important;
+    line-height: 1.2 !important;
     overflow: hidden !important;
     text-overflow: ellipsis !important;
+    white-space: nowrap !important;
   }
 
   .bitgak-chart-body .tv-interval-dropdown {
-    grid-column: 1 / 2 !important;
-    min-width: 0 !important;
+    grid-area: interval !important;
+    justify-self: start !important;
+    align-self: center !important;
+    z-index: 170 !important;
   }
 
   .bitgak-chart-body #openIndicatorBtn {
-    grid-column: 2 / 3 !important;
-    min-width: 74px !important;
+    grid-area: search !important;
+    justify-self: start !important;
+    align-self: center !important;
   }
 
   .bitgak-chart-body #openMobileIndicatorsBtn {
-    grid-column: 3 / 4 !important;
-    min-width: 88px !important;
-  }
-
-  .bitgak-chart-body .chart-top-spacer,
-  .bitgak-chart-body .chart-mode-text {
-    display: none !important;
+    grid-area: active !important;
+    justify-self: start !important;
+    align-self: center !important;
   }
 
   .bitgak-chart-body .tv-interval-btn,
   .bitgak-chart-body .chart-top-btn {
-    height: 32px !important;
-    min-height: 32px !important;
-    border-radius: 11px !important;
+    height: 34px !important;
+    min-height: 34px !important;
+    border-radius: 12px !important;
     font-size: 12px !important;
-    padding: 0 9px !important;
+    padding: 0 12px !important;
+    line-height: 1 !important;
     white-space: nowrap !important;
   }
 
   .bitgak-chart-body .tv-interval-btn {
-    min-width: 74px !important;
+    min-width: 76px !important;
+  }
+
+  .bitgak-chart-body #openIndicatorBtn {
+    min-width: 84px !important;
+  }
+
+  .bitgak-chart-body #openMobileIndicatorsBtn {
+    min-width: 96px !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 6px !important;
   }
 
   .bitgak-chart-body .mobile-active-indicator-badge {
@@ -6281,149 +6300,93 @@ html.bitgak-y-axis-scaling .tv-chart,
   }
 
   .bitgak-chart-body .bv-drawing-toolbar {
-    grid-column: 1 / -1 !important;
-    order: 20 !important;
+    grid-area: tools !important;
+    order: initial !important;
     width: 100% !important;
     max-width: 100% !important;
     min-width: 0 !important;
-    height: 33px !important;
-    min-height: 33px !important;
+    height: 36px !important;
     margin: 0 !important;
-    padding: 2px !important;
-    display: flex !important;
-    flex-wrap: nowrap !important;
+    padding: 3px !important;
+    display: inline-flex !important;
     align-items: center !important;
     justify-content: flex-start !important;
-    gap: 2px !important;
-    overflow: hidden !important;
-    overflow-x: hidden !important;
-    border-radius: 13px !important;
-    border: 1px solid rgba(148, 163, 184, 0.22) !important;
-    background: #f8fafc !important;
-    box-shadow: inset 0 -1px 0 rgba(148, 163, 184, 0.14) !important;
+    gap: 4px !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    white-space: nowrap !important;
+    border-radius: 14px !important;
+    background: rgba(15, 23, 42, 0.04) !important;
+    -webkit-overflow-scrolling: touch !important;
     scrollbar-width: none !important;
-    -ms-overflow-style: none !important;
   }
 
   .bitgak-chart-body .bv-drawing-toolbar::-webkit-scrollbar {
     display: none !important;
   }
 
-  .bitgak-chart-body .bv-drawing-toolbar .tool-btn,
-  .bitgak-chart-body .bv-drawing-toolbar [data-tool] {
-    flex: 0 0 26px !important;
-    width: 26px !important;
-    min-width: 26px !important;
-    max-width: 26px !important;
-    height: 28px !important;
-    min-height: 28px !important;
-    padding: 0 !important;
-    border-radius: 9px !important;
-    font-size: 13px !important;
-    line-height: 1 !important;
-    display: grid !important;
-    place-items: center !important;
-  }
-
-  .bitgak-chart-body .bv-drawing-toolbar .tool-btn svg,
-  .bitgak-chart-body .bv-drawing-toolbar [data-tool] svg {
-    width: 15px !important;
-    height: 15px !important;
-    display: block !important;
+  .bitgak-chart-body .tool-btn {
+    flex: 0 0 30px !important;
+    width: 30px !important;
+    height: 30px !important;
+    min-width: 30px !important;
   }
 
   .bitgak-chart-body .bv-drawing-toolbar .bv-drawing-continuous-btn,
-  .bitgak-chart-body .bv-drawing-toolbar [data-drawing-continuous] {
-    flex: 0 0 42px !important;
-    width: 42px !important;
-    min-width: 42px !important;
-    max-width: 42px !important;
-    height: 28px !important;
-    padding: 0 3px !important;
-    font-size: 10.5px !important;
-    letter-spacing: -0.06em !important;
-    white-space: nowrap !important;
+  .bitgak-chart-body .bv-left-tools .bv-drawing-continuous-btn {
+    flex: 0 0 auto !important;
+    min-width: 52px !important;
+    width: auto !important;
+    padding-left: 10px !important;
+    padding-right: 10px !important;
   }
 
-  .bitgak-chart-body .bv-drawing-toolbar [data-tool].has-custom-default::after {
-    right: 3px !important;
-    bottom: 3px !important;
-    width: 5px !important;
-    height: 5px !important;
-    box-shadow: 0 0 0 1.5px rgba(255,255,255,.82) !important;
+  .bitgak-chart-body .chart-top-spacer,
+  .bitgak-chart-body .chart-mode-text {
+    display: none !important;
   }
 
   .bitgak-chart-body .ohlc-info {
-    height: 32px !important;
-    flex-basis: 32px !important;
-    padding: 8px 10px 0 !important;
+    flex: 0 0 36px !important;
+    height: 36px !important;
+    min-height: 36px !important;
+    padding: 9px 10px 0 !important;
     font-size: 12px !important;
+    line-height: 1.2 !important;
+    position: relative !important;
+    z-index: 50 !important;
     overflow-x: auto !important;
+    overflow-y: hidden !important;
+    white-space: nowrap !important;
+    border-top: 1px solid #eef2f7 !important;
+    border-bottom: 1px solid #e5edf6 !important;
+    background: #ffffff !important;
     scrollbar-width: none !important;
   }
 
   .bitgak-chart-body .ohlc-info::-webkit-scrollbar {
     display: none !important;
   }
-}
 
-@media (max-width: 390px) {
-  .bitgak-chart-body .chart-card-top {
-    gap: 6px 5px !important;
-    padding-left: 8px !important;
-    padding-right: 8px !important;
-  }
-
-  .bitgak-chart-body .bv-drawing-toolbar {
-    gap: 1px !important;
-  }
-
-  .bitgak-chart-body .bv-drawing-toolbar .tool-btn,
-  .bitgak-chart-body .bv-drawing-toolbar [data-tool] {
-    flex-basis: 24px !important;
-    width: 24px !important;
-    min-width: 24px !important;
-    max-width: 24px !important;
-  }
-
-  .bitgak-chart-body .bv-drawing-toolbar .bv-drawing-continuous-btn,
-  .bitgak-chart-body .bv-drawing-toolbar [data-drawing-continuous] {
-    flex-basis: 38px !important;
-    width: 38px !important;
-    min-width: 38px !important;
-    max-width: 38px !important;
-    font-size: 10px !important;
-  }
-
-  .bitgak-chart-body #openMobileIndicatorsBtn {
-    min-width: 82px !important;
-  }
-}
-
-/* iPad mini/Air 등 태블릿 세로 화면에서도 상단 버튼/드로잉툴이 PC 규칙에 끼지 않게 방어 */
-@media (min-width: 761px) and (max-width: 1120px) {
-  .bitgak-chart-body .chart-card-top {
-    flex-wrap: wrap !important;
+  .bitgak-chart-body .chart-wrap,
+  .bitgak-chart-body .chart-wrap-v5 {
+    flex: 1 1 auto !important;
     height: auto !important;
-    min-height: 92px !important;
-    align-items: center !important;
-    gap: 8px !important;
-    padding: 9px 10px !important;
-    overflow: visible !important;
-  }
-
-  .bitgak-chart-body .chart-title {
-    flex: 0 0 100% !important;
-    width: 100% !important;
+    min-height: 0 !important;
     min-width: 0 !important;
   }
+}
 
+/* 1120px 근처에서 미디어쿼리 경계 때문에 순간 겹치는 현상 방지 */
+@media (min-width: 1081px) and (max-width: 1120px) {
   .bitgak-chart-body .bv-drawing-toolbar {
-    flex: 0 0 100% !important;
-    width: 100% !important;
     max-width: 100% !important;
-    margin-left: 0 !important;
-    overflow: hidden !important;
-    gap: 3px !important;
+    width: 100% !important;
+    overflow-x: auto !important;
+    scrollbar-width: none !important;
+  }
+
+  .bitgak-chart-body .bv-drawing-toolbar::-webkit-scrollbar {
+    display: none !important;
   }
 }
