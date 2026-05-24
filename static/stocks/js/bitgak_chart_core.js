@@ -1934,152 +1934,6 @@
     return value ? { point, value } : null;
   }
 
-  function isTouchLikeDrawingEvent(event) {
-    return !!(event && (
-      event.pointerType === "touch" ||
-      event.pointerType === "pen" ||
-      isMobileViewport()
-    ));
-  }
-
-  function shouldAutoReturnCursorAfterDrawing(event) {
-    return !!(isMobileViewport() || isTouchLikeDrawingEvent(event));
-  }
-
-  function drawingPointDistance(drawing) {
-    if (!drawing || !drawing.start || !drawing.end) return 0;
-    const p1 = valueToPoint(drawing.start);
-    const p2 = valueToPoint(drawing.end);
-    if (!p1 || !p2) return 0;
-    return Math.hypot(p2.x - p1.x, p2.y - p1.y);
-  }
-
-  function makeDefaultFiboThirdValue(drawing) {
-    if (!drawing || !drawing.start || !drawing.end) return drawing && drawing.end ? drawing.end : null;
-
-    const p1 = valueToPoint(drawing.start);
-    const p2 = valueToPoint(drawing.end);
-    if (!p1 || !p2) return drawing.end;
-
-    const dx = p2.x - p1.x;
-    const dy = p2.y - p1.y;
-    const len = Math.sqrt(dx * dx + dy * dy);
-    if (!len) return drawing.end;
-
-    const nx = -dy / len;
-    const ny = dx / len;
-    const offset = Math.max(44, Math.min(96, len * 0.28));
-
-    const candidates = [
-      { x: p1.x + nx * offset, y: p1.y + ny * offset },
-      { x: p1.x - nx * offset, y: p1.y - ny * offset },
-      { x: p2.x + nx * offset, y: p2.y + ny * offset },
-      { x: p2.x - nx * offset, y: p2.y - ny * offset },
-    ];
-
-    for (let i = 0; i < candidates.length; i++) {
-      const value = pointToChartValue(candidates[i]);
-      if (value) return value;
-    }
-
-    return drawing.end;
-  }
-
-  function startTouchDragDrawing(event, activeTool) {
-    const active = normalizeDrawingTool(activeTool);
-    if (!isTouchLikeDrawingEvent(event)) return null;
-    if (!["trend", "extend", "circle", "fibo"].includes(active)) return null;
-    if (state.tempDrawing && state.tempDrawing.type === active) return null;
-
-    const resolved = pointFromEvent(event);
-    if (!resolved) return null;
-
-    const value = resolved.value;
-    const drawing = active === "fibo"
-      ? normalizeDrawing({ id: makeDrawingId("fibo"), type: "fibo", start: value, end: value, third: null })
-      : normalizeDrawing({ id: makeDrawingId(active), type: active, start: value, end: value });
-
-    if (!drawing) return null;
-
-    state.tempDrawing = drawing;
-    state.isDrawing = true;
-    state.startPoint = value;
-    state.fiboStage = active === "fibo" ? 1 : 0;
-    renderDrawings();
-
-    return { id: drawing.id, tool: active };
-  }
-
-  function cancelTouchDragTemp(candidate) {
-    if (!candidate || !candidate.id) return false;
-    if (!state.tempDrawing || state.tempDrawing.id !== candidate.id) return false;
-
-    state.tempDrawing = null;
-    state.isDrawing = false;
-    state.startPoint = null;
-    state.fiboStage = 0;
-    renderDrawings();
-    return true;
-  }
-
-  function commitTempDrawingDirect(tempDrawing) {
-    const fixed = normalizeDrawing(tempDrawing);
-    if (!fixed) return false;
-
-    const distance = drawingPointDistance(fixed);
-    if (["trend", "extend", "circle", "fibo"].includes(fixed.type) && distance < 8) return false;
-
-    if (fixed.type === "fibo" && !fixed.third) {
-      fixed.third = makeDefaultFiboThirdValue(fixed);
-    }
-
-    pushDrawingHistory();
-    state.drawings.push(fixed);
-    saveDrawingsToStorage();
-    state.selectedDrawingId = fixed.id;
-    state.tempDrawing = null;
-    state.isDrawing = false;
-    state.startPoint = null;
-    state.fiboStage = 0;
-    return true;
-  }
-
-  function completeTouchDragDrawing(event, candidate) {
-    if (!candidate || !candidate.id || !state.tempDrawing || state.tempDrawing.id !== candidate.id) return false;
-
-    const resolved = pointFromEvent(event);
-    if (resolved) {
-      if (state.tempDrawing.type === "fibo") {
-        state.tempDrawing.end = resolved.value;
-        state.tempDrawing.third = makeDefaultFiboThirdValue(state.tempDrawing);
-      } else {
-        state.tempDrawing.end = resolved.value;
-      }
-    }
-
-    const completed = commitTempDrawingDirect(state.tempDrawing);
-    if (!completed) {
-      cancelTouchDragTemp(candidate);
-      return false;
-    }
-
-    setDrawingTool("cursor", { keepSelection: true, skipPendingCommit: true });
-    return true;
-  }
-
-  function completePendingTempDrawingBeforeToolChange(nextTool) {
-    if (!state.tempDrawing) return false;
-
-    const temp = state.tempDrawing;
-    if (!["trend", "extend", "circle", "fibo"].includes(temp.type)) return false;
-
-    if (temp.type === "fibo" && temp.start && temp.end && !temp.third) {
-      temp.third = makeDefaultFiboThirdValue(temp);
-    }
-
-    return commitTempDrawingDirect(temp);
-  }
-
   function svgEl(tag, attrs) {
     const el = document.createElementNS("http://www.w3.org/2000/svg", tag);
     Object.entries(attrs || {}).forEach(function ([key, value]) {
@@ -2641,8 +2495,7 @@
     drawCrosshairGuide();
   }
 
-  function completeDrawing(drawing, options) {
-    options = options || {};
+  function completeDrawing(drawing) {
     if (!drawing) return;
     const fixed = normalizeDrawing(drawing);
     if (!fixed) return;
@@ -2655,12 +2508,18 @@
     state.startPoint = null;
     state.fiboStage = 0;
 
-    const forceCursor = options.forceCursor || shouldAutoReturnCursorAfterDrawing(options.event);
+    if (isMobileViewport()) {
+      // 모바일에서는 연속 그리기가 켜져 있어도 한 번 그리고 바로 십자/커서로 복귀한다.
+      state.continuousDrawing = false;
+      syncDrawingContinuousButtons();
+      setDrawingTool("cursor", { keepSelection: true });
+      return;
+    }
 
-    if (!forceCursor && state.continuousDrawing && normalizeDrawingTool(state.activeTool) === fixed.type) {
-      setDrawingTool(fixed.type, { keepSelection: true, skipPendingCommit: true });
+    if (state.continuousDrawing && normalizeDrawingTool(state.activeTool) === fixed.type) {
+      setDrawingTool(fixed.type, { keepSelection: true });
     } else {
-      setDrawingTool("cursor", { keepSelection: true, skipPendingCommit: true });
+      setDrawingTool("cursor", { keepSelection: true });
     }
   }
 
@@ -3576,6 +3435,36 @@
     requestAnimationFrame(renderDrawings);
   }
 
+
+  function makeDefaultFiboThirdValue(startValue, endValue) {
+    const p1 = valueToPoint(startValue);
+    const p2 = valueToPoint(endValue);
+    const size = getLayerSize();
+    if (!p1 || !p2) return endValue || startValue;
+
+    const dx = p2.x - p1.x;
+    const dy = p2.y - p1.y;
+    const len = Math.sqrt(dx * dx + dy * dy);
+    if (!len) return endValue || startValue;
+
+    const nx = -dy / len;
+    const ny = dx / len;
+    let distance = Math.max(62, Math.min(150, size.height * 0.17));
+    let tx = p1.x + nx * distance;
+    let ty = p1.y + ny * distance;
+
+    if (ty < 8 || ty > size.height - 8) {
+      distance = -distance;
+      tx = p1.x + nx * distance;
+      ty = p1.y + ny * distance;
+    }
+
+    tx = clampNumber(tx, 2, Math.max(2, size.width - 2));
+    ty = clampNumber(ty, 2, Math.max(2, size.height - 2));
+
+    return pointToChartValue({ x: tx, y: ty }) || endValue || startValue;
+  }
+
   function processDrawingToolTap(event) {
     const active = normalizeDrawingTool(state.activeTool);
     if (active === "cursor") return false;
@@ -3756,6 +3645,36 @@
       drawingLayer.style.cursor = "crosshair";
     }
 
+    if (!drawingDrag && drawingPointerCandidate && active !== "cursor" && resolved) {
+      const dx = Number(event.clientX || 0) - Number(drawingPointerCandidate.startClientX || 0);
+      const dy = Number(event.clientY || 0) - Number(drawingPointerCandidate.startClientY || 0);
+      const moved = Math.hypot(dx, dy) >= 4;
+
+      if (moved && ["trend", "extend", "circle", "fibo"].includes(active)) {
+        if (!state.tempDrawing || state.tempDrawing.type !== active) {
+          state.tempDrawing = normalizeDrawing({
+            id: makeDrawingId(active),
+            type: active,
+            start: drawingPointerCandidate.startValue || resolved.value,
+            end: resolved.value,
+            third: active === "fibo" ? null : undefined,
+          });
+          state.fiboStage = active === "fibo" ? 1 : 0;
+          state.isDrawing = true;
+          state.startPoint = drawingPointerCandidate.startValue || resolved.value;
+        }
+
+        if (active === "fibo") {
+          state.tempDrawing.end = resolved.value;
+        } else {
+          state.tempDrawing.end = resolved.value;
+        }
+
+        renderDrawings();
+        return;
+      }
+    }
+
     if (drawingDrag) return;
 
     if (state.tempDrawing && resolved) {
@@ -3774,13 +3693,13 @@
     const active = normalizeDrawingTool(state.activeTool);
 
     if (active !== "cursor") {
-      const touchDrag = startTouchDragDrawing(event, active);
+      const resolved = pointFromEvent(event);
       drawingPointerCandidate = {
         pointerId: event.pointerId,
         startClientX: event.clientX,
         startClientY: event.clientY,
+        startValue: resolved ? resolved.value : null,
         tool: active,
-        touchDrag: touchDrag,
       };
       try { drawingLayer.setPointerCapture(event.pointerId); } catch (e) {}
       event.preventDefault();
@@ -3855,31 +3774,63 @@
 
   function handleDrawingPointerUp(event) {
     if (!drawingDrag && drawingPointerCandidate && normalizeDrawingTool(state.activeTool) !== "cursor") {
+      const active = normalizeDrawingTool(state.activeTool);
       const candidate = drawingPointerCandidate;
-      const dx = event.clientX - candidate.startClientX;
-      const dy = event.clientY - candidate.startClientY;
-      const distance = Math.hypot(dx, dy);
-      const isTap = distance < 12;
+      const dx = Number(event.clientX || 0) - Number(candidate.startClientX || 0);
+      const dy = Number(event.clientY || 0) - Number(candidate.startClientY || 0);
+      const isTap = Math.hypot(dx, dy) < 12;
+      const resolved = pointFromEvent(event);
 
       try { drawingLayer.releasePointerCapture(candidate.pointerId); } catch (e) {}
       drawingPointerCandidate = null;
 
-      if (candidate.touchDrag && !isTap) {
-        suppressNextDrawingClick = true;
-        completeTouchDragDrawing(event, candidate.touchDrag);
-        event.preventDefault();
-        event.stopPropagation();
-        return;
-      }
-
-      if (candidate.touchDrag && isTap) {
-        cancelTouchDragTemp(candidate.touchDrag);
-      }
-
       if (isTap) {
         suppressNextDrawingClick = true;
         processDrawingToolTap(event);
+        return;
       }
+
+      if (resolved) {
+        event.preventDefault();
+        event.stopPropagation();
+
+        if (active === "hline") {
+          completeDrawing({ id: makeDrawingId("hline"), type: "hline", start: resolved.value });
+          return;
+        }
+
+        if (active === "vline") {
+          completeDrawing({ id: makeDrawingId("vline"), type: "vline", start: resolved.value });
+          return;
+        }
+
+        if (["trend", "extend", "circle"].includes(active)) {
+          const startValue = candidate.startValue || resolved.value;
+          const drawing = state.tempDrawing && state.tempDrawing.type === active
+            ? state.tempDrawing
+            : normalizeDrawing({ id: makeDrawingId(active), type: active, start: startValue, end: resolved.value });
+          drawing.end = resolved.value;
+          completeDrawing(drawing);
+          return;
+        }
+
+        if (active === "fibo") {
+          const startValue = candidate.startValue || resolved.value;
+          const drawing = state.tempDrawing && state.tempDrawing.type === "fibo"
+            ? state.tempDrawing
+            : normalizeDrawing({ id: makeDrawingId("fibo"), type: "fibo", start: startValue, end: resolved.value, third: null });
+          drawing.end = resolved.value;
+          drawing.third = drawing.third || makeDefaultFiboThirdValue(drawing.start, drawing.end);
+          completeDrawing(drawing);
+          return;
+        }
+      }
+
+      state.tempDrawing = null;
+      state.isDrawing = false;
+      state.startPoint = null;
+      state.fiboStage = 0;
+      renderDrawings();
       return;
     }
 
@@ -4538,12 +4489,6 @@
   function setDrawingTool(tool, options) {
     options = options || {};
     const fixed = normalizeDrawingTool(tool);
-    const previousTool = normalizeDrawingTool(state.activeTool);
-
-    if (!options.skipPendingCommit && fixed !== previousTool) {
-      completePendingTempDrawingBeforeToolChange(fixed);
-    }
-
     state.activeTool = fixed;
     state.tempDrawing = null;
     state.isDrawing = false;
