@@ -89,7 +89,7 @@ pd = _LazyPandas()
 krx_stock = _LazyKrxStock()
 yf = _LazyYFinance()
 
-from .models import StockSymbol, UserStockStorage
+from .models import ChartDrawingState, StockSymbol, UserStockStorage
 
 
 DERIVATIVE_KEYWORDS = [
@@ -1809,6 +1809,223 @@ def portfolio_api(request):
         },
         json_dumps_params={"ensure_ascii": False},
     )
+
+
+# -----------------------------------------------------------------------------
+# 로그인 사용자별 차트 드로잉 서버 저장 API
+# -----------------------------------------------------------------------------
+# 프론트에서 localStorage에만 저장하던 차트 드로잉과 도구 기본 속성을
+# 로그인 계정 기준으로 DB에 저장합니다. 비로그인 사용자는 기존처럼
+# 브라우저 임시 저장을 사용할 수 있도록 GET은 빈 payload를 반환하고,
+# POST만 401 JSON을 반환합니다.
+
+
+def _default_drawing_tool_defaults():
+    return {}
+
+
+def _normalize_drawing_tool_defaults(settings):
+    if not isinstance(settings, dict):
+        return _default_drawing_tool_defaults()
+
+    allowed_tools = {"trend", "extend", "hline", "vline", "circle", "fibo"}
+    normalized = {}
+
+    for tool, raw in settings.items():
+        tool_key = str(tool or "").strip().lower()[:32]
+
+        if tool_key not in allowed_tools or not isinstance(raw, dict):
+            continue
+
+        item = {}
+
+        for key, value in raw.items():
+            key = str(key or "")[:40]
+
+            if key in {"color", "fillColor", "dash"}:
+                item[key] = str(value or "")[:80]
+            elif key in {"width", "opacity", "fillOpacity", "borderOpacity"}:
+                try:
+                    item[key] = float(value)
+                except (TypeError, ValueError):
+                    continue
+            elif key in {"extendLeft", "extendRight", "fill"}:
+                item[key] = bool(value)
+            elif key in {"levels", "fiboLevels"}:
+                if isinstance(value, list):
+                    item[key] = value[:20]
+
+        if item:
+            normalized[tool_key] = item
+
+    return normalized
+
+
+def _normalize_chart_drawings(drawings):
+    if not isinstance(drawings, list):
+        return []
+
+    normalized = []
+    allowed_types = {"trend", "extend", "hline", "vline", "circle", "fibo"}
+
+    for index, drawing in enumerate(drawings[:600]):
+        if not isinstance(drawing, dict):
+            continue
+
+        item = dict(drawing)
+        item["id"] = str(item.get("id") or f"drawing_{index + 1}")[:120]
+        item["type"] = str(item.get("type") or "trend").strip().lower()[:32]
+
+        if item["type"] not in allowed_types:
+            continue
+
+        if "color" in item:
+            item["color"] = str(item.get("color") or "")[:80]
+        if "fillColor" in item:
+            item["fillColor"] = str(item.get("fillColor") or "")[:80]
+
+        for bool_key in ["extendLeft", "extendRight", "fill"]:
+            if bool_key in item:
+                item[bool_key] = bool(item[bool_key])
+
+        for number_key in ["width", "opacity", "fillOpacity", "borderOpacity"]:
+            if number_key in item:
+                try:
+                    item[number_key] = float(item[number_key])
+                except (TypeError, ValueError):
+                    item.pop(number_key, None)
+
+        if isinstance(item.get("fiboLevels"), list):
+            item["fiboLevels"] = item["fiboLevels"][:20]
+        if isinstance(item.get("levels"), list):
+            item["levels"] = item["levels"][:20]
+
+        normalized.append(item)
+
+    return normalized
+
+
+@require_http_methods(["GET", "POST"])
+def chart_drawings_api(request, code):
+    stock_code = _clean_code(code)
+
+    if not request.user.is_authenticated:
+        if request.method == "GET":
+            return JsonResponse(
+                {
+                    "ok": True,
+                    "authenticated": False,
+                    "stockCode": stock_code,
+                    "drawings": [],
+                    "message": "로그인하지 않아 서버 드로잉 저장을 사용하지 않습니다.",
+                },
+                json_dumps_params={"ensure_ascii": False},
+            )
+
+        return JsonResponse(
+            {
+                "ok": False,
+                "authenticated": False,
+                "message": "로그인 후 서버 드로잉 저장을 사용할 수 있습니다.",
+            },
+            status=401,
+            json_dumps_params={"ensure_ascii": False},
+        )
+
+    state_obj, _ = ChartDrawingState.objects.get_or_create(
+        user=request.user,
+        stock_code=stock_code,
+        defaults={"drawings": []},
+    )
+
+    if request.method == "GET":
+        drawings = _normalize_chart_drawings(state_obj.drawings)
+        return JsonResponse(
+            {
+                "ok": True,
+                "authenticated": True,
+                "stockCode": stock_code,
+                "drawings": drawings,
+                "updatedAt": state_obj.updated_at.isoformat() if state_obj.updated_at else None,
+            },
+            json_dumps_params={"ensure_ascii": False},
+        )
+
+    data = _json_body(request)
+    drawings = _normalize_chart_drawings(data.get("drawings", data))
+    state_obj.drawings = drawings
+    state_obj.save(update_fields=["drawings", "updated_at"])
+
+    return JsonResponse(
+        {
+            "ok": True,
+            "authenticated": True,
+            "stockCode": stock_code,
+            "drawings": state_obj.drawings,
+            "updatedAt": state_obj.updated_at.isoformat() if state_obj.updated_at else None,
+        },
+        json_dumps_params={"ensure_ascii": False},
+    )
+
+
+@require_http_methods(["GET", "POST"])
+def drawing_tool_settings_api(request):
+    if not request.user.is_authenticated:
+        if request.method == "GET":
+            return JsonResponse(
+                {
+                    "ok": True,
+                    "authenticated": False,
+                    "settings": {},
+                    "drawingToolDefaults": {},
+                    "message": "로그인하지 않아 서버 도구 기본속성 저장을 사용하지 않습니다.",
+                },
+                json_dumps_params={"ensure_ascii": False},
+            )
+
+        return JsonResponse(
+            {
+                "ok": False,
+                "authenticated": False,
+                "message": "로그인 후 서버 도구 기본속성 저장을 사용할 수 있습니다.",
+            },
+            status=401,
+            json_dumps_params={"ensure_ascii": False},
+        )
+
+    storage, _ = UserStockStorage.objects.get_or_create(user=request.user)
+
+    if request.method == "GET":
+        settings = _normalize_drawing_tool_defaults(getattr(storage, "drawing_tool_defaults", {}) or {})
+        return JsonResponse(
+            {
+                "ok": True,
+                "authenticated": True,
+                "settings": settings,
+                "drawingToolDefaults": settings,
+                "updatedAt": storage.updated_at.isoformat() if storage.updated_at else None,
+            },
+            json_dumps_params={"ensure_ascii": False},
+        )
+
+    data = _json_body(request)
+    settings = _normalize_drawing_tool_defaults(
+        data.get("settings") or data.get("drawingToolDefaults") or data
+    )
+    storage.drawing_tool_defaults = settings
+    storage.save(update_fields=["drawing_tool_defaults", "updated_at"])
+
+    return JsonResponse(
+        {
+            "ok": True,
+            "authenticated": True,
+            "settings": storage.drawing_tool_defaults,
+            "drawingToolDefaults": storage.drawing_tool_defaults,
+            "updatedAt": storage.updated_at.isoformat() if storage.updated_at else None,
+        },
+        json_dumps_params={"ensure_ascii": False},
+    )
+
 
 def features_view(request):
     return render(request, "stocks/features.html", {

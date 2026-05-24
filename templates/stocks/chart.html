@@ -13,7 +13,9 @@
 <div
   class="bv-app"
   data-code="{{ stock_code }}"
-  data-api-url="{% url 'stocks:api_chart_data' %}"
+  data-api-url="{% url 'stocks:api_chart' %}"
+  data-drawing-api-url="{% url 'stocks:chart_drawings_api' stock_code %}"
+  data-drawing-settings-api-url="{% url 'stocks:drawing_tool_settings_api' %}"
 >
   <header class="bv-header">
     <div class="bv-logo-area">
@@ -44,7 +46,9 @@
       <button class="tool-btn" data-tool="extend" title="연장선">━</button>
       <button class="tool-btn" data-tool="hline" title="수평선">─</button>
       <button class="tool-btn" data-tool="vline" title="수직선">│</button>
+      <button class="tool-btn" data-tool="circle" title="원형 표시">○</button>
       <button class="tool-btn" data-tool="fibo" title="피보나치 채널">⌁</button>
+      <button class="tool-btn bv-drawing-continuous-btn" data-drawing-continuous="1" title="연속 그리기" aria-label="연속 그리기" aria-pressed="false">연속</button>
       <button class="tool-btn" data-tool="undo" title="마지막 삭제">↶</button>
       <button class="tool-btn" data-tool="clear" title="전체 삭제">⌂</button>
     </aside>

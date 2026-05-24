@@ -5700,3 +5700,89 @@ html.bitgak-y-axis-scaling .tv-chart,
   cursor: ns-resize !important;
   user-select: none !important;
 }
+
+/* =========================================================
+   Drawing circle + continuous mode patch
+   - 원형 표시 도구 버튼과 연속 그리기 버튼
+   - 원형 드로잉 SVG/설정창 안정화
+   ========================================================= */
+.bitgak-chart-body .bv-drawing-toolbar .bv-drawing-continuous-btn,
+.bitgak-chart-body .bv-left-tools .bv-drawing-continuous-btn,
+.bv-drawing-toolbar .bv-drawing-continuous-btn,
+.bv-left-tools .bv-drawing-continuous-btn {
+  min-width: 50px;
+  width: auto;
+  padding: 0 10px;
+  font-size: 12px;
+  font-weight: 1000;
+  letter-spacing: -0.04em;
+  white-space: nowrap;
+}
+
+.bitgak-chart-body .bv-drawing-toolbar .bv-drawing-continuous-btn.active,
+.bitgak-chart-body .bv-left-tools .bv-drawing-continuous-btn.active,
+.bv-drawing-toolbar .bv-drawing-continuous-btn.active,
+.bv-left-tools .bv-drawing-continuous-btn.active {
+  color: #ffffff !important;
+  border-color: rgba(147, 197, 253, 0.78) !important;
+  background: linear-gradient(135deg, #2563eb, #0ea5e9) !important;
+  box-shadow: 0 10px 22px rgba(37, 99, 235, 0.24) !important;
+}
+
+.bitgak-chart-body #drawingLayer .bv-drawing-circle,
+#drawingLayer .bv-drawing-circle {
+  vector-effect: non-scaling-stroke;
+  shape-rendering: geometricPrecision;
+}
+
+.bitgak-chart-body .bv-drawing-settings-modal .bv-drawing-setting-field input[type='checkbox'],
+.bv-drawing-settings-modal .bv-drawing-setting-field input[type='checkbox'] {
+  width: 18px;
+  height: 18px;
+  accent-color: #2563eb;
+}
+
+.bitgak-chart-body .bv-drawing-settings-modal .bv-drawing-setting-field input[type='number'],
+.bv-drawing-settings-modal .bv-drawing-setting-field input[type='number'] {
+  color-scheme: light;
+}
+
+/* =========================================================
+   Drawing tool default settings patch
+   - 드로잉 툴바 버튼 우클릭 기본 속성 저장 표시
+   ========================================================= */
+.bitgak-chart-body [data-tool],
+[data-tool] {
+  position: relative;
+}
+
+.bitgak-chart-body [data-tool].has-custom-default::after,
+[data-tool].has-custom-default::after {
+  content: "";
+  position: absolute;
+  right: 4px;
+  bottom: 4px;
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: var(--tool-default-color, #2563eb);
+  box-shadow:
+    0 0 0 2px rgba(255, 255, 255, .82),
+    0 4px 10px rgba(15, 23, 42, .25);
+}
+
+.bv-drawing-default-notice {
+  margin-bottom: 13px;
+  padding: 11px 12px;
+  border-radius: 13px;
+  background: rgba(37, 99, 235, .08);
+  border: 1px solid rgba(37, 99, 235, .18);
+  color: #1e3a8a;
+  font-size: 12px;
+  font-weight: 850;
+  line-height: 1.45;
+}
+
+
+/* Server drawing sync helper */
+.bv-drawing-server-status { display: none; }
