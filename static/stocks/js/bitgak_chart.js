@@ -1934,6 +1934,152 @@
     return value ? { point, value } : null;
   }
 
+  function isTouchLikeDrawingEvent(event) {
+    return !!(event && (
+      event.pointerType === "touch" ||
+      event.pointerType === "pen" ||
+      isMobileViewport()
+    ));
+  }
+
+  function shouldAutoReturnCursorAfterDrawing(event) {
+    return !!(isMobileViewport() || isTouchLikeDrawingEvent(event));
+  }
+
+  function drawingPointDistance(drawing) {
+    if (!drawing || !drawing.start || !drawing.end) return 0;
+    const p1 = valueToPoint(drawing.start);
+    const p2 = valueToPoint(drawing.end);
+    if (!p1 || !p2) return 0;
+    return Math.hypot(p2.x - p1.x, p2.y - p1.y);
+  }
+
+  function makeDefaultFiboThirdValue(drawing) {
+    if (!drawing || !drawing.start || !drawing.end) return drawing && drawing.end ? drawing.end : null;
+
+    const p1 = valueToPoint(drawing.start);
+    const p2 = valueToPoint(drawing.end);
+    if (!p1 || !p2) return drawing.end;
+
+    const dx = p2.x - p1.x;
+    const dy = p2.y - p1.y;
+    const len = Math.sqrt(dx * dx + dy * dy);
+    if (!len) return drawing.end;
+
+    const nx = -dy / len;
+    const ny = dx / len;
+    const offset = Math.max(44, Math.min(96, len * 0.28));
+
+    const candidates = [
+      { x: p1.x + nx * offset, y: p1.y + ny * offset },
+      { x: p1.x - nx * offset, y: p1.y - ny * offset },
+      { x: p2.x + nx * offset, y: p2.y + ny * offset },
+      { x: p2.x - nx * offset, y: p2.y - ny * offset },
+    ];
+
+    for (let i = 0; i < candidates.length; i++) {
+      const value = pointToChartValue(candidates[i]);
+      if (value) return value;
+    }
+
+    return drawing.end;
+  }
+
+  function startTouchDragDrawing(event, activeTool) {
+    const active = normalizeDrawingTool(activeTool);
+    if (!isTouchLikeDrawingEvent(event)) return null;
+    if (!["trend", "extend", "circle", "fibo"].includes(active)) return null;
+    if (state.tempDrawing && state.tempDrawing.type === active) return null;
+
+    const resolved = pointFromEvent(event);
+    if (!resolved) return null;
+
+    const value = resolved.value;
+    const drawing = active === "fibo"
+      ? normalizeDrawing({ id: makeDrawingId("fibo"), type: "fibo", start: value, end: value, third: null })
+      : normalizeDrawing({ id: makeDrawingId(active), type: active, start: value, end: value });
+
+    if (!drawing) return null;
+
+    state.tempDrawing = drawing;
+    state.isDrawing = true;
+    state.startPoint = value;
+    state.fiboStage = active === "fibo" ? 1 : 0;
+    renderDrawings();
+
+    return { id: drawing.id, tool: active };
+  }
+
+  function cancelTouchDragTemp(candidate) {
+    if (!candidate || !candidate.id) return false;
+    if (!state.tempDrawing || state.tempDrawing.id !== candidate.id) return false;
+
+    state.tempDrawing = null;
+    state.isDrawing = false;
+    state.startPoint = null;
+    state.fiboStage = 0;
+    renderDrawings();
+    return true;
+  }
+
+  function commitTempDrawingDirect(tempDrawing) {
+    const fixed = normalizeDrawing(tempDrawing);
+    if (!fixed) return false;
+
+    const distance = drawingPointDistance(fixed);
+    if (["trend", "extend", "circle", "fibo"].includes(fixed.type) && distance < 8) return false;
+
+    if (fixed.type === "fibo" && !fixed.third) {
+      fixed.third = makeDefaultFiboThirdValue(fixed);
+    }
+
+    pushDrawingHistory();
+    state.drawings.push(fixed);
+    saveDrawingsToStorage();
+    state.selectedDrawingId = fixed.id;
+    state.tempDrawing = null;
+    state.isDrawing = false;
+    state.startPoint = null;
+    state.fiboStage = 0;
+    return true;
+  }
+
+  function completeTouchDragDrawing(event, candidate) {
+    if (!candidate || !candidate.id || !state.tempDrawing || state.tempDrawing.id !== candidate.id) return false;
+
+    const resolved = pointFromEvent(event);
+    if (resolved) {
+      if (state.tempDrawing.type === "fibo") {
+        state.tempDrawing.end = resolved.value;
+        state.tempDrawing.third = makeDefaultFiboThirdValue(state.tempDrawing);
+      } else {
+        state.tempDrawing.end = resolved.value;
+      }
+    }
+
+    const completed = commitTempDrawingDirect(state.tempDrawing);
+    if (!completed) {
+      cancelTouchDragTemp(candidate);
+      return false;
+    }
+
+    setDrawingTool("cursor", { keepSelection: true, skipPendingCommit: true });
+    return true;
+  }
+
+  function completePendingTempDrawingBeforeToolChange(nextTool) {
+    if (!state.tempDrawing) return false;
+
+    const temp = state.tempDrawing;
+    if (!["trend", "extend", "circle", "fibo"].includes(temp.type)) return false;
+
+    if (temp.type === "fibo" && temp.start && temp.end && !temp.third) {
+      temp.third = makeDefaultFiboThirdValue(temp);
+    }
+
+    return commitTempDrawingDirect(temp);
+  }
+
   function svgEl(tag, attrs) {
     const el = document.createElementNS("http://www.w3.org/2000/svg", tag);
     Object.entries(attrs || {}).forEach(function ([key, value]) {
@@ -2495,7 +2641,8 @@
     drawCrosshairGuide();
   }
 
-  function completeDrawing(drawing) {
+  function completeDrawing(drawing, options) {
+    options = options || {};
     if (!drawing) return;
     const fixed = normalizeDrawing(drawing);
     if (!fixed) return;
@@ -2508,10 +2655,12 @@
     state.startPoint = null;
     state.fiboStage = 0;
 
-    if (state.continuousDrawing && normalizeDrawingTool(state.activeTool) === fixed.type) {
-      setDrawingTool(fixed.type, { keepSelection: true });
+    const forceCursor = options.forceCursor || shouldAutoReturnCursorAfterDrawing(options.event);
+
+    if (!forceCursor && state.continuousDrawing && normalizeDrawingTool(state.activeTool) === fixed.type) {
+      setDrawingTool(fixed.type, { keepSelection: true, skipPendingCommit: true });
     } else {
-      setDrawingTool("cursor", { keepSelection: true });
+      setDrawingTool("cursor", { keepSelection: true, skipPendingCommit: true });
     }
   }
 
@@ -3625,10 +3774,13 @@
     const active = normalizeDrawingTool(state.activeTool);
 
     if (active !== "cursor") {
+      const touchDrag = startTouchDragDrawing(event, active);
       drawingPointerCandidate = {
         pointerId: event.pointerId,
         startClientX: event.clientX,
         startClientY: event.clientY,
+        tool: active,
+        touchDrag: touchDrag,
       };
       try { drawingLayer.setPointerCapture(event.pointerId); } catch (e) {}
       event.preventDefault();
@@ -3703,11 +3855,27 @@
 
   function handleDrawingPointerUp(event) {
     if (!drawingDrag && drawingPointerCandidate && normalizeDrawingTool(state.activeTool) !== "cursor") {
-      const dx = event.clientX - drawingPointerCandidate.startClientX;
-      const dy = event.clientY - drawingPointerCandidate.startClientY;
-      const isTap = Math.hypot(dx, dy) < 12;
-      try { drawingLayer.releasePointerCapture(drawingPointerCandidate.pointerId); } catch (e) {}
+      const candidate = drawingPointerCandidate;
+      const dx = event.clientX - candidate.startClientX;
+      const dy = event.clientY - candidate.startClientY;
+      const distance = Math.hypot(dx, dy);
+      const isTap = distance < 12;
+
+      try { drawingLayer.releasePointerCapture(candidate.pointerId); } catch (e) {}
       drawingPointerCandidate = null;
+
+      if (candidate.touchDrag && !isTap) {
+        suppressNextDrawingClick = true;
+        completeTouchDragDrawing(event, candidate.touchDrag);
+        event.preventDefault();
+        event.stopPropagation();
+        return;
+      }
+
+      if (candidate.touchDrag && isTap) {
+        cancelTouchDragTemp(candidate.touchDrag);
+      }
+
       if (isTap) {
         suppressNextDrawingClick = true;
         processDrawingToolTap(event);
@@ -4370,6 +4538,12 @@
   function setDrawingTool(tool, options) {
     options = options || {};
     const fixed = normalizeDrawingTool(tool);
+    const previousTool = normalizeDrawingTool(state.activeTool);
+
+    if (!options.skipPendingCommit && fixed !== previousTool) {
+      completePendingTempDrawingBeforeToolChange(fixed);
+    }
+
     state.activeTool = fixed;
     state.tempDrawing = null;
     state.isDrawing = false;
