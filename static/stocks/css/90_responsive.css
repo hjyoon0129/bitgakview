@@ -744,127 +744,277 @@
 
 
 /* =========================================================
-   S24 Ultra / narrow mobile drawing toolbar FINAL FIX 20260524
-   - 모바일 드로잉 툴바를 가로 스크롤이 아니라 10칸 균등 그리드로 고정
-   - Android Chrome/WebView에서 보이는 회색 스크롤바/끝부분 잘림 제거
-   - 연속 버튼도 한 칸 안에 들어가도록 압축
+   Tablet drawer modal final fix 20260524
+   - iPad / Galaxy Tab / narrow desktop tablet width(761~1120px)
+   - 평단가 계산기 / 포트폴리오 drawer가 왼쪽으로 잘리거나
+     차트 위에서 반쪽만 보이는 문제 방지
+   - PC(1121px 이상)와 모바일(760px 이하) 기존 동작은 건드리지 않음
    ========================================================= */
-@media (max-width: 760px) {
-  .bitgak-chart-body .chart-card-top {
-    min-height: 118px !important;
-    grid-template-columns: auto auto auto minmax(0, 1fr) !important;
-    grid-template-rows: 24px 34px 36px !important;
-    grid-template-areas:
-      "title title title title"
-      "interval search active ."
-      "tools tools tools tools" !important;
-    gap: 8px 8px !important;
-    padding: 9px 10px 8px !important;
-    overflow: visible !important;
+@media (min-width: 761px) and (max-width: 1120px) {
+  .bitgak-chart-body {
+    --bv-tablet-header-height: 156px;
+    --bv-tablet-drawer-width: min(520px, calc(100vw - 48px));
   }
 
-  .bitgak-chart-body .bv-drawing-toolbar {
-    grid-area: tools !important;
-    display: grid !important;
-    grid-template-columns: repeat(10, minmax(0, 1fr)) !important;
-    grid-auto-flow: column !important;
-    grid-auto-columns: minmax(0, 1fr) !important;
-    align-items: center !important;
-    justify-items: stretch !important;
-    gap: 3px !important;
+  .bitgak-chart-body .bv-layout,
+  .bitgak-chart-body .bv-layout-full,
+  .bitgak-chart-body .bv-layout.bv-drawer-open,
+  .bitgak-chart-body .bv-layout-full.bv-drawer-open {
+    position: relative !important;
     width: 100% !important;
-    max-width: 100% !important;
-    min-width: 0 !important;
-    height: 36px !important;
-    min-height: 36px !important;
-    margin: 0 !important;
-    padding: 3px !important;
+    height: calc(100vh - var(--bv-tablet-header-height)) !important;
+    height: calc(100dvh - var(--bv-tablet-header-height)) !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    grid-template-rows: minmax(0, 1fr) !important;
+    column-gap: 0 !important;
     overflow: hidden !important;
-    overflow-x: hidden !important;
-    overflow-y: hidden !important;
-    overscroll-behavior: contain !important;
-    -webkit-overflow-scrolling: auto !important;
-    scrollbar-width: none !important;
-    background: #f8fafc !important;
-    border: 1px solid #dbe5f1 !important;
-    border-radius: 14px !important;
-    box-shadow: inset 0 1px 0 rgba(255,255,255,0.86) !important;
+    isolation: isolate !important;
   }
 
-  .bitgak-chart-body .bv-drawing-toolbar::-webkit-scrollbar {
-    width: 0 !important;
-    height: 0 !important;
+  .bitgak-chart-body .bv-layout > .bv-main,
+  .bitgak-chart-body .bv-layout-full > .bv-main,
+  .bitgak-chart-body .bv-layout.bv-drawer-open > .bv-main,
+  .bitgak-chart-body .bv-layout-full.bv-drawer-open > .bv-main {
+    grid-column: 1 / 2 !important;
+    grid-row: 1 / 2 !important;
+    width: 100% !important;
+    height: 100% !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    padding: 8px 12px 12px !important;
+    transform: none !important;
+    transition: none !important;
+  }
+
+  .bitgak-chart-body .bv-layout > .bv-symbol-panel,
+  .bitgak-chart-body .bv-layout-full > .bv-symbol-panel,
+  .bitgak-chart-body .bv-layout.bv-drawer-open > .bv-symbol-panel,
+  .bitgak-chart-body .bv-layout-full.bv-drawer-open > .bv-symbol-panel {
     display: none !important;
   }
 
-  .bitgak-chart-body .bv-drawing-toolbar .tool-btn,
-  .bitgak-chart-body .bv-drawing-toolbar [data-tool],
-  .bitgak-chart-body .bv-drawing-toolbar [data-drawing-continuous] {
+  .bitgak-chart-body .bv-layout.bv-drawer-open::before,
+  .bitgak-chart-body .bv-layout-full.bv-drawer-open::before {
+    content: "" !important;
+    position: fixed !important;
+    left: 0 !important;
+    right: 0 !important;
+    top: var(--bv-tablet-header-height) !important;
+    bottom: 0 !important;
+    z-index: 2147482000 !important;
+    display: block !important;
+    background: rgba(2, 6, 23, 0.58) !important;
+    backdrop-filter: blur(7px) !important;
+    -webkit-backdrop-filter: blur(7px) !important;
+    pointer-events: auto !important;
+  }
+
+  .bitgak-chart-body .bv-left-panel.bv-tool-drawer,
+  .bitgak-chart-body .bv-layout > .bv-left-panel.bv-tool-drawer,
+  .bitgak-chart-body .bv-layout-full > .bv-left-panel.bv-tool-drawer,
+  .bitgak-chart-body .bv-layout.bv-drawer-open > .bv-left-panel.bv-tool-drawer,
+  .bitgak-chart-body .bv-layout-full.bv-drawer-open > .bv-left-panel.bv-tool-drawer {
+    position: fixed !important;
+    left: 50vw !important;
+    right: auto !important;
+    top: calc(50vh + 78px) !important;
+    top: calc(50dvh + 78px) !important;
+    bottom: auto !important;
+    width: var(--bv-tablet-drawer-width) !important;
+    min-width: 0 !important;
+    max-width: var(--bv-tablet-drawer-width) !important;
+    height: auto !important;
+    max-height: calc(100vh - 188px) !important;
+    max-height: calc(100dvh - 188px) !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
+    z-index: 2147483000 !important;
+    border-radius: 24px !important;
+    opacity: 0 !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+    transform: translate3d(-50%, -50%, 0) scale(0.985) !important;
+    filter: none !important;
+    transform-origin: center center !important;
+    transition:
+      opacity 220ms ease,
+      transform 260ms cubic-bezier(.22, .72, .18, 1),
+      visibility 0s linear 260ms !important;
+  }
+
+  .bitgak-chart-body .bv-layout.bv-drawer-open > .bv-left-panel.bv-tool-drawer,
+  .bitgak-chart-body .bv-layout-full.bv-drawer-open > .bv-left-panel.bv-tool-drawer,
+  .bitgak-chart-body .bv-left-panel.bv-tool-drawer.open {
+    opacity: 1 !important;
+    visibility: visible !important;
+    pointer-events: auto !important;
+    transform: translate3d(-50%, -50%, 0) scale(1) !important;
+    filter: none !important;
+    transition:
+      opacity 220ms ease,
+      transform 260ms cubic-bezier(.22, .72, .18, 1),
+      visibility 0s linear 0s !important;
+  }
+
+  .bitgak-chart-body .bv-left-panel.bv-tool-drawer.bv-drawer-closing {
+    opacity: 0 !important;
+    pointer-events: none !important;
+    transform: translate3d(-50%, -50%, 0) scale(0.985) !important;
+  }
+
+  .bitgak-chart-body .bv-tool-drawer-head {
+    flex: 0 0 auto !important;
+    padding: 14px 16px 12px !important;
+  }
+
+  .bitgak-chart-body .bv-tool-drawer-tabs {
+    flex: 0 0 auto !important;
+    margin: 0 !important;
+    padding: 10px 14px !important;
+    gap: 8px !important;
+  }
+
+  .bitgak-chart-body .bv-left-panel.bv-tool-drawer .bv-drawer-view {
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    max-height: calc(100vh - 292px) !important;
+    max-height: calc(100dvh - 292px) !important;
+    padding: 0 14px 14px !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    overscroll-behavior: contain !important;
+    scrollbar-gutter: stable !important;
+  }
+
+  .bitgak-chart-body .bv-left-panel.bv-tool-drawer .bv-drawer-view:not(.active) {
+    display: none !important;
+  }
+
+  .bitgak-chart-body .bv-left-panel.bv-tool-drawer .bv-drawer-view.active {
+    display: block !important;
+  }
+
+  .bitgak-chart-body .avg-calc-card,
+  .bitgak-chart-body .portfolio-panel,
+  .bitgak-chart-body .portfolio-card,
+  .bitgak-chart-body .portfolio-summary-card {
     width: 100% !important;
     min-width: 0 !important;
-    max-width: none !important;
-    height: 30px !important;
-    min-height: 30px !important;
-    flex: 0 1 auto !important;
-    flex-basis: auto !important;
-    padding: 0 !important;
-    margin: 0 !important;
-    border-radius: 10px !important;
-    display: grid !important;
-    place-items: center !important;
-    line-height: 1 !important;
-    font-size: 14px !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    overflow-x: hidden !important;
+  }
+
+  .bitgak-chart-body .avg-calc-card {
+    padding: 15px 13px !important;
+    border-radius: 18px !important;
+  }
+
+  .bitgak-chart-body .avg-calc-row {
+    grid-template-columns: 40px minmax(112px, 1fr) 64px 86px 30px !important;
+    gap: 6px !important;
+  }
+
+  .bitgak-chart-body .avg-calc-row input,
+  .bitgak-chart-body .avg-calc-row select {
+    height: 34px !important;
+    min-width: 0 !important;
+    font-size: 12px !important;
+  }
+
+  .bitgak-chart-body .avg-calc-row output {
+    max-width: 86px !important;
+    min-width: 0 !important;
+    font-size: 11px !important;
     overflow: hidden !important;
-    text-align: center !important;
+    text-overflow: ellipsis !important;
     white-space: nowrap !important;
   }
 
-  .bitgak-chart-body .bv-drawing-toolbar [data-tool] svg {
-    width: 17px !important;
-    height: 17px !important;
-    max-width: 17px !important;
-    max-height: 17px !important;
+  .bitgak-chart-body .avg-row-actions {
+    width: 30px !important;
+    min-width: 30px !important;
+    gap: 3px !important;
   }
 
-  .bitgak-chart-body .bv-drawing-toolbar .bv-drawing-continuous-btn {
-    min-width: 0 !important;
-    width: 100% !important;
-    padding: 0 !important;
-    font-size: 11px !important;
-    font-weight: 1000 !important;
-    letter-spacing: -0.08em !important;
+  .bitgak-chart-body .avg-row-style,
+  .bitgak-chart-body .avg-row-delete {
+    width: 24px !important;
+    height: 26px !important;
   }
 
-  .bitgak-chart-body .bv-drawing-toolbar [data-tool].has-custom-default::after {
-    right: 3px !important;
-    bottom: 3px !important;
-    width: 5px !important;
-    height: 5px !important;
-    box-shadow: 0 0 0 1.5px rgba(255,255,255,.90) !important;
+  .bitgak-chart-body .portfolio-summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 8px !important;
+  }
+
+  .bitgak-chart-body .portfolio-donut-wrap {
+    grid-template-columns: 124px minmax(0, 1fr) !important;
+    gap: 10px !important;
+  }
+
+  .bitgak-chart-body .portfolio-donut {
+    width: 124px !important;
+    height: 124px !important;
+  }
+
+  .bitgak-chart-body .portfolio-donut::after {
+    inset: 24px !important;
+  }
+
+  .bitgak-chart-body .portfolio-donut span {
+    inset: 34px !important;
+    font-size: 12px !important;
+  }
+
+  .bitgak-chart-body .portfolio-holding-item {
+    grid-template-columns: minmax(0, 1fr) auto !important;
+    gap: 8px !important;
   }
 }
 
-@media (max-width: 380px) {
-  .bitgak-chart-body .chart-card-top {
-    padding-left: 8px !important;
-    padding-right: 8px !important;
-    gap: 7px 6px !important;
+@media (min-width: 761px) and (max-width: 860px) {
+  .bitgak-chart-body {
+    --bv-tablet-drawer-width: min(460px, calc(100vw - 36px));
   }
 
-  .bitgak-chart-body .bv-drawing-toolbar {
-    gap: 2px !important;
-    padding: 3px 2px !important;
+  .bitgak-chart-body .bv-left-panel.bv-tool-drawer,
+  .bitgak-chart-body .bv-layout > .bv-left-panel.bv-tool-drawer,
+  .bitgak-chart-body .bv-layout-full > .bv-left-panel.bv-tool-drawer,
+  .bitgak-chart-body .bv-layout.bv-drawer-open > .bv-left-panel.bv-tool-drawer,
+  .bitgak-chart-body .bv-layout-full.bv-drawer-open > .bv-left-panel.bv-tool-drawer {
+    width: var(--bv-tablet-drawer-width) !important;
+    max-width: var(--bv-tablet-drawer-width) !important;
+    max-height: calc(100vh - 180px) !important;
+    max-height: calc(100dvh - 180px) !important;
   }
 
-  .bitgak-chart-body .bv-drawing-toolbar .tool-btn,
-  .bitgak-chart-body .bv-drawing-toolbar [data-tool],
-  .bitgak-chart-body .bv-drawing-toolbar [data-drawing-continuous] {
-    height: 29px !important;
-    font-size: 13px !important;
+  .bitgak-chart-body .bv-left-panel.bv-tool-drawer .bv-drawer-view {
+    max-height: calc(100vh - 284px) !important;
+    max-height: calc(100dvh - 284px) !important;
   }
 
-  .bitgak-chart-body .bv-drawing-toolbar [data-tool] svg {
-    width: 16px !important;
-    height: 16px !important;
+  .bitgak-chart-body .avg-calc-row {
+    grid-template-columns: 36px minmax(98px, 1fr) 58px 76px 28px !important;
+    gap: 5px !important;
   }
+
+  .bitgak-chart-body .avg-calc-card {
+    padding: 14px 12px !important;
+  }
+
+  .bitgak-chart-body .portfolio-donut-wrap {
+    grid-template-columns: 108px minmax(0, 1fr) !important;
+    gap: 9px !important;
+  }
+
+  .bitgak-chart-body .portfolio-donut {
+    width: 108px !important;
+    height: 108px !important;
+  }
+
+  .bitgak-chart-body .portfolio-donut::after { inset: 21px !important; }
+  .bitgak-chart-body .portfolio-donut span { inset: 29px !important; font-size: 11px !important; }
 }
