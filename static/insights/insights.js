@@ -1,37 +1,147 @@
 (function () {
   "use strict";
 
-  /* =========================================================
-     Bitgak Insights JS
-     - carousel 4-card paging
-     - live image preview/delete
-     - client-side strict search filtering for /insights/?q=
-     Static path: static/insights/insights.js
-     ========================================================= */
-
-  function qs(root, selector) {
-    return root ? root.querySelector(selector) : null;
+  function qs(root, selector) { return root ? root.querySelector(selector) : null; }
+  function qsa(root, selector) { return root ? Array.from(root.querySelectorAll(selector)) : []; }
+  function normalizeText(value) { return String(value || "").replace(/\s+/g, " ").trim().toLowerCase(); }
+  function onlyCode(value) { return String(value || "").replace(/[^0-9A-Za-z]/g, "").trim(); }
+  function safeJsonParse(value, fallback) { try { return JSON.parse(value || ""); } catch (e) { return fallback; } }
+  function toJson(value) { try { return JSON.stringify(value || {}, null, 0); } catch (e) { return ""; } }
+  function getIntervalLabel(value) {
+    var map = { "1h": "1시간", "2h": "2시간", "3h": "3시간", "4h": "4시간", "1d": "일", "1w": "주", "1mo": "월" };
+    return map[String(value || "1d")] || String(value || "일");
+  }
+  function setText(el, text) { if (el) el.textContent = text; }
+  function setHidden(el, hidden) {
+    if (!el) return;
+    el.hidden = !!hidden;
+    el.setAttribute("aria-hidden", hidden ? "true" : "false");
   }
 
-  function qsa(root, selector) {
-    return root ? Array.from(root.querySelectorAll(selector)) : [];
+  function absoluteUrl(url) {
+    var raw = String(url || "").trim();
+    if (!raw) return "";
+    try { return new URL(raw, window.location.origin || window.location.href).toString(); }
+    catch (e) { return raw; }
   }
 
-  function normalizeText(value) {
-    return String(value || "")
-      .replace(/\s+/g, " ")
-      .trim()
-      .toLowerCase();
+  function getCookie(name) {
+    var value = "; " + (document.cookie || "");
+    var parts = value.split("; " + name + "=");
+    if (parts.length === 2) return decodeURIComponent(parts.pop().split(";").shift());
+    return "";
   }
 
-  function closestNumber(value, fallback) {
-    var parsed = Number.parseFloat(value);
-    return Number.isFinite(parsed) ? parsed : fallback;
+  function jsonFetch(url, options) {
+    var opts = Object.assign({ method: "GET" }, options || {});
+    opts.credentials = "same-origin";
+    opts.headers = Object.assign({
+      "Accept": "application/json",
+      "X-Requested-With": "XMLHttpRequest"
+    }, opts.headers || {});
+    if (String(opts.method || "GET").toUpperCase() !== "GET") {
+      opts.headers["Content-Type"] = opts.headers["Content-Type"] || "application/json";
+      var csrf = getCookie("csrftoken");
+      if (csrf) opts.headers["X-CSRFToken"] = csrf;
+    }
+    return fetch(url, opts).then(function (res) {
+      return res.json().catch(function () { return {}; }).then(function (data) {
+        data = data || {};
+        data.__ok = res.ok;
+        data.__status = res.status;
+        return data;
+      });
+    });
+  }
+
+  var STOCK_SEARCH_CACHE = new Map();
+  var STOCK_SEARCH_ABORT = null;
+
+  function getStockSearchApiUrl(form) {
+    var explicit = form && (form.dataset.stockSearchApiUrl || form.getAttribute("data-stock-search-api-url"));
+    return explicit || "/insights/api/stock-search/";
+  }
+
+  function getChartDraftApiUrl(form) {
+    return form && (form.dataset.chartDraftUrl || form.getAttribute("data-chart-draft-url")) || "/insights/api/chart-draft/";
+  }
+
+  function normalizeDraftPayload(data) {
+    data = data || {};
+    var draft = data.draft || data;
+    return {
+      media_type: draft.media_type || draft.mediaType || "chart",
+      chart_code: onlyCode(draft.chart_code || draft.code || ""),
+      chart_name: String(draft.chart_name || draft.name || "").trim(),
+      chart_interval: normalizeIntervalForEmbed(draft.chart_interval || draft.interval || "1d"),
+      chart_snapshot: typeof draft.chart_snapshot === "string" ? draft.chart_snapshot : toJson(draft.chart_snapshot || draft.snapshot || {})
+    };
+  }
+
+  var BITGAK_LOCAL_STOCKS = [
+    { code: "005930", name: "삼성전자", market: "KOSPI" },
+    { code: "000660", name: "SK하이닉스", market: "KOSPI" },
+    { code: "066570", name: "LG전자", market: "KOSPI" },
+    { code: "005380", name: "현대차", market: "KOSPI" },
+    { code: "000270", name: "기아", market: "KOSPI" },
+    { code: "035420", name: "NAVER", market: "KOSPI" },
+    { code: "035720", name: "카카오", market: "KOSPI" },
+    { code: "051910", name: "LG화학", market: "KOSPI" },
+    { code: "373220", name: "LG에너지솔루션", market: "KOSPI" },
+    { code: "005490", name: "POSCO홀딩스", market: "KOSPI" },
+    { code: "207940", name: "삼성바이오로직스", market: "KOSPI" },
+    { code: "006400", name: "삼성SDI", market: "KOSPI" },
+    { code: "068270", name: "셀트리온", market: "KOSPI" },
+    { code: "012330", name: "현대모비스", market: "KOSPI" },
+    { code: "028260", name: "삼성물산", market: "KOSPI" },
+    { code: "000810", name: "삼성화재", market: "KOSPI" },
+    { code: "055550", name: "신한지주", market: "KOSPI" },
+    { code: "105560", name: "KB금융", market: "KOSPI" },
+    { code: "086790", name: "하나금융지주", market: "KOSPI" },
+    { code: "316140", name: "우리금융지주", market: "KOSPI" },
+    { code: "017670", name: "SK텔레콤", market: "KOSPI" },
+    { code: "030200", name: "KT", market: "KOSPI" },
+    { code: "003550", name: "LG", market: "KOSPI" },
+    { code: "096770", name: "SK이노베이션", market: "KOSPI" },
+    { code: "032830", name: "삼성생명", market: "KOSPI" },
+    { code: "034020", name: "두산에너빌리티", market: "KOSPI" },
+    { code: "042660", name: "한화오션", market: "KOSPI" },
+    { code: "010140", name: "삼성중공업", market: "KOSPI" },
+    { code: "009540", name: "HD한국조선해양", market: "KOSPI" },
+    { code: "247540", name: "에코프로비엠", market: "KOSDAQ" },
+    { code: "086520", name: "에코프로", market: "KOSDAQ" },
+    { code: "196170", name: "알테오젠", market: "KOSDAQ" },
+    { code: "091990", name: "셀트리온헬스케어", market: "KOSDAQ" }
+  ];
+
+  function compactStockText(value) {
+    return String(value || "").toLowerCase().replace(/\s+/g, "").replace(/[().,·ㆍ_\-]/g, "").trim();
+  }
+
+  function localStockMatches(query) {
+    var q = compactStockText(query);
+    if (!q) return [];
+    var codeQ = onlyCode(query);
+    return BITGAK_LOCAL_STOCKS.filter(function (item) {
+      var name = compactStockText(item.name);
+      var code = compactStockText(item.code);
+      return name.indexOf(q) !== -1 || q.indexOf(name) !== -1 || code.indexOf(compactStockText(codeQ)) !== -1;
+    }).slice(0, 8);
+  }
+
+  function firstLocalStock(query) {
+    var items = localStockMatches(query);
+    return items.length ? items[0] : null;
   }
 
   /* -----------------------------
      Carousel
   ----------------------------- */
+  function closestNumber(value, fallback) {
+    var parsed = Number.parseFloat(value);
+    return Number.isFinite(parsed) ? parsed : fallback;
+  }
+
   function initCarousel(root) {
     if (!root || root.dataset.insightReady === "1") return;
     root.dataset.insightReady = "1";
@@ -39,7 +149,6 @@
     var track = qs(root, "[data-insight-track]") || qs(root, ".insight-carousel-track") || qs(root, ".bv-insight-track");
     var prev = qs(root, "[data-insight-prev]");
     var next = qs(root, "[data-insight-next]");
-
     if (!track || !prev || !next) return;
 
     function getVisibleCards() {
@@ -52,7 +161,6 @@
     function getStep() {
       var first = qs(track, ".insight-card, .bv-insight-card");
       if (!first) return track.clientWidth;
-
       var style = window.getComputedStyle(track);
       var gap = closestNumber(style.columnGap || style.gap, 16);
       var cardWidth = first.getBoundingClientRect().width;
@@ -73,36 +181,24 @@
       track.scrollBy({ left: -getStep(), behavior: "smooth" });
       window.setTimeout(updateButtons, 380);
     });
-
     next.addEventListener("click", function (event) {
       event.preventDefault();
       track.scrollBy({ left: getStep(), behavior: "smooth" });
       window.setTimeout(updateButtons, 380);
     });
-
-    track.addEventListener("scroll", function () {
-      window.requestAnimationFrame(updateButtons);
-    }, { passive: true });
-
+    track.addEventListener("scroll", function () { window.requestAnimationFrame(updateButtons); }, { passive: true });
     window.addEventListener("resize", updateButtons, { passive: true });
     updateButtons();
   }
 
   /* -----------------------------
      Strict list search filter
-     Server search가 넓게 잡아도 카드 제목/요약 기준으로 한 번 더 걸러줌.
   ----------------------------- */
   function getCardSearchText(card) {
     if (!card) return "";
-
     var title = qs(card, "h3") ? qs(card, "h3").textContent : "";
-    var summary = qs(card, ".insight-card-summary, .bv-insight-card-body p")
-      ? qs(card, ".insight-card-summary, .bv-insight-card-body p").textContent
-      : "";
+    var summary = qs(card, ".insight-card-summary, .bv-insight-card-body p") ? qs(card, ".insight-card-summary, .bv-insight-card-body p").textContent : "";
     var imageAlt = qs(card, "img") ? qs(card, "img").getAttribute("alt") : "";
-
-    // 날짜, 버튼, 배지까지 전체 textContent로 검색하면 관련 없는 글까지 섞일 수 있어서
-    // 제목/요약/이미지 alt만 검색 대상으로 제한한다.
     return normalizeText([title, summary, imageAlt].join(" "));
   }
 
@@ -110,10 +206,8 @@
     var grid = qs(document, ".insight-grid, .bv-insight-grid");
     if (!grid || grid.dataset.insightFilterReady === "1") return;
     grid.dataset.insightFilterReady = "1";
-
     var cards = qsa(grid, ".insight-card, .bv-insight-card");
     if (!cards.length) return;
-
     var form = qs(document, ".insight-search-row form, .bv-insight-search-form, form[action*='insights']");
     var input = form ? qs(form, "input[name='q'], input[type='search']") : qs(document, "input[name='q'], input[type='search']");
     var countEl = qs(document, ".insight-count, .bv-insight-count");
@@ -121,34 +215,23 @@
     function applyFilter() {
       var query = normalizeText(input ? input.value : new URLSearchParams(window.location.search).get("q"));
       var visibleCount = 0;
-
       cards.forEach(function (card) {
         var haystack = card.dataset.searchText || getCardSearchText(card);
         card.dataset.searchText = haystack;
-
         var matched = !query || haystack.indexOf(query) !== -1;
         card.hidden = !matched;
         card.style.display = matched ? "" : "none";
         if (matched) visibleCount += 1;
       });
-
       if (countEl) countEl.textContent = visibleCount + "개";
-
       var empty = qs(document, ".insight-empty-box, .bv-insight-empty, [data-insight-empty]");
-      if (empty) {
-        empty.style.display = visibleCount === 0 ? "block" : "none";
-      }
+      if (empty) empty.style.display = visibleCount === 0 ? "block" : "none";
     }
-
-    // /insights/?q=삼성 으로 들어온 직후 바로 한 번 더 필터링
     applyFilter();
-
     if (input) {
       input.addEventListener("input", applyFilter);
       input.addEventListener("search", applyFilter);
     }
-
-    // submit은 막지 않는다. 서버 검색도 그대로 쓰되, 로딩 후 JS가 다시 좁혀준다.
   }
 
   /* -----------------------------
@@ -169,7 +252,6 @@
 
   function findOrCreateFileInput(form) {
     var input = qs(form, "[data-cover-input]") || qs(form, "input[type='file'][name='cover_image']");
-
     if (!input) {
       input = document.createElement("input");
       input.type = "file";
@@ -177,7 +259,6 @@
       input.accept = "image/*";
       form.appendChild(input);
     }
-
     input.type = "file";
     input.name = "cover_image";
     input.accept = input.accept || "image/*";
@@ -193,193 +274,1089 @@
     form.dataset.imageEditorReady = "1";
 
     var fileInput = findOrCreateFileInput(form);
-
-    // 예전 코드와 새 코드 둘 다 대응
     var removeInput = ensureHiddenInput(form, "remove_cover_image", "data-remove-cover-image");
     var deleteInput = ensureHiddenInput(form, "delete_cover_image", "data-delete-image-input");
-
     var clearCheckboxes = qsa(form, "input[type='checkbox'][name$='-clear'], input[type='checkbox'][name='cover_image-clear']");
-
     var selectBtn = qs(form, "[data-image-select], [data-image-pick]");
     var deleteBtn = qs(form, "[data-image-delete], [data-image-remove]");
     var cancelBtn = qs(form, "[data-image-cancel]");
-
     var preview = qs(form, "[data-image-preview], .insight-preview, .bv-insight-image-preview");
     var previewImg = qs(form, "[data-image-preview-img], [data-preview-img], .insight-preview img, .bv-insight-image-preview img");
     var empty = qs(form, "[data-image-preview-empty], [data-preview-empty], .insight-preview-empty, .bv-insight-image-placeholder");
     var status = qs(form, "[data-image-status], .insight-status-badge, .bv-insight-image-status");
-    var help = qs(form, "[data-image-help], .insight-help, .bv-insight-image-meta");
+    var help = qs(form, "[data-image-help]");
+    var originalSrc = previewImg ? (previewImg.getAttribute("src") || "") : "";
+    var originalHelp = help ? help.innerHTML : "";
 
-    if (!fileInput || !selectBtn || !preview) return;
-
-    if (!previewImg) {
-      previewImg = document.createElement("img");
-      previewImg.setAttribute("data-image-preview-img", "");
-      preview.prepend(previewImg);
-    }
-
-    var originalSrc = preview.dataset.initialUrl || previewImg.getAttribute("src") || "";
-    var originalHasImage = Boolean(originalSrc);
-    var originalHelp = help ? help.textContent.trim() : "";
-    var hasNewFile = false;
-    var isDeletePending = false;
-
-    function setHiddenDelete(value) {
-      removeInput.value = value ? "1" : "0";
-      deleteInput.value = value ? "1" : "0";
-      clearCheckboxes.forEach(function (box) {
-        box.checked = Boolean(value);
-      });
-    }
-
-    function setStatus(text, danger) {
+    function setStatus(text, mode) {
       if (!status) return;
       status.textContent = text || "";
-      status.style.display = text ? "inline-flex" : "none";
-      status.classList.toggle("show", Boolean(text));
-      status.classList.toggle("danger", Boolean(danger));
+      status.className = "insight-status-badge" + (mode ? " " + mode : "");
     }
-
-    function setHelp(text) {
-      if (help) help.textContent = text || "";
-    }
-
-    function showImage(src) {
-      preview.classList.remove("is-delete-pending");
-      if (!src) {
-        previewImg.removeAttribute("src");
-        preview.classList.remove("has-image");
-        if (empty) empty.style.display = "block";
-        return;
+    function setPreview(src) {
+      var has = !!src;
+      if (previewImg) {
+        if (src) previewImg.src = src;
+        else previewImg.removeAttribute("src");
       }
-      previewImg.src = src;
-      preview.classList.add("has-image");
-      if (empty) empty.style.display = "none";
+      if (preview) preview.classList.toggle("has-image", has);
+      if (empty) empty.style.display = has ? "none" : "flex";
+    }
+    function clearFlags() {
+      removeInput.value = "0";
+      deleteInput.value = "0";
+      clearCheckboxes.forEach(function (checkbox) { checkbox.checked = false; });
     }
 
-    function showEmpty(message) {
-      previewImg.removeAttribute("src");
-      preview.classList.remove("has-image");
-      if (empty) {
-        empty.style.display = "block";
-        empty.innerHTML = message || "이미지 없음<small>차트 캡처, 썸네일, 분석 이미지를 올려보세요.</small>";
-      }
-    }
-
-    function updateButtons() {
-      if (deleteBtn) deleteBtn.disabled = isDeletePending || !(originalHasImage || hasNewFile);
-      if (cancelBtn) cancelBtn.disabled = !(hasNewFile || isDeletePending);
-    }
-
-    function resetToOriginal() {
-      try { fileInput.value = ""; } catch (e) {}
-      hasNewFile = false;
-      isDeletePending = false;
-      setHiddenDelete(false);
-
-      if (originalHasImage) {
-        showImage(originalSrc);
-        setStatus("현재 적용 중", false);
-        setHelp(originalHelp || "기존 이미지가 유지됩니다.");
-      } else {
-        showEmpty("이미지 없음<small>차트 캡처, 썸네일, 분석 이미지를 올려보세요.</small>");
-        setStatus("", false);
-        setHelp(originalHelp || "이미지 없이도 글은 등록됩니다.");
-      }
-      updateButtons();
-    }
-
-    function previewFile(file) {
-      if (!file) return;
-
-      if (!file.type || !file.type.startsWith("image/")) {
-        setStatus("이미지 파일만 가능", true);
-        setHelp("JPG, PNG, WEBP 같은 이미지 파일을 선택해주세요.");
-        updateButtons();
-        return;
-      }
-
-      var reader = new FileReader();
-      reader.onload = function (event) {
-        hasNewFile = true;
-        isDeletePending = false;
-        setHiddenDelete(false);
-        showImage(event.target.result);
-        setStatus("새 이미지 선택됨", false);
-        setHelp("저장하면 이 이미지로 교체됩니다: " + file.name);
-        updateButtons();
-      };
-      reader.onerror = function () {
-        hasNewFile = true;
-        isDeletePending = false;
-        setHiddenDelete(false);
-        showEmpty("미리보기 불가<small>저장하면 선택한 파일이 업로드됩니다.</small>");
-        setStatus("새 이미지 선택됨", false);
-        setHelp("미리보기는 어렵지만 저장하면 업로드됩니다: " + file.name);
-        updateButtons();
-      };
-      reader.readAsDataURL(file);
-    }
-
-    selectBtn.addEventListener("click", function (event) {
-      event.preventDefault();
-      event.stopPropagation();
-
-      // 같은 파일을 다시 선택해도 change 이벤트가 뜨도록 초기화
-      try { fileInput.value = ""; } catch (e) {}
-      fileInput.click();
+    if (selectBtn) selectBtn.addEventListener("click", function () { fileInput.click(); });
+    if (deleteBtn) deleteBtn.addEventListener("click", function () {
+      fileInput.value = "";
+      removeInput.value = "1";
+      deleteInput.value = "1";
+      clearCheckboxes.forEach(function (checkbox) { checkbox.checked = true; });
+      setPreview("");
+      setStatus("삭제 예정", "danger");
+      if (help) help.textContent = "저장하면 대표 이미지가 삭제됩니다.";
     });
-
-    fileInput.addEventListener("click", function (event) {
-      event.stopPropagation();
+    if (cancelBtn) cancelBtn.addEventListener("click", function () {
+      fileInput.value = "";
+      clearFlags();
+      setPreview(originalSrc);
+      setStatus("취소됨", "");
+      if (help) help.innerHTML = originalHelp;
     });
-
     fileInput.addEventListener("change", function () {
       var file = fileInput.files && fileInput.files[0];
-      if (file) previewFile(file);
+      clearFlags();
+      if (!file) {
+        setPreview(originalSrc);
+        setStatus("", "");
+        return;
+      }
+      var reader = new FileReader();
+      reader.onload = function (event) { setPreview(event.target.result); };
+      reader.readAsDataURL(file);
+      setStatus("새 이미지", "ok");
+      if (help) help.textContent = file.name;
     });
+  }
 
-    if (deleteBtn) {
-      deleteBtn.addEventListener("click", function (event) {
-        event.preventDefault();
-        event.stopPropagation();
+  /* -----------------------------
+     Stock iframe chart editor
+  ----------------------------- */
+  var SNAPSHOT_REQUESTS = Object.create(null);
 
-        try { fileInput.value = ""; } catch (e) {}
-        hasNewFile = false;
-        isDeletePending = true;
-        setHiddenDelete(true);
-        preview.classList.add("is-delete-pending");
-        showEmpty("삭제 예정<small>수정하기/등록하기를 누르면 이미지가 제거됩니다.</small>");
-        setStatus("삭제 예정", true);
-        setHelp("저장하면 대표 이미지가 삭제됩니다. 취소하려면 선택/삭제 취소를 누르세요.");
-        updateButtons();
+  function buildStockFrameUrl(code, interval, mode) {
+    var fixedCode = onlyCode(code);
+    if (!fixedCode) return "";
+    var query = new URLSearchParams();
+    query.set(mode === "viewer" ? "insight_viewer" : "insight_editor", "1");
+    query.set("embed", "1");
+    if (interval) query.set("interval", interval);
+    return "/stocks/" + encodeURIComponent(fixedCode) + "/?" + query.toString();
+  }
+
+  function escapeHtml(value) {
+    return String(value || "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
+  }
+
+  function escapeAttr(value) {
+    return escapeHtml(value).replace(/`/g, "&#096;");
+  }
+
+  function escapeScriptJson(value) {
+    return JSON.stringify(value || {})
+      .replace(/</g, "\\u003c")
+      .replace(/>/g, "\\u003e")
+      .replace(/&/g, "\\u0026")
+      .split(String.fromCharCode(0x2028)).join("\\u2028")
+      .split(String.fromCharCode(0x2029)).join("\\u2029");
+  }
+
+  function normalizeIntervalForEmbed(interval) {
+    var value = String(interval || "1d").trim();
+    if (["1h", "2h", "3h", "4h", "1d", "1w", "1mo"].indexOf(value) >= 0) return value;
+    if (value === "일") return "1d";
+    if (value === "주") return "1w";
+    if (value === "월") return "1mo";
+    return "1d";
+  }
+
+  function intervalButtonHtml(current, value, label, sub) {
+    var active = normalizeIntervalForEmbed(current) === value;
+    return '<button class="tv-interval-item ' + (active ? 'active' : '') + '" type="button" data-interval="' + value + '" data-label="' + escapeAttr(label) + '" role="menuitem"><span>' + escapeHtml(label) + '</span><span class="tv-interval-sub">' + escapeHtml(sub || value.toUpperCase()) + '</span></button>';
+  }
+
+  function buildStockFrameSrcdoc(frame, code, name, interval, mode) {
+    var fixedCode = onlyCode(code);
+    var fixedName = String(name || fixedCode || "").trim();
+    var fixedInterval = normalizeIntervalForEmbed(interval || "1d");
+    var parentOrigin = window.location.origin || (window.location.protocol + "//" + window.location.host);
+    var cssUrl = absoluteUrl(frame && frame.dataset.stockCssUrl ? frame.dataset.stockCssUrl : "/static/stocks/css/bitgak_chart.css");
+    var coreUrl = absoluteUrl(frame && frame.dataset.stockCoreUrl ? frame.dataset.stockCoreUrl : "/static/stocks/js/bitgak_chart_core.js");
+    var indicatorsUrl = absoluteUrl(frame && frame.dataset.stockIndicatorsUrl ? frame.dataset.stockIndicatorsUrl : "/static/stocks/js/bitgak_indicators.js");
+    var lwUrl = absoluteUrl(frame && frame.dataset.stockLwUrl ? frame.dataset.stockLwUrl : "https://unpkg.com/lightweight-charts@5.0.8/dist/lightweight-charts.standalone.production.js");
+    var apiUrl = absoluteUrl("/stocks/api/ohlcv/" + encodeURIComponent(fixedCode) + "/");
+    var drawingUrl = absoluteUrl("/stocks/api/drawings/" + encodeURIComponent(fixedCode) + "/");
+    var drawingSettingsUrl = absoluteUrl("/stocks/api/drawing-tool-settings/");
+    var title = fixedName ? fixedName + " · " + fixedCode : fixedCode;
+    var accessJson = escapeScriptJson({
+      is_authenticated: true,
+      is_premium: true,
+      plan: "insight_embed",
+      indicator_limit: 999,
+      watchlist_limit: 999,
+      group_limit: 999,
+      drawing_limit: 999,
+      features: {}
+    });
+    var intervalLabel = { "1h": "1시간", "2h": "2시간", "3h": "3시간", "4h": "4시간", "1d": "일", "1w": "주", "1mo": "월" }[fixedInterval] || "일";
+
+    return '<!doctype html>' +
+      '<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><base href="' + escapeAttr(parentOrigin) + '/">' +
+      '<link rel="stylesheet" href="' + escapeAttr(cssUrl) + '">' +
+      '<style>' +
+      'html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#050a14;}' +
+      'body.bitgak-chart-body{width:100%;height:100%;overflow:hidden;background:#050a14;}' +
+      '.site-header{display:none!important}.site-main{position:fixed!important;inset:0!important;padding:0!important;margin:0!important;max-width:none!important;width:100vw!important;height:100vh!important;overflow:hidden!important;}' +
+      '.bv-app{width:100vw!important;height:100vh!important;min-width:0!important;min-height:0!important;display:grid!important;grid-template-rows:minmax(0,1fr)!important;overflow:hidden!important;background:#050a14!important;}' +
+      '.bv-header{display:none!important;}' +
+      '.bv-layout,.bv-layout-full{grid-row:1/2!important;height:100%!important;display:grid!important;grid-template-columns:minmax(0,1fr)!important;overflow:hidden!important;padding:0!important;}' +
+      '.bv-left-panel,.bv-symbol-panel,.bv-drawer-actions,.bv-mobile-watch-actions{display:none!important;}' +
+      '.bv-main{height:100%!important;min-height:0!important;padding:0!important;overflow:hidden!important;}' +
+      '.chart-card,.chart-card-full{height:100%!important;border-radius:0!important;border:0!important;box-shadow:none!important;}' +
+      '.chart-card-top{min-height:52px!important;flex:0 0 52px!important;padding:0 10px!important;gap:8px!important;overflow:visible!important;}' +
+      '.chart-title{min-width:110px!important;max-width:220px!important;font-size:12px!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;}' +
+      '.tv-interval-dropdown{z-index:80!important}.bv-drawing-toolbar{margin-left:4px!important;max-width:calc(100vw - 430px);overflow-x:auto;overflow-y:hidden;}' +
+      '.insight-embed-indicator-btn{height:32px;padding:0 12px;border:0;border-radius:12px;background:linear-gradient(135deg,#2563eb,#0ea5e9);color:#fff;font-size:12px;font-weight:1000;white-space:nowrap;}' +
+      '.insight-embed-side-store{position:absolute;left:-99999px;top:-99999px;width:1px;height:1px;overflow:hidden;}' +
+      '.insight-embed-indicator-dock{flex:0 0 auto;min-height:42px;padding:6px 10px;display:flex;align-items:center;gap:9px;border-top:1px solid #edf2f7;border-bottom:1px solid #e2e8f0;background:#fff;overflow:hidden;}' +
+      '.insight-embed-indicator-dock-head{flex:0 0 auto;display:inline-flex;align-items:center;gap:7px;min-width:74px;color:#334155;font-size:11px;font-weight:1000;white-space:nowrap;}' +
+      '.insight-embed-indicator-dock-head span{min-width:20px;height:20px;padding:0 6px;border-radius:999px;display:inline-flex;align-items:center;justify-content:center;background:#dbeafe;color:#2563eb;font-size:10px;font-weight:1000;}' +
+      '#rightIndicatorList{min-width:0;flex:1 1 auto;display:flex;align-items:center;gap:7px;overflow-x:auto;overflow-y:hidden;padding:0 2px;scrollbar-width:thin;}' +
+      '#rightIndicatorList .indicator-empty{height:30px;display:inline-flex;align-items:center;padding:0 10px;border-radius:999px;background:#f8fafc;border:1px dashed #cbd5e1;color:#64748b;font-size:11px;font-weight:900;white-space:nowrap;}' +
+      '#rightIndicatorList .indicator-row{flex:0 0 auto;min-height:30px;height:30px;padding:3px 4px 3px 8px;border-radius:999px;background:#f8fafc;border:1px solid #dbeafe;display:flex;align-items:center;gap:8px;color:#0f172a;box-shadow:none;}' +
+      '#rightIndicatorList .indicator-row.off{opacity:.48;background:#f1f5f9;}' +
+      '#rightIndicatorList .indicator-row-main{min-width:0;display:flex;align-items:center;}' +
+      '#rightIndicatorList .indicator-row-title{display:flex;align-items:center;gap:5px;min-width:0;}' +
+      '#rightIndicatorList .indicator-color-dot{width:7px;height:7px;border-radius:999px;flex:0 0 7px;}' +
+      '#rightIndicatorList .indicator-row-title strong{font-size:11px;font-weight:1000;color:#0f172a;line-height:1;max-width:92px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}' +
+      '#rightIndicatorList .indicator-row-actions{display:inline-flex;align-items:center;gap:3px;}' +
+      '#rightIndicatorList .indicator-eye-btn,#rightIndicatorList .indicator-edit-btn,#rightIndicatorList .indicator-trash-btn{width:24px;height:24px;border:0;border-radius:999px;background:transparent;color:#475569;display:inline-flex;align-items:center;justify-content:center;padding:0;}' +
+      '#rightIndicatorList .indicator-eye-btn:hover,#rightIndicatorList .indicator-edit-btn:hover{background:#e0f2fe;color:#0369a1;}' +
+      '#rightIndicatorList .indicator-trash-btn:hover{background:#fee2e2;color:#dc2626;}' +
+      '#rightIndicatorList svg{width:15px;height:15px;display:block;}' +
+      '.indicator-search-layout{grid-template-columns:1fr!important}.indicator-panel{width:min(900px,calc(100vw - 28px))!important}.indicator-settings-actions{padding:12px 16px 16px;display:flex;justify-content:flex-end}' +
+      '.tool-btn{flex:0 0 auto!important}.chart-top-btn,.chart-mode-text,.chart-credit{display:none!important;}' +
+      '.ohlc-info{flex:0 0 30px!important;min-height:30px!important;font-size:11px!important;}' +
+      '.chart-wrap,.chart-wrap-v5{flex:1 1 auto!important;min-height:0!important;border-radius:0!important;}' +
+      '.tv-chart,.tv-chart-v5{height:100%!important;}' +
+      '.drawing-layer{z-index:35!important}.chart-indicator-overlay{z-index:34!important;}' +
+      '@media(max-width:760px){.chart-title{display:none!important}.bv-drawing-toolbar{max-width:calc(100vw - 155px);}.chart-card-top{gap:5px!important;padding:0 6px!important;}}' +
+      '</style></head>' +
+      '<body class="bitgak-chart-body">' +
+      '<script id="bitgak-access-data" type="application/json">' + accessJson + '<\/script>' +
+      '<section class="bv-app" data-insight-editor="' + (mode === "viewer" ? "0" : "1") + '" data-insight-viewer="' + (mode === "viewer" ? "1" : "0") + '" data-insight-embed="1" data-code="' + escapeAttr(fixedCode) + '" data-name="' + escapeAttr(fixedName) + '" data-market="KRX" data-parent-origin="' + escapeAttr(parentOrigin) + '" data-api-url="' + escapeAttr(apiUrl) + '" data-drawing-api-url="' + escapeAttr(drawingUrl) + '" data-drawing-settings-api-url="' + escapeAttr(drawingSettingsUrl) + '">' +
+      '<main class="bv-layout bv-layout-full"><section class="bv-main"><section class="chart-card chart-card-full">' +
+      '<div class="chart-card-top"><div id="chartTitle" class="chart-title">' + escapeHtml(title) + '</div>' +
+      '<div class="tv-interval-dropdown" id="intervalDropdown"><button id="intervalDropdownBtn" class="tv-interval-btn" type="button" aria-haspopup="true" aria-expanded="false"><span class="tv-interval-icon">⏱</span><span id="currentIntervalText">' + escapeHtml(intervalLabel) + '</span><span class="tv-interval-arrow">▾</span></button>' +
+      '<div class="tv-interval-menu" role="menu" aria-label="기간 선택"><div class="tv-interval-section"><span>시간봉</span><em>Yahoo</em></div>' +
+      intervalButtonHtml(fixedInterval, "1h", "1시간", "1H") + intervalButtonHtml(fixedInterval, "2h", "2시간", "2H") + intervalButtonHtml(fixedInterval, "3h", "3시간", "3H") + intervalButtonHtml(fixedInterval, "4h", "4시간", "4H") +
+      '<div class="tv-interval-section tv-interval-section-sub"><span>일반</span><em>KRX</em></div>' +
+      intervalButtonHtml(fixedInterval, "1d", "일", "Day") + intervalButtonHtml(fixedInterval, "1w", "주", "Week") + intervalButtonHtml(fixedInterval, "1mo", "월", "Month") +
+      '</div></div>' +
+      '<div class="bv-drawing-toolbar" aria-label="차트 그리기 도구"><button class="tool-btn active" type="button" data-tool="cursor" title="커서">＋</button><button class="tool-btn" type="button" data-tool="trend" title="추세선">╱</button><button class="tool-btn" type="button" data-tool="extend" title="연장선">━</button><button class="tool-btn" type="button" data-tool="hline" title="수평선">─</button><button class="tool-btn" type="button" data-tool="vline" title="수직선">│</button><button class="tool-btn" type="button" data-tool="circle" title="원형 표시">○</button><button class="tool-btn" type="button" data-tool="fibo" title="피보나치">⌁</button><button class="tool-btn bv-drawing-continuous-btn" type="button" data-drawing-continuous="1" title="연속 그리기" aria-pressed="false">연속</button><button class="tool-btn" type="button" data-tool="undo" title="마지막 삭제">↶</button><button class="tool-btn" type="button" data-tool="clear" title="전체 삭제">⌂</button></div>' +
+      '<button id="openIndicatorBtn" class="insight-embed-indicator-btn" type="button">지표</button>' +
+      '<div class="chart-top-spacer"></div></div>' +
+      '<div id="ohlcInfo" class="ohlc-info">날짜 -　시가 -　고가 -　저가 -　종가 -　거래량 -</div>' +
+      '<div class="insight-embed-indicator-dock" id="insightIndicatorDock"><div class="insight-embed-indicator-dock-head"><strong>적용 지표</strong><span id="activeIndicatorCount">0</span></div><div id="rightIndicatorList"></div></div><div class="insight-embed-side-store"><input id="indicatorQuickSearchInput" type="hidden"><button id="indicatorQuickSearchBtn" type="button"></button></div>' +
+      '<div id="chartWrap" class="chart-wrap chart-wrap-v5"><div id="tvChart" class="tv-chart tv-chart-v5"></div><svg id="drawingLayer" class="drawing-layer"></svg><div id="chartIndicatorOverlay" class="chart-indicator-overlay"></div><div id="chartLoading" class="chart-loading">차트 데이터를 불러오는 중입니다...</div></div>' +
+      '<div id="indicatorModal" class="indicator-modal" aria-hidden="true"><div class="indicator-panel"><div class="indicator-panel-head"><div><h2 id="indicatorModalTitle">지표 검색</h2><p id="indicatorModalSubtitle">차트에 추가할 지표를 검색하세요.</p></div><button class="modal-close" type="button" data-close-indicator>×</button></div><input id="indicatorSearchInput" class="indicator-search-input" type="search" placeholder="이동평균, 거래량, RSI, MACD 검색"><div class="indicator-search-layout"><div class="indicator-search-results"><div id="indicatorCatalog" class="indicator-catalog"></div></div></div><div id="indicatorSettingsBox" class="indicator-settings-box"><div class="indicator-settings-head"><h3 id="indicatorSettingsTitle">지표 설정</h3><button class="modal-close" type="button" data-close-indicator>×</button></div><div id="activeIndicatorList" class="active-indicator-list"></div><div class="indicator-settings-actions"><button id="applyIndicatorSettings" class="indicator-add-btn" type="button">적용</button></div></div></div></div>' +
+      '</section></section></main></section>' +
+      '<script src="' + escapeAttr(lwUrl) + '"><\/script><script src="' + escapeAttr(coreUrl) + '"><\/script><script src="' + escapeAttr(indicatorsUrl) + '"><\/script>' +
+      '<script>window.addEventListener("load",function(){try{parent.postMessage({type:"bitgak:stock-srcdoc-ready",code:"' + escapeAttr(fixedCode) + '"},"*");}catch(e){}});<\/script>' +
+      '</body></html>';
+  }
+
+  function parseSnapshot(input) {
+    var value = input ? input.value : "";
+    var parsed = safeJsonParse(value, null);
+    return parsed && typeof parsed === "object" ? parsed : null;
+  }
+
+  function snapshotCode(snapshot) {
+    return onlyCode(snapshot && snapshot.code ? snapshot.code : "");
+  }
+
+  function snapshotMatchesStock(snapshot, code) {
+    if (!snapshot || typeof snapshot !== "object") return false;
+    var target = onlyCode(code || "");
+    var snapCode = snapshotCode(snapshot);
+    return !!target && !!snapCode && target === snapCode;
+  }
+
+  function cleanSnapshotForStock(code, name, interval) {
+    code = onlyCode(code || "");
+    name = String(name || code || "").trim();
+    return {
+      version: 2,
+      source: "bitgakview-insight-clean",
+      code: code,
+      name: name,
+      interval: normalizeIntervalForEmbed(interval || "1d"),
+      chartUrl: code ? ("/stocks/" + encodeURIComponent(code) + "/?insight_viewer=1&interval=" + encodeURIComponent(interval || "1d")) : "",
+      capturedAt: new Date().toISOString(),
+      visibleLogicalRange: null,
+      drawings: [],
+      indicators: []
+    };
+  }
+
+  function saveChartDefaults(code, name, interval) {
+    try {
+      localStorage.setItem("bitgak:insight-chart-default:v13", JSON.stringify({ code: code || "", name: name || "", interval: interval || "1d" }));
+    } catch (e) {}
+  }
+
+  function readChartDefaults() {
+    try {
+      return JSON.parse(localStorage.getItem("bitgak:insight-chart-default:v13") || "{}");
+    } catch (e) {
+      return {};
+    }
+  }
+
+  function postSnapshotToFrame(frame, snapshot) {
+    if (!frame || !frame.contentWindow || !snapshot) return;
+    try {
+      frame.contentWindow.postMessage({ type: "bitgak:apply-insight-snapshot", snapshot: snapshot }, "*");
+    } catch (e) {}
+  }
+
+  function requestFrameSnapshot(frame, timeoutMs, options) {
+    options = options || {};
+    return new Promise(function (resolve) {
+      if (!frame || !frame.contentWindow) {
+        resolve(null);
+        return;
+      }
+      var requestId = "insight_snapshot_" + Date.now() + "_" + Math.floor(Math.random() * 100000);
+      var done = false;
+      var timer = window.setTimeout(function () {
+        if (done) return;
+        done = true;
+        delete SNAPSHOT_REQUESTS[requestId];
+        resolve(null);
+      }, timeoutMs || 1800);
+      SNAPSHOT_REQUESTS[requestId] = function (snapshot) {
+        if (done) return;
+        done = true;
+        window.clearTimeout(timer);
+        delete SNAPSHOT_REQUESTS[requestId];
+        resolve(snapshot || null);
+      };
+      try {
+        frame.contentWindow.postMessage({ type: "bitgak:capture-insight-snapshot-request", requestId: requestId, noThumbnail: !!options.noThumbnail }, "*");
+      } catch (e) {
+        window.clearTimeout(timer);
+        delete SNAPSHOT_REQUESTS[requestId];
+        resolve(null);
+      }
+    });
+  }
+
+
+  function dataUrlToFile(dataUrl, filename) {
+    try {
+      var parts = String(dataUrl || "").split(",");
+      if (parts.length < 2 || parts[0].indexOf("data:image") !== 0) return null;
+      var mimeMatch = parts[0].match(/data:([^;]+)/);
+      var mime = mimeMatch ? mimeMatch[1] : "image/jpeg";
+      var binary = atob(parts[1]);
+      var len = binary.length;
+      var bytes = new Uint8Array(len);
+      for (var i = 0; i < len; i += 1) bytes[i] = binary.charCodeAt(i);
+      return new File([bytes], filename || "bitgak-chart-capture.jpg", { type: mime });
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function setFileInputFromDataUrl(fileInput, dataUrl, filename) {
+    var file = dataUrlToFile(dataUrl, filename);
+    if (!file || !fileInput || typeof DataTransfer === "undefined") return false;
+    try {
+      var dt = new DataTransfer();
+      dt.items.add(file);
+      fileInput.files = dt.files;
+      fileInput.dispatchEvent(new Event("change", { bubbles: true }));
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  function applyChartCaptureToCover(form, snapshot) {
+    if (!snapshot || !snapshot.thumbnailDataUrl) return false;
+    var input = qs(form, "[data-cover-input]") || qs(form, "input[type='file'][name='cover_image']");
+    if (!input) return false;
+    var code = onlyCode(snapshot.code || "chart") || "chart";
+    var ok = setFileInputFromDataUrl(input, snapshot.thumbnailDataUrl, "bitgak-chart-" + code + ".jpg");
+    if (!ok) return false;
+
+    var deleteInput = qs(form, "[data-delete-image-input], [data-delete-cover-image]");
+    var removeInput = qs(form, "[data-remove-cover-image]");
+    if (deleteInput) deleteInput.value = "0";
+    if (removeInput) removeInput.value = "0";
+
+    var preview = qs(form, "[data-image-preview]");
+    var img = qs(form, "[data-image-preview-img]");
+    var empty = qs(form, "[data-image-preview-empty]");
+    var status = qs(form, "[data-image-status]");
+    var help = qs(form, "[data-image-help]");
+    if (preview) preview.classList.add("has-image");
+    if (img) {
+      img.src = snapshot.thumbnailDataUrl;
+      img.style.display = "block";
+    }
+    if (empty) empty.style.display = "none";
+    if (status) status.textContent = "차트 캡처 저장";
+    if (help) help.textContent = "차트 방식으로 저장하면 현재 차트 캡처가 캐러셀 대표 이미지로 자동 등록됩니다.";
+    return true;
+  }
+
+
+  function buildChartDraftPayload(form, snapshot) {
+    snapshot = snapshot && typeof snapshot === "object" ? snapshot : parseSnapshot(qs(form, "[data-insight-chart-snapshot-input]"));
+    var codeInput = qs(form, "[data-insight-chart-code-input]");
+    var nameInput = qs(form, "[data-insight-chart-name-input]");
+    var intervalInput = qs(form, "[data-insight-chart-interval-input]");
+    var apiInput = qs(form, "[data-insight-chart-api-url-input]");
+    var mediaInput = qs(form, "[data-insight-media-type]");
+    var code = onlyCode((snapshot && snapshot.code) || (codeInput && codeInput.value) || "");
+    var name = String((snapshot && snapshot.name) || (nameInput && nameInput.value) || code || "").trim();
+    var interval = normalizeIntervalForEmbed((snapshot && snapshot.interval) || (intervalInput && intervalInput.value) || "1d");
+    var fixedSnapshot = Object.assign({}, snapshot || {}, { code: code, name: name, interval: interval });
+    return {
+      media_type: mediaInput ? mediaInput.value || "chart" : "chart",
+      chart_code: code,
+      chart_name: name,
+      chart_interval: interval,
+      chart_api_url: (fixedSnapshot.apiUrl || (apiInput && apiInput.value) || ""),
+      chart_snapshot: fixedSnapshot
+    };
+  }
+
+  function saveChartDraftToServerForForm(form, snapshot, options) {
+    options = options || {};
+    if (!form) return Promise.resolve(null);
+    var url = getChartDraftApiUrl(form);
+    if (!url) return Promise.resolve(null);
+    var state = qs(form, "[data-chart-save-state]");
+    if (state && !options.silent) {
+      state.textContent = "서버 저장 중";
+      state.classList.remove("ok", "warn", "danger");
+      state.classList.add("warn");
+    }
+    return jsonFetch(url, {
+      method: "POST",
+      body: JSON.stringify(buildChartDraftPayload(form, snapshot))
+    }).then(function (data) {
+      if (state && !options.silent) {
+        state.textContent = data && data.ok ? "서버 저장됨" : "서버 저장 실패";
+        state.classList.remove("ok", "warn", "danger");
+        state.classList.add(data && data.ok ? "ok" : "danger");
+      }
+      return data;
+    }).catch(function () {
+      if (state && !options.silent) {
+        state.textContent = "서버 저장 실패";
+        state.classList.remove("ok", "warn", "danger");
+        state.classList.add("danger");
+      }
+      return null;
+    });
+  }
+
+  var CHART_DIRTY_TIMERS = new WeakMap();
+
+  window.addEventListener("message", function (event) {
+    if (event.origin && event.origin !== window.location.origin && event.origin !== "null") return;
+    var data = event.data || {};
+
+    if (data.type === "bitgak:insight-indicators-changed") {
+      qsa(document, "[data-insight-stock-frame]").forEach(function (frame) {
+        if (!frame.contentWindow || frame.contentWindow !== event.source) return;
+        var form = frame.closest("form");
+        if (!form) return;
+        var snapshotInput = qs(form, "[data-insight-chart-snapshot-input]");
+        var codeInput = qs(form, "[data-insight-chart-code-input]");
+        var nameInput = qs(form, "[data-insight-chart-name-input]");
+        var intervalInput = qs(form, "[data-insight-chart-interval-input]");
+        var code = onlyCode((data.code || frame.dataset.currentCode || (codeInput && codeInput.value) || ""));
+        var base = parseSnapshot(snapshotInput) || cleanSnapshotForStock(code, (nameInput && nameInput.value) || frame.dataset.currentName || code, (intervalInput && intervalInput.value) || frame.dataset.currentInterval || "1d");
+        if (!snapshotMatchesStock(base, code)) base = cleanSnapshotForStock(code, (nameInput && nameInput.value) || frame.dataset.currentName || code, (intervalInput && intervalInput.value) || frame.dataset.currentInterval || "1d");
+        base.indicators = Array.isArray(data.indicators) ? data.indicators : [];
+        base.code = code;
+        base.name = base.name || (nameInput && nameInput.value) || frame.dataset.currentName || code;
+        base.interval = base.interval || (intervalInput && intervalInput.value) || frame.dataset.currentInterval || "1d";
+        if (snapshotInput) snapshotInput.value = toJson(base);
+        saveChartDraftToServerForForm(form, base, { silent: true });
+      });
+      return;
+    }
+
+    if (data.type === "bitgak:insight-chart-dirty") {
+      qsa(document, "[data-insight-stock-frame]").forEach(function (frame) {
+        if (!frame.contentWindow || frame.contentWindow !== event.source) return;
+        var form = frame.closest("form");
+        if (!form) return;
+        clearTimeout(CHART_DIRTY_TIMERS.get(frame));
+        var timer = setTimeout(function () {
+          requestFrameSnapshot(frame, 1600, { noThumbnail: true }).then(function (snapshot) {
+            if (!snapshot) return;
+            var snapshotInput = qs(form, "[data-insight-chart-snapshot-input]");
+            if (snapshotInput) snapshotInput.value = toJson(snapshot);
+            saveChartDraftToServerForForm(form, snapshot, { silent: true });
+          });
+        }, data.reason === "data-loaded" ? 900 : 520);
+        CHART_DIRTY_TIMERS.set(frame, timer);
+      });
+      return;
+    }
+
+    if (data.type !== "bitgak:insight-snapshot-response") return;
+    var requestId = data.requestId;
+    if (requestId && SNAPSHOT_REQUESTS[requestId]) SNAPSHOT_REQUESTS[requestId](data.snapshot || null);
+  });
+
+  function normalizeSearchResults(data) {
+    var raw = [];
+    if (Array.isArray(data)) raw = data;
+    else if (Array.isArray(data.results)) raw = data.results;
+    else if (Array.isArray(data.items)) raw = data.items;
+    else if (Array.isArray(data.stocks)) raw = data.stocks;
+    else if (Array.isArray(data.data)) raw = data.data;
+    else if (data && typeof data === "object") {
+      Object.keys(data).forEach(function (key) {
+        if (Array.isArray(data[key]) && !raw.length) raw = data[key];
       });
     }
 
-    if (cancelBtn) {
-      cancelBtn.addEventListener("click", function (event) {
-        event.preventDefault();
-        event.stopPropagation();
-        resetToOriginal();
-      });
+    var seen = {};
+    return raw.map(function (item) {
+      item = item || {};
+      if (typeof item === "string") {
+        var codeMatch = item.match(/\b\d{5,6}\b/);
+        return { code: codeMatch ? codeMatch[0] : "", name: item.replace(/\b\d{5,6}\b/g, "").trim(), market: "KRX" };
+      }
+      var code = item.code || item.symbol || item.stock_code || item.ticker || item.value || item.id || "";
+      var name = item.name || item.stock_name || item.label || item.text || item.title || item.company_name || code;
+      var market = item.market || item.market_name || item.exchange || item.type || "KRX";
+      if (String(name || "").indexOf(" · ") > -1 && !onlyCode(code)) {
+        var parts = String(name).split(" · ");
+        name = parts[0].trim();
+        code = onlyCode(parts[1] || "");
+      }
+      return { code: onlyCode(code), name: String(name || "").trim(), market: String(market || "KRX").trim() || "KRX" };
+    }).filter(function (item) {
+      if (!item.code || seen[item.code]) return false;
+      seen[item.code] = true;
+      return true;
+    });
+  }
+
+  function normalizeSearchHtmlResults(html, query) {
+    var q = compactStockText(query);
+    var seen = {};
+    var results = [];
+    if (!html) return results;
+
+    var doc = document.implementation.createHTMLDocument("stock-search");
+    doc.body.innerHTML = String(html || "");
+
+    function push(code, name, market) {
+      code = onlyCode(code);
+      name = String(name || code || "").replace(/\s+/g, " ").trim();
+      market = String(market || "KRX").replace(/\s+/g, " ").trim() || "KRX";
+      if (!code || seen[code]) return;
+      var compactName = compactStockText(name);
+      if (q && compactName && compactName.indexOf(q) === -1 && q.indexOf(compactName) === -1 && code.indexOf(onlyCode(query)) === -1) {
+        // HTML 전체에서 엉뚱한 인기종목이 같이 섞일 수 있어서 검색어와 무관한 항목은 제외한다.
+        return;
+      }
+      seen[code] = true;
+      results.push({ code: code, name: name || code, market: market });
     }
 
-    form.addEventListener("submit", function () {
-      setHiddenDelete(isDeletePending);
+    Array.from(doc.querySelectorAll("[data-code], [data-stock-code], [data-symbol]")).forEach(function (el) {
+      var code = el.getAttribute("data-code") || el.getAttribute("data-stock-code") || el.getAttribute("data-symbol") || "";
+      var name = el.getAttribute("data-name") || el.getAttribute("data-stock-name") || "";
+      var market = el.getAttribute("data-market") || "KRX";
+      if (!name) {
+        var strong = el.querySelector("strong, .name, .stock-name, [data-name]");
+        name = strong ? strong.textContent : el.textContent;
+      }
+      push(code, name, market);
     });
 
-    resetToOriginal();
+    Array.from(doc.querySelectorAll("a[href], button, li, tr")).forEach(function (el) {
+      var href = el.getAttribute ? (el.getAttribute("href") || "") : "";
+      var codeMatch = href.match(/\/stocks\/(\d{5,6})\//) || String(el.textContent || "").match(/\b(\d{5,6})\b/);
+      if (!codeMatch) return;
+      var code = codeMatch[1];
+      var text = String(el.textContent || "").replace(/\s+/g, " ").trim();
+      var marketMatch = text.match(/\b(KOSPI|KOSDAQ|KONEX|KRX)\b/i);
+      var market = marketMatch ? marketMatch[1].toUpperCase() : "KRX";
+      var name = text
+        .replace(code, " ")
+        .replace(/\b(KOSPI|KOSDAQ|KONEX|KRX)\b/ig, " ")
+        .replace(/[·|\-:]/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+      if (!name) name = code;
+      push(code, name, market);
+    });
+
+    return results;
+  }
+
+  function mergeStockResults() {
+    var seen = {};
+    var merged = [];
+    Array.prototype.slice.call(arguments).forEach(function (list) {
+      (list || []).forEach(function (item) {
+        if (!item || !item.code || seen[item.code]) return;
+        seen[item.code] = true;
+        merged.push({ code: onlyCode(item.code), name: String(item.name || item.code).trim(), market: item.market || "KRX" });
+      });
+    });
+    return merged;
+  }
+
+  async function fetchOneStockSearchUrl(url, query) {
+    try {
+      var res = await fetch(url, {
+        headers: { "X-Requested-With": "XMLHttpRequest", "Accept": "application/json, text/html;q=0.9, */*;q=0.8" },
+        cache: "no-store"
+      });
+      if (!res.ok) return [];
+      var text = await res.text();
+      var parsed = null;
+      try { parsed = JSON.parse(text); } catch (e) { parsed = null; }
+      if (parsed) return normalizeSearchResults(parsed);
+      return normalizeSearchHtmlResults(text, query);
+    } catch (e) {
+      return [];
+    }
+  }
+
+  async function fetchFastStockSearch(query, form) {
+    var q = String(query || "").trim();
+    if (!q) return [];
+
+    var cacheKey = compactStockText(q);
+    if (STOCK_SEARCH_CACHE.has(cacheKey)) return STOCK_SEARCH_CACHE.get(cacheKey).slice();
+
+    var local = localStockMatches(q);
+    var endpoint = getStockSearchApiUrl(form);
+
+    try { if (STOCK_SEARCH_ABORT) STOCK_SEARCH_ABORT.abort(); } catch (e) {}
+    STOCK_SEARCH_ABORT = window.AbortController ? new AbortController() : null;
+
+    try {
+      var url = new URL(endpoint, window.location.origin || window.location.href);
+      url.searchParams.set("q", q);
+      url.searchParams.set("limit", "40");
+      var res = await fetch(url.toString(), {
+        headers: { "X-Requested-With": "XMLHttpRequest", "Accept": "application/json" },
+        cache: "no-store",
+        signal: STOCK_SEARCH_ABORT ? STOCK_SEARCH_ABORT.signal : undefined
+      });
+      if (!res.ok) throw new Error("search failed");
+      var data = await res.json();
+      var remote = normalizeSearchResults(data);
+      var merged = mergeStockResults(remote, local).slice(0, 40);
+      STOCK_SEARCH_CACHE.set(cacheKey, merged);
+      return merged.slice();
+    } catch (e) {
+      if (e && e.name === "AbortError") return [];
+      if (/^\d{5,6}$/.test(q)) {
+        var exactLocal = firstLocalStock(q);
+        return mergeStockResults(exactLocal ? [exactLocal] : [], [{ code: q, name: q, market: "KRX" }], local).slice(0, 40);
+      }
+      // API 라우팅이 아직 연결되지 않은 로컬 환경에서만 기존 stock 검색 페이지를 1회 fallback으로 사용한다.
+      var fallback = await fetchOneStockSearchUrl("/stocks/search/?q=" + encodeURIComponent(q) + "&format=json&lite=1", q);
+      return mergeStockResults(fallback, local).slice(0, 40);
+    }
+  }
+
+  async function fetchStockSearchResults(query, form) {
+    return fetchFastStockSearch(query, form);
+  }
+
+
+  async function resolveStockFromQuery(query, form) {
+    var q = String(query || "").trim();
+    if (!q) return null;
+    var local = firstLocalStock(q);
+    if (local) return local;
+    var items = await fetchStockSearchResults(q, form);
+    return items.length ? items[0] : null;
+  }
+
+  function initStockSearch(form, applyStock) {
+    var input = qs(form, "[data-chart-symbol-search]");
+    var panel = qs(form, "[data-chart-search-results]");
+    if (!input || !panel) return;
+    var timer = null;
+
+    function closePanel() {
+      panel.hidden = true;
+      panel.innerHTML = "";
+    }
+
+    function render(items) {
+      if (!items.length) {
+        closePanel();
+        return;
+      }
+      panel.innerHTML = items.map(function (item) {
+        return '<button type="button" class="insight-chart-search-result" data-code="' + escapeAttr(item.code) + '" data-name="' + escapeAttr(item.name || item.code) + '"><strong>' + escapeHtml(item.name || item.code) + '</strong><span>' + escapeHtml(item.code) + ' · ' + escapeHtml(item.market || "KRX") + '</span></button>';
+      }).join("");
+      panel.hidden = false;
+    }
+
+    async function search() {
+      var q = (input.value || "").trim();
+      if (q.length < 1) {
+        closePanel();
+        return;
+      }
+      var items = await fetchStockSearchResults(q, form);
+      render(items);
+    }
+
+    input.addEventListener("input", function () {
+      // 타이핑 도중 입력값을 종목명으로 강제로 바꾸지 않는다.
+      // 검색 결과를 클릭하거나 Enter/차트 열기를 눌렀을 때만 선택값을 확정한다.
+      input.dataset.selectedCode = "";
+      input.dataset.selectedName = "";
+      var ownerForm = input.closest("form");
+      if (ownerForm) {
+        var hiddenCode = ownerForm.querySelector("[data-insight-chart-code-input]");
+        var hiddenName = ownerForm.querySelector("[data-insight-chart-name-input]");
+        if (hiddenCode) hiddenCode.value = "";
+        if (hiddenName) hiddenName.value = "";
+      }
+      clearTimeout(timer);
+      timer = setTimeout(search, 80);
+    });
+
+    input.addEventListener("keydown", function (event) {
+      if (event.key !== "Enter") return;
+      event.preventDefault();
+      resolveStockFromQuery(input.value, form).then(function (item) {
+        if (!item) return;
+        applyStock(item.code, item.name, true, true);
+        closePanel();
+      });
+    });
+
+    panel.addEventListener("click", function (event) {
+      var btn = event.target.closest("[data-code]");
+      if (!btn) return;
+      applyStock(btn.dataset.code || "", btn.dataset.name || btn.dataset.code || "", true, true);
+      closePanel();
+    });
+
+    document.addEventListener("click", function (event) {
+      if (!event.target.closest("[data-chart-symbol-search]") && !event.target.closest("[data-chart-search-results]")) closePanel();
+    });
+  }
+
+  function makeFallbackSnapshot(form) {
+    var searchInput = qs(form, "[data-chart-symbol-search]");
+    var codeInput = qs(form, "[data-insight-chart-code-input]");
+    var nameInput = qs(form, "[data-insight-chart-name-input]");
+    var intervalSelect = qs(form, "[data-chart-interval-select]");
+    var query = searchInput ? searchInput.value.trim() : "";
+    var selectedCode = searchInput ? searchInput.dataset.selectedCode : "";
+    var selectedName = searchInput ? searchInput.dataset.selectedName : "";
+    var local = firstLocalStock(query);
+    var code = onlyCode((codeInput && codeInput.value) || selectedCode || (local && local.code) || (/^\d{5,6}$/.test(query) ? query : ""));
+    var name = (nameInput && nameInput.value) || selectedName || (local && local.name) || query || code;
+    var interval = intervalSelect ? intervalSelect.value : "1d";
+    return {
+      version: 2,
+      source: "bitgakview-insight-fallback",
+      code: code,
+      name: name,
+      interval: interval || "1d",
+      chartUrl: code ? ("/stocks/" + encodeURIComponent(code) + "/?insight_viewer=1&interval=" + encodeURIComponent(interval || "1d")) : "",
+      capturedAt: new Date().toISOString(),
+      visibleLogicalRange: null,
+      drawings: []
+    };
+  }
+
+  function initMediaEditor(form) {
+    if (!form || form.dataset.mediaEditorReady === "1") return;
+    form.dataset.mediaEditorReady = "1";
+
+    var mediaInput = qs(form, "[data-insight-media-type]");
+    var codeInput = qs(form, "[data-insight-chart-code-input]");
+    var nameInput = qs(form, "[data-insight-chart-name-input]");
+    var intervalInput = qs(form, "[data-insight-chart-interval-input]");
+    var apiInput = qs(form, "[data-insight-chart-api-url-input]");
+    var snapshotInput = qs(form, "[data-insight-chart-snapshot-input]");
+    var searchInput = qs(form, "[data-chart-symbol-search]");
+    var intervalSelect = qs(form, "[data-chart-interval-select]");
+    var frame = qs(form, "[data-insight-stock-frame]");
+    var frameEmpty = qs(form, "[data-insight-stock-frame-empty]");
+    var frameTitle = qs(form, "[data-insight-frame-title]");
+    var refreshBtn = qs(form, "[data-chart-refresh]");
+    var reloadBtn = qs(form, "[data-chart-frame-reload]");
+    var captureBtn = qs(form, "[data-chart-capture-now]");
+    var saveState = qs(form, "[data-chart-save-state]");
+    var activeMode = mediaInput ? (mediaInput.value || "image") : "image";
+    var frameLoaded = false;
+    var serverDraftLoaded = false;
+
+    function applyServerDraftToForm(draft) {
+      if (!draft) return null;
+      var payload = normalizeDraftPayload(draft);
+      var snapshot = safeJsonParse(payload.chart_snapshot, null);
+      if (!snapshot && payload.chart_snapshot) snapshot = parseSnapshot({ value: payload.chart_snapshot });
+      if (payload.chart_code && codeInput) codeInput.value = payload.chart_code;
+      if (payload.chart_name && nameInput) nameInput.value = payload.chart_name;
+      if (payload.chart_interval && intervalInput) intervalInput.value = payload.chart_interval;
+      if (payload.chart_interval && intervalSelect) intervalSelect.value = payload.chart_interval;
+      if (snapshotInput && payload.chart_snapshot) snapshotInput.value = payload.chart_snapshot;
+      if (searchInput && (payload.chart_name || payload.chart_code)) {
+        searchInput.value = payload.chart_name || payload.chart_code;
+        searchInput.dataset.selectedCode = payload.chart_code || "";
+        searchInput.dataset.selectedName = payload.chart_name || "";
+      }
+      return snapshot;
+    }
+
+    function loadServerDraftOnce() {
+      if (serverDraftLoaded) return Promise.resolve(null);
+      serverDraftLoaded = true;
+      var url = getChartDraftApiUrl(form);
+      if (!url) return Promise.resolve(null);
+      return jsonFetch(url, { method: "GET" }).then(function (data) {
+        if (!data || !data.ok || !data.has_draft) return null;
+        return applyServerDraftToForm(data.draft || data);
+      }).catch(function () { return null; });
+    }
+
+    function setState(text, mode) {
+      if (!saveState) return;
+      saveState.textContent = text || "";
+      saveState.classList.remove("ok", "warn", "danger", "pulse");
+      if (mode) saveState.classList.add(mode);
+      if (mode === "ok" || mode === "warn") {
+        saveState.classList.add("pulse");
+        setTimeout(function () { saveState.classList.remove("pulse"); }, 900);
+      }
+    }
+
+    function getSearchValue() {
+      return searchInput ? String(searchInput.value || "").trim() : "";
+    }
+
+    function isSearchDirty() {
+      if (!searchInput) return false;
+      var query = getSearchValue();
+      if (!query) return false;
+      var selectedCode = String(searchInput.dataset.selectedCode || "").trim();
+      var selectedName = String(searchInput.dataset.selectedName || "").trim();
+      return query !== selectedCode && query !== selectedName;
+    }
+
+    function currentCode() {
+      var query = getSearchValue();
+      var local = firstLocalStock(query);
+      if (isSearchDirty()) {
+        return onlyCode((local && local.code) || (/^\d{5,6}$/.test(query) ? query : ""));
+      }
+      return onlyCode((searchInput && searchInput.dataset.selectedCode) || (codeInput && codeInput.value) || (local && local.code) || (/^\d{5,6}$/.test(query) ? query : ""));
+    }
+
+    function currentName() {
+      var query = getSearchValue();
+      var local = firstLocalStock(query);
+      if (isSearchDirty()) {
+        return String((local && local.name) || query || currentCode() || "").trim();
+      }
+      return String((searchInput && searchInput.dataset.selectedName) || (nameInput && nameInput.value) || (local && local.name) || query || currentCode() || "").trim();
+    }
+
+    function setMode(mode) {
+      activeMode = mode === "chart" ? "chart" : "image";
+      if (mediaInput) mediaInput.value = activeMode;
+      qsa(form, "[data-media-mode]").forEach(function (btn) {
+        var isActive = btn.dataset.mediaMode === activeMode;
+        btn.classList.toggle("active", isActive);
+        btn.setAttribute("aria-selected", isActive ? "true" : "false");
+      });
+      qsa(form, "[data-media-panel]").forEach(function (panel) {
+        setHidden(panel, panel.dataset.mediaPanel !== activeMode);
+        panel.classList.toggle("active", panel.dataset.mediaPanel === activeMode);
+      });
+      if (activeMode === "chart") maybeLoadInitialFrame();
+    }
+
+    function syncHidden(snapshot) {
+      var fallback = makeFallbackSnapshot(form);
+      var finalSnapshot = snapshot && typeof snapshot === "object" ? snapshot : fallback;
+      var code = onlyCode(finalSnapshot.code || currentCode() || "");
+      var name = finalSnapshot.name || currentName() || code;
+      var interval = finalSnapshot.interval || (intervalSelect && intervalSelect.value) || "1d";
+
+      if (codeInput) codeInput.value = code;
+      if (nameInput) nameInput.value = name;
+      if (intervalInput) intervalInput.value = interval;
+      if (apiInput) apiInput.value = finalSnapshot.apiUrl || "";
+      if (searchInput) {
+        searchInput.dataset.selectedCode = code;
+        searchInput.dataset.selectedName = name;
+      }
+      if (snapshotInput) snapshotInput.value = toJson(Object.assign({}, finalSnapshot, { code: code, name: name, interval: interval }));
+      saveChartDefaults(code, name, interval);
+      setText(frameTitle, name ? name + " · " + code : (code || "차트 미선택"));
+      setState("차트상태 저장됨", "ok");
+    }
+
+    function applyStock(code, name, shouldLoad, fromSearch) {
+      code = onlyCode(code || currentCode() || "");
+      name = String(name || currentName() || code || "").trim();
+      if (codeInput) codeInput.value = code;
+      if (nameInput) nameInput.value = name;
+      if (intervalInput && intervalSelect) intervalInput.value = intervalSelect.value;
+      if (searchInput) {
+        searchInput.dataset.selectedCode = code;
+        searchInput.dataset.selectedName = name;
+        if (fromSearch || !searchInput.value || /^\d{5,6}$/.test(searchInput.value.trim())) searchInput.value = name || code;
+      }
+      setText(frameTitle, name ? name + " · " + code : (code || "차트 미선택"));
+      if (shouldLoad) {
+        var previousSnapshot = parseSnapshot(snapshotInput);
+        var snapshotForThisStock = snapshotMatchesStock(previousSnapshot, code) ? previousSnapshot : null;
+        loadFrame(code, name, intervalSelect ? intervalSelect.value : "1d", snapshotForThisStock);
+      }
+    }
+
+    async function resolveCurrentStock() {
+      var query = getSearchValue();
+      if (isSearchDirty() && query) {
+        var searched = await resolveStockFromQuery(query, form);
+        if (searched) {
+          applyStock(searched.code, searched.name, false, true);
+          return searched;
+        }
+      }
+
+      var code = currentCode();
+      var name = currentName();
+      if (code) {
+        applyStock(code, name || code, false, false);
+        return { code: code, name: name || code, market: "KRX" };
+      }
+
+      var item = await resolveStockFromQuery(query, form);
+      if (item) {
+        applyStock(item.code, item.name, false, true);
+        return item;
+      }
+      return null;
+    }
+
+    function loadFrame(code, name, interval, snapshot) {
+      code = onlyCode(code || currentCode() || "");
+      name = String(name || currentName() || code || "").trim();
+      interval = interval || (intervalSelect ? intervalSelect.value : "1d");
+      if (!code || !frame) {
+        setState("종목을 먼저 검색하세요", "warn");
+        if (frameEmpty) {
+          frameEmpty.innerHTML = "차트 대기 중<small>왼쪽 검색창에 삼성전자처럼 종목명을 입력하고 차트 열기를 누르세요.</small>";
+          setHidden(frameEmpty, false);
+        }
+        return;
+      }
+      var previousFrameCode = onlyCode(frame.dataset.currentCode || "");
+      var snapshotForLoadedStock = snapshotMatchesStock(snapshot, code) ? snapshot : null;
+      if (!snapshotForLoadedStock && previousFrameCode && previousFrameCode !== code && snapshotInput) {
+        snapshotInput.value = toJson(cleanSnapshotForStock(code, name, interval));
+      }
+      if (!snapshotForLoadedStock && snapshotInput && snapshotCode(parseSnapshot(snapshotInput)) && snapshotCode(parseSnapshot(snapshotInput)) !== code) {
+        snapshotInput.value = toJson(cleanSnapshotForStock(code, name, interval));
+      }
+      applyStock(code, name, false, true);
+      frameLoaded = false;
+      frame.dataset.currentCode = code;
+      frame.dataset.currentInterval = interval;
+      frame.dataset.currentName = name;
+      setHidden(frameEmpty, true);
+      setState("차트 불러오는 중", "warn");
+      saveChartDefaults(code, name, interval);
+
+      frame.onload = function () {
+        frameLoaded = true;
+        setState("차트 편집 가능", "ok");
+        var storedSnapshot = parseSnapshot(snapshotInput);
+        var snap = snapshotForLoadedStock || (snapshotMatchesStock(storedSnapshot, code) ? storedSnapshot : null);
+        if (snap && (snap.drawings || snap.visibleLogicalRange || snap.interval || snap.indicators)) {
+          setTimeout(function () { postSnapshotToFrame(frame, snap); }, 320);
+          setTimeout(function () { postSnapshotToFrame(frame, snap); }, 950);
+        } else if (interval && interval !== "1d") {
+          setTimeout(function () { postSnapshotToFrame(frame, { code: code, name: name, interval: interval, drawings: [], indicators: [] }); }, 320);
+        } else {
+          setTimeout(function () { postSnapshotToFrame(frame, { code: code, name: name, interval: interval || "1d", drawings: [], indicators: [] }); }, 320);
+        }
+      };
+      // /stocks/ 페이지를 iframe으로 직접 열면 X-Frame-Options 때문에 차단될 수 있다.
+      // 그래서 같은 stock 차트 DOM과 스크립트를 srcdoc 안에 구성해서 본문 위에서 그대로 실행한다.
+      frame.removeAttribute("src");
+      frame.srcdoc = buildStockFrameSrcdoc(frame, code, name, interval, "editor");
+    }
+
+    async function maybeLoadInitialFrame() {
+      if (!frame || frame.dataset.currentCode || frame.srcdoc) return;
+      var serverSnapshot = await loadServerDraftOnce();
+      var snapshot = serverSnapshot || parseSnapshot(snapshotInput);
+      var defaults = readChartDefaults();
+      var code = onlyCode((snapshot && snapshot.code) || (codeInput && codeInput.value) || (searchInput && searchInput.dataset.selectedCode) || defaults.code || "");
+      var name = (snapshot && snapshot.name) || (nameInput && nameInput.value) || (searchInput && (searchInput.dataset.selectedName || searchInput.value)) || defaults.name || code;
+      var interval = (intervalSelect && intervalSelect.value) || (snapshot && snapshot.interval) || defaults.interval || "1d";
+      if (searchInput && !searchInput.value && name) searchInput.value = name;
+      if (intervalSelect && interval) intervalSelect.value = interval;
+      if (code) loadFrame(code, name, interval, snapshotMatchesStock(snapshot, code) ? snapshot : null);
+    }
+
+    async function captureAndStore(showMessage) {
+      if (activeMode !== "chart") return null;
+      if (showMessage) setState("차트상태 저장 중", "warn");
+      if (!currentCode()) await resolveCurrentStock();
+      var snapshot = frameLoaded ? await requestFrameSnapshot(frame, 2200, { noThumbnail: false }) : null;
+      if (!snapshot) snapshot = makeFallbackSnapshot(form);
+      syncHidden(snapshot);
+      applyChartCaptureToCover(form, snapshot);
+      await saveChartDraftToServerForForm(form, snapshot, { silent: !showMessage });
+      return snapshot;
+    }
+
+    async function openCurrentChart(snapshot) {
+      setState("종목 검색 중", "warn");
+      var item = await resolveCurrentStock();
+      if (!item || !item.code) {
+        setState("검색 결과 없음", "danger");
+        if (frameEmpty) {
+          frameEmpty.innerHTML = "검색 결과 없음<small>종목명을 다시 입력해 주세요. 예: 삼성전자</small>";
+          setHidden(frameEmpty, false);
+        }
+        return;
+      }
+      var candidateSnapshot = snapshot || parseSnapshot(snapshotInput);
+      loadFrame(item.code, item.name, intervalSelect ? intervalSelect.value : "1d", snapshotMatchesStock(candidateSnapshot, item.code) ? candidateSnapshot : null);
+    }
+
+    qsa(form, "[data-media-mode]").forEach(function (btn) {
+      btn.addEventListener("click", function () { setMode(btn.dataset.mediaMode || "image"); });
+    });
+
+    if (refreshBtn) refreshBtn.addEventListener("click", function () {
+      var snap = parseSnapshot(snapshotInput);
+      openCurrentChart(snapshotMatchesStock(snap, currentCode()) ? snap : null);
+    });
+    if (reloadBtn) reloadBtn.addEventListener("click", function () {
+      var snap = parseSnapshot(snapshotInput);
+      openCurrentChart(snapshotMatchesStock(snap, currentCode()) ? snap : null);
+    });
+    if (captureBtn) captureBtn.addEventListener("click", function () { captureAndStore(true); });
+
+    if (intervalSelect) intervalSelect.addEventListener("change", function () {
+      if (intervalInput) intervalInput.value = intervalSelect.value;
+      if (frame && currentCode()) {
+        var snap = parseSnapshot(snapshotInput);
+        loadFrame(currentCode(), currentName(), intervalSelect.value, snapshotMatchesStock(snap, currentCode()) ? snap : null);
+      }
+    });
+
+    initStockSearch(form, applyStock);
+
+    form.addEventListener("submit", function (event) {
+      if (form.dataset.chartSubmitReady === "1") return;
+      if ((mediaInput ? mediaInput.value : activeMode) !== "chart") return;
+      event.preventDefault();
+      captureAndStore(true).then(function () {
+        form.dataset.chartSubmitReady = "1";
+        if (form.requestSubmit) form.requestSubmit();
+        else form.submit();
+      });
+    });
+
+    setMode(activeMode);
+  }
+
+  function initChartPlayers() {
+    qsa(document, "[data-insight-chart-player]").forEach(function (root) {
+      if (root.dataset.playerReady === "1") return;
+      root.dataset.playerReady = "1";
+      var frame = qs(root, "[data-insight-stock-player-frame]");
+      var empty = qs(root, "[data-insight-stock-frame-empty]");
+      var snapshotInput = qs(root, "[data-chart-snapshot-json]");
+      var snapshot = parseSnapshot(snapshotInput);
+      var code = onlyCode((snapshot && snapshot.code) || root.dataset.chartCode || "");
+      var interval = (snapshot && snapshot.interval) || root.dataset.chartInterval || "1d";
+      if (!frame || !code) {
+        if (empty) {
+          empty.innerHTML = "차트 없음<small>저장된 종목코드를 찾지 못했습니다.</small>";
+          setHidden(empty, false);
+        }
+        return;
+      }
+      frame.onload = function () {
+        setHidden(empty, true);
+        if (snapshot) {
+          setTimeout(function () { postSnapshotToFrame(frame, snapshot); }, 320);
+          setTimeout(function () { postSnapshotToFrame(frame, snapshot); }, 950);
+          setTimeout(function () { postSnapshotToFrame(frame, snapshot); }, 1600);
+        }
+      };
+      frame.removeAttribute("src");
+      frame.srcdoc = buildStockFrameSrcdoc(frame, code, (snapshot && snapshot.name) || root.dataset.chartName || code, interval, "viewer");
+    });
+  }
+
+  function initCardsClick() {
+    qsa(document, "[data-insight-card]").forEach(function (card) {
+      if (card.dataset.cardReady === "1") return;
+      card.dataset.cardReady = "1";
+      card.addEventListener("click", function (event) {
+        if (event.target.closest("a, button")) return;
+        var url = card.dataset.cardUrl;
+        if (url) window.location.href = url;
+      });
+    });
   }
 
   function init() {
-    qsa(document, "[data-insight-carousel], .bv-insight-strip, .insight-carousel").forEach(initCarousel);
+    qsa(document, "[data-insight-carousel]").forEach(initCarousel);
     initListFilter();
-    qsa(document, "[data-insight-image-editor], [data-insight-form], .insight-form-card, .bv-insight-form-wrap").forEach(initImageEditor);
+    initCardsClick();
+    qsa(document, "[data-insight-image-editor]").forEach(initImageEditor);
+    qsa(document, "[data-insight-media-editor]").forEach(initMediaEditor);
+    initChartPlayers();
   }
 
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", init);
-  } else {
-    init();
-  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init);
+  else init();
 })();

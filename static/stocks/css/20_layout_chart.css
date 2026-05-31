@@ -2273,3 +2273,27 @@
 .bitgak-chart-body .avg-row-delete {
   margin-right: 0 !important;
 }
+
+/* 2026-05-31 chart active-indicator strip + drawing clip guard */
+.bitgak-chart-body .chart-active-indicator-bar {
+  flex: 0 0 auto !important;
+  min-height: 38px !important;
+  padding: 5px 8px !important;
+  border-bottom: 1px solid #e5edf7 !important;
+  background: linear-gradient(180deg, #fff, #fbfdff) !important;
+  display: grid !important;
+  grid-template-columns: auto minmax(0, 1fr) auto !important;
+  align-items: center !important;
+  gap: 8px !important;
+  z-index: 55 !important;
+}
+.bitgak-chart-body .chart-indicator-chip-list { display: flex !important; flex-wrap: wrap !important; align-items: center !important; gap: 5px !important; padding: 0 !important; min-height: 28px !important; max-height: 74px !important; overflow-y: auto !important; }
+.bitgak-chart-body .chart-indicator-chip-list .indicator-row { min-height: 28px !important; height: 28px !important; width: auto !important; max-width: 218px !important; padding: 0 5px 0 8px !important; border-radius: 999px !important; display: inline-grid !important; grid-template-columns: minmax(0, auto) auto !important; align-items: center !important; gap: 4px !important; background: #f8fbff !important; border: 1px solid #d9e5f4 !important; }
+.bitgak-chart-body .chart-indicator-chip-list .indicator-eye-btn,
+.bitgak-chart-body .chart-indicator-chip-list .indicator-edit-btn,
+.bitgak-chart-body .chart-indicator-chip-list .indicator-trash-btn { width: 22px !important; height: 22px !important; min-width: 22px !important; border-radius: 8px !important; }
+.bitgak-chart-body .chart-wrap.bitgak-chart-wrap-stack-ready.bitgak-has-subpanes .bv-chart-stack { grid-template-rows: minmax(0, 72%) minmax(110px, 28%) !important; }
+.bitgak-chart-body .chart-wrap.bitgak-has-subpanes #drawingLayer,
+.bitgak-chart-body .chart-wrap.bitgak-has-subpanes .drawing-layer,
+.bitgak-chart-body .chart-wrap.bitgak-chart-wrap-stack-ready.bitgak-has-subpanes #drawingLayer,
+.bitgak-chart-body .chart-wrap.bitgak-chart-wrap-stack-ready.bitgak-has-subpanes .drawing-layer { height: 72% !important; }

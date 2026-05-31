@@ -1,6 +1,6 @@
 <article class="insight-card" data-insight-card data-card-url="{{ item.get_absolute_url }}">
   <a class="insight-card-main" href="{{ item.get_absolute_url }}" aria-label="{{ item.title }} 보기">
-    <div class="insight-card-media">
+    <div class="insight-card-media {% if item.media_type == 'chart' or item.chart_snapshot %}is-chart{% endif %}">
       {% if item.image_url %}
         <img src="{{ item.image_url }}" alt="{{ item.title }}" loading="lazy">
       {% else %}
@@ -14,7 +14,9 @@
     <div class="insight-card-body">
       <div class="insight-card-meta">
         <span class="insight-pill">{{ item.published_date|date:"Y.m.d" }}</span>
-        {% if item.has_youtube %}
+        {% if item.media_type == 'chart' or item.chart_snapshot %}
+          <span class="insight-pill chart">차트 관점</span>
+        {% elif item.has_youtube %}
           <span class="insight-pill muted">유튜브 링크</span>
         {% endif %}
       </div>

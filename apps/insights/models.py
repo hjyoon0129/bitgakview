@@ -1,3 +1,4 @@
+import json
 import re
 from uuid import uuid4
 
@@ -17,11 +18,21 @@ class InsightPost(models.Model):
         NOTE = "note", "일반 관점"
         MARKET = "market", "시장 관점"
 
+    class MediaType(models.TextChoices):
+        IMAGE = "image", "이미지 방식"
+        CHART = "chart", "차트 방식"
+
     content_type = models.CharField(
         max_length=20,
         choices=ContentType.choices,
         default=ContentType.NOTE,
         verbose_name="콘텐츠 유형",
+    )
+    media_type = models.CharField(
+        max_length=20,
+        choices=MediaType.choices,
+        default=MediaType.IMAGE,
+        verbose_name="표시 방식",
     )
     title = models.CharField(max_length=140, verbose_name="제목")
     slug = models.SlugField(
@@ -49,6 +60,13 @@ class InsightPost(models.Model):
     )
     youtube_url = models.URLField(blank=True, verbose_name="유튜브 URL")
 
+    # 차트 방식 저장 필드
+    chart_code = models.CharField(max_length=20, blank=True, verbose_name="차트 종목코드")
+    chart_name = models.CharField(max_length=80, blank=True, verbose_name="차트 종목명")
+    chart_interval = models.CharField(max_length=20, blank=True, default="1d", verbose_name="차트 시간봉")
+    chart_api_url = models.CharField(max_length=240, blank=True, verbose_name="차트 API URL")
+    chart_snapshot = models.TextField(blank=True, verbose_name="차트 저장 스냅샷")
+
     risk_notice = models.CharField(
         max_length=240,
         default="본 콘텐츠는 학습 및 관점 공유용이며, 특정 종목의 매수·매도 추천이 아닙니다.",
@@ -72,6 +90,12 @@ class InsightPost(models.Model):
         return self.title
 
     def save(self, *args, **kwargs):
+        if self.media_type == self.MediaType.CHART:
+            if self.chart_code and not self.related_symbol:
+                self.related_symbol = self.chart_code
+            if self.chart_name and not self.related_name:
+                self.related_name = self.chart_name
+
         if not self.slug:
             base_slug = slugify(self.title, allow_unicode=True).strip("-_")
             if not base_slug:
@@ -103,10 +127,10 @@ class InsightPost(models.Model):
             return ""
 
         patterns = [
-            r"youtu\\.be/([^?&/]+)",
-            r"youtube\\.com/watch\\?v=([^?&]+)",
-            r"youtube\\.com/shorts/([^?&/]+)",
-            r"youtube\\.com/embed/([^?&/]+)",
+            r"youtu\.be/([^?&/]+)",
+            r"youtube\.com/watch\?v=([^?&]+)",
+            r"youtube\.com/shorts/([^?&/]+)",
+            r"youtube\.com/embed/([^?&/]+)",
         ]
 
         for pattern in patterns:
@@ -127,12 +151,34 @@ class InsightPost(models.Model):
         return ""
 
     @property
+    def chart_thumbnail_data_url(self):
+        if not self.chart_snapshot:
+            return ""
+        try:
+            payload = json.loads(self.chart_snapshot)
+        except Exception:
+            return ""
+        value = str(payload.get("thumbnailDataUrl") or payload.get("thumbnail") or "")
+        if value.startswith("data:image/"):
+            return value
+        return ""
+
+    @property
     def image_url(self):
         if self.cover_image:
             try:
                 return self.cover_image.url
             except Exception:
                 return ""
+
+        if self.thumbnail_url:
+            return self.thumbnail_url
+
+        if self.media_type == self.MediaType.CHART:
+            chart_thumb = self.chart_thumbnail_data_url
+            if chart_thumb:
+                return chart_thumb
+
         return self.youtube_thumbnail_url
 
     @property

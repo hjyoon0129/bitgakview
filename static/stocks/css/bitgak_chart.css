@@ -6486,3 +6486,560 @@ html.bitgak-y-axis-scaling .tv-chart,
   .bitgak-chart-body .portfolio-donut::after { inset: 21px !important; }
   .bitgak-chart-body .portfolio-donut span { inset: 29px !important; font-size: 11px !important; }
 }
+
+
+/* =========================================================
+   2026-05-31 CSS-first patch
+   Right panel = watchlist only / Applied indicators move to chart strip
+   - 오른쪽 하단 지표관리 패널 제거
+   - 관심종목 리스트를 한 줄 컴팩트 구조로 확장
+   - 지표 hide/edit/delete 행은 차트 상단 OHLC 아래에서 표시
+   - 드로잉/이평선 깨짐 방지를 위해 차트 pane clipping 보강
+   ========================================================= */
+
+/* ---- Layout: right panel uses the whole height for watchlist ---- */
+.bitgak-chart-body .bv-layout:not(.bv-drawer-open),
+.bitgak-chart-body .bv-layout-full:not(.bv-drawer-open) {
+  grid-template-columns: minmax(0, 1fr) 300px !important;
+  grid-template-rows: minmax(0, 1fr) !important;
+}
+
+.bitgak-chart-body .bv-layout.bv-drawer-open,
+.bitgak-chart-body .bv-layout-full.bv-drawer-open {
+  grid-template-columns: 430px minmax(0, 1fr) 300px !important;
+  grid-template-rows: minmax(0, 1fr) !important;
+}
+
+.bitgak-chart-body .bv-symbol-panel {
+  height: 100% !important;
+  min-height: 0 !important;
+  display: grid !important;
+  grid-template-rows: minmax(0, 1fr) !important;
+  gap: 0 !important;
+  padding: 10px !important;
+  overflow: hidden !important;
+  background: linear-gradient(180deg, rgba(8, 17, 31, 0.985), rgba(5, 13, 24, 0.985)) !important;
+}
+
+.bitgak-chart-body .bv-symbol-panel .indicator-dock-section {
+  display: none !important;
+}
+
+.bitgak-chart-body .symbol-dock-section {
+  min-height: 0 !important;
+  height: 100% !important;
+  border-radius: 16px !important;
+}
+
+/* ---- Right watchlist compact header ---- */
+.bitgak-chart-body .symbol-dock-section .right-dock-head {
+  min-height: 48px !important;
+  padding: 10px 10px 8px !important;
+  gap: 8px !important;
+}
+
+.bitgak-chart-body .symbol-dock-section .right-dock-title strong {
+  font-size: 15px !important;
+  line-height: 1.1 !important;
+  letter-spacing: -0.045em !important;
+}
+
+.bitgak-chart-body .symbol-dock-section .right-dock-title span {
+  margin-top: 2px !important;
+  font-size: 10px !important;
+  line-height: 1.25 !important;
+  letter-spacing: -0.035em !important;
+}
+
+.bitgak-chart-body .symbol-panel-actions {
+  gap: 5px !important;
+}
+
+.bitgak-chart-body .symbol-mini-btn {
+  height: 28px !important;
+  padding: 0 8px !important;
+  border-radius: 10px !important;
+  font-size: 11px !important;
+  letter-spacing: -0.045em !important;
+}
+
+.bitgak-chart-body .right-dock-body {
+  padding: 8px !important;
+  min-height: 0 !important;
+}
+
+.bitgak-chart-body .symbol-select-wrap {
+  margin-bottom: 7px !important;
+}
+
+.bitgak-chart-body .symbol-group-select,
+.bitgak-chart-body .symbol-select-wrap .bv-select-btn {
+  height: 34px !important;
+  min-height: 34px !important;
+  border-radius: 12px !important;
+  padding: 0 10px !important;
+  font-size: 12px !important;
+  font-weight: 950 !important;
+}
+
+.bitgak-chart-body .selected-group-box {
+  border-radius: 14px !important;
+}
+
+.bitgak-chart-body .selected-group-head {
+  min-height: 34px !important;
+  height: 34px !important;
+  padding: 0 9px !important;
+}
+
+.bitgak-chart-body .selected-group-head strong {
+  font-size: 12px !important;
+  letter-spacing: -0.035em !important;
+}
+
+.bitgak-chart-body .selected-group-count {
+  min-width: 22px !important;
+  height: 20px !important;
+  padding: 0 7px !important;
+  font-size: 10px !important;
+}
+
+.bitgak-chart-body .selected-symbol-list {
+  gap: 4px !important;
+  padding: 6px !important;
+  align-content: start !important;
+  overflow-y: auto !important;
+  scrollbar-gutter: stable !important;
+}
+
+/* 관심종목: 한 줄마다 최대한 많이 보이게 */
+.bitgak-chart-body .symbol-row {
+  min-height: 34px !important;
+  height: 34px !important;
+  padding: 5px 6px 5px 8px !important;
+  border-radius: 10px !important;
+  grid-template-columns: minmax(0, 1fr) 22px !important;
+  gap: 5px !important;
+  align-items: center !important;
+  background: rgba(15, 23, 42, 0.70) !important;
+}
+
+.bitgak-chart-body .symbol-row a {
+  min-width: 0 !important;
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto !important;
+  align-items: baseline !important;
+  gap: 6px !important;
+  text-decoration: none !important;
+}
+
+.bitgak-chart-body .symbol-row strong {
+  min-width: 0 !important;
+  color: #f8fbff !important;
+  font-size: 12px !important;
+  font-weight: 1000 !important;
+  line-height: 1.1 !important;
+  letter-spacing: -0.045em !important;
+  overflow: hidden !important;
+  white-space: nowrap !important;
+  text-overflow: ellipsis !important;
+}
+
+.bitgak-chart-body .symbol-row span {
+  margin-top: 0 !important;
+  color: #60a5fa !important;
+  font-size: 10px !important;
+  font-weight: 950 !important;
+  line-height: 1 !important;
+  white-space: nowrap !important;
+}
+
+.bitgak-chart-body .symbol-trash-btn {
+  width: 22px !important;
+  height: 22px !important;
+  border-radius: 8px !important;
+}
+
+.bitgak-chart-body .symbol-trash-btn svg,
+.bitgak-chart-body .symbol-trash-btn img {
+  width: 13px !important;
+  height: 13px !important;
+}
+
+.bitgak-chart-body .symbol-empty {
+  padding: 14px 10px !important;
+  color: #8aa5c7 !important;
+  font-size: 11px !important;
+  font-weight: 850 !important;
+  line-height: 1.45 !important;
+}
+
+/* ---- Applied indicators: chart strip like insight page ---- */
+.bitgak-chart-body .chart-active-indicator-bar {
+  flex: 0 0 auto !important;
+  min-height: 38px !important;
+  height: auto !important;
+  padding: 5px 8px !important;
+  border-bottom: 1px solid #e5edf7 !important;
+  background: linear-gradient(180deg, #ffffff, #fbfdff) !important;
+  display: grid !important;
+  grid-template-columns: auto minmax(0, 1fr) auto !important;
+  align-items: center !important;
+  gap: 8px !important;
+  position: relative !important;
+  z-index: 55 !important;
+}
+
+.bitgak-chart-body .chart-active-indicator-head {
+  min-width: 0 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  white-space: nowrap !important;
+  color: #0f172a !important;
+  font-size: 11px !important;
+  font-weight: 1000 !important;
+  letter-spacing: -0.04em !important;
+}
+
+.bitgak-chart-body .chart-active-indicator-head .indicator-count,
+.bitgak-chart-body .chart-active-indicator-head b {
+  min-width: 20px !important;
+  height: 20px !important;
+  padding: 0 7px !important;
+  border-radius: 999px !important;
+  background: #e8f1ff !important;
+  color: #2563eb !important;
+  font-size: 10px !important;
+  font-weight: 1000 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.bitgak-chart-body .chart-indicator-chip-list {
+  min-width: 0 !important;
+  min-height: 28px !important;
+  max-height: 74px !important;
+  padding: 0 !important;
+  display: flex !important;
+  flex-wrap: wrap !important;
+  align-items: center !important;
+  align-content: center !important;
+  gap: 5px !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  scrollbar-width: thin !important;
+}
+
+.bitgak-chart-body .chart-indicator-chip-list::-webkit-scrollbar {
+  width: 6px !important;
+  height: 6px !important;
+}
+
+.bitgak-chart-body .chart-indicator-chip-list::-webkit-scrollbar-thumb {
+  border-radius: 999px !important;
+  background: rgba(148, 163, 184, 0.45) !important;
+}
+
+.bitgak-chart-body .chart-indicator-chip-list .indicator-empty {
+  padding: 0 2px !important;
+  color: #8aa0b8 !important;
+  background: transparent !important;
+  border: 0 !important;
+  font-size: 11px !important;
+  font-weight: 800 !important;
+  line-height: 1.2 !important;
+}
+
+.bitgak-chart-body .chart-indicator-chip-list .indicator-row {
+  min-height: 28px !important;
+  height: 28px !important;
+  width: auto !important;
+  max-width: 218px !important;
+  padding: 0 5px 0 8px !important;
+  border-radius: 999px !important;
+  border: 1px solid #d9e5f4 !important;
+  background: #f8fbff !important;
+  box-shadow: none !important;
+  display: inline-grid !important;
+  grid-template-columns: minmax(0, auto) auto !important;
+  align-items: center !important;
+  gap: 4px !important;
+  color: #0f172a !important;
+}
+
+.bitgak-chart-body .chart-indicator-chip-list .indicator-row:hover {
+  border-color: #b9d5ff !important;
+  background: #edf6ff !important;
+}
+
+.bitgak-chart-body .chart-indicator-chip-list .indicator-row-title,
+.bitgak-chart-body .chart-indicator-chip-list .indicator-row-main {
+  min-width: 0 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 5px !important;
+  overflow: hidden !important;
+}
+
+.bitgak-chart-body .chart-indicator-chip-list .indicator-row-title strong,
+.bitgak-chart-body .chart-indicator-chip-list .indicator-row strong {
+  min-width: 0 !important;
+  max-width: 126px !important;
+  color: #0f172a !important;
+  font-size: 11px !important;
+  font-weight: 1000 !important;
+  line-height: 1 !important;
+  overflow: hidden !important;
+  white-space: nowrap !important;
+  text-overflow: ellipsis !important;
+}
+
+.bitgak-chart-body .chart-indicator-chip-list .indicator-row-title small,
+.bitgak-chart-body .chart-indicator-chip-list .indicator-row small,
+.bitgak-chart-body .chart-indicator-chip-list .indicator-row-desc,
+.bitgak-chart-body .chart-indicator-chip-list .indicator-desc {
+  display: none !important;
+}
+
+.bitgak-chart-body .chart-indicator-chip-list .indicator-row-actions,
+.bitgak-chart-body .chart-indicator-chip-list .indicator-actions {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 2px !important;
+}
+
+.bitgak-chart-body .chart-indicator-chip-list .indicator-eye-btn,
+.bitgak-chart-body .chart-indicator-chip-list .indicator-edit-btn,
+.bitgak-chart-body .chart-indicator-chip-list .indicator-trash-btn {
+  width: 22px !important;
+  height: 22px !important;
+  min-width: 22px !important;
+  border-radius: 8px !important;
+  color: #64748b !important;
+}
+
+.bitgak-chart-body .chart-indicator-chip-list .indicator-eye-btn:hover,
+.bitgak-chart-body .chart-indicator-chip-list .indicator-edit-btn:hover {
+  color: #2563eb !important;
+  background: rgba(37, 99, 235, 0.10) !important;
+}
+
+.bitgak-chart-body .chart-indicator-chip-list .indicator-trash-btn:hover {
+  color: #ef4444 !important;
+  background: rgba(239, 68, 68, 0.10) !important;
+}
+
+.bitgak-chart-body .chart-indicator-add-mini {
+  height: 28px !important;
+  padding: 0 10px !important;
+  border: 1px solid #bfdbfe !important;
+  border-radius: 999px !important;
+  background: #eff6ff !important;
+  color: #0b5cff !important;
+  font-size: 11px !important;
+  font-weight: 1000 !important;
+  white-space: nowrap !important;
+}
+
+.bitgak-chart-body .chart-indicator-add-mini:hover {
+  border-color: #60a5fa !important;
+  background: #dbeafe !important;
+}
+
+.bitgak-chart-body .indicator-compat-hidden {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  overflow: hidden !important;
+  clip: rect(0 0 0 0) !important;
+  clip-path: inset(50%) !important;
+  white-space: nowrap !important;
+}
+
+/* ---- Chart pane hardening: prevent moving averages/drawings looking broken ---- */
+.bitgak-chart-body .chart-card,
+.bitgak-chart-body .chart-card-full {
+  min-width: 0 !important;
+  min-height: 0 !important;
+  isolation: isolate !important;
+}
+
+.bitgak-chart-body .chart-wrap,
+.bitgak-chart-body .chart-wrap-v5,
+.bitgak-chart-body #chartWrap {
+  position: relative !important;
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+  contain: layout paint size !important;
+  background: #ffffff !important;
+}
+
+.bitgak-chart-body .tv-chart,
+.bitgak-chart-body .tv-chart-v5,
+.bitgak-chart-body #tvChart,
+.bitgak-chart-body .bv-main-chart-pane,
+.bitgak-chart-body .bv-main-chart-canvas,
+.bitgak-chart-body .bv-subpane-area,
+.bitgak-chart-body .bv-indicator-pane,
+.bitgak-chart-body .bv-indicator-pane-chart {
+  min-width: 0 !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+  background: #ffffff !important;
+}
+
+.bitgak-chart-body .tv-chart canvas,
+.bitgak-chart-body .tv-chart-v5 canvas,
+.bitgak-chart-body #tvChart canvas {
+  max-width: none !important;
+  max-height: none !important;
+  image-rendering: auto !important;
+  backface-visibility: hidden !important;
+}
+
+/* 보조지표가 있을 때는 가격 차트 영역을 넉넉히 확보 */
+.bitgak-chart-body .chart-wrap.bitgak-chart-wrap-stack-ready .bv-chart-stack {
+  grid-template-rows: minmax(0, 1fr) 0 !important;
+}
+
+.bitgak-chart-body .chart-wrap.bitgak-chart-wrap-stack-ready.bitgak-has-subpanes .bv-chart-stack {
+  grid-template-rows: minmax(0, 72%) minmax(110px, 28%) !important;
+}
+
+.bitgak-chart-body .chart-wrap.bitgak-chart-wrap-stack-ready.bitgak-has-subpanes .bv-subpane-area {
+  display: grid !important;
+  grid-auto-rows: minmax(92px, 1fr) !important;
+}
+
+/* 드로잉은 가격 메인 pane 위에서만 보이도록 자름 */
+.bitgak-chart-body #drawingLayer,
+.bitgak-chart-body .drawing-layer {
+  position: absolute !important;
+  left: 0 !important;
+  top: 0 !important;
+  right: auto !important;
+  bottom: auto !important;
+  width: 100% !important;
+  height: 100% !important;
+  overflow: hidden !important;
+  contain: paint !important;
+  clip-path: inset(0 0 0 0) !important;
+  transform-origin: 0 0 !important;
+  transition: none !important;
+  z-index: 24 !important;
+}
+
+.bitgak-chart-body .chart-wrap.bitgak-has-subpanes #drawingLayer,
+.bitgak-chart-body .chart-wrap.bitgak-has-subpanes .drawing-layer,
+.bitgak-chart-body .chart-wrap.bitgak-chart-wrap-stack-ready.bitgak-has-subpanes #drawingLayer,
+.bitgak-chart-body .chart-wrap.bitgak-chart-wrap-stack-ready.bitgak-has-subpanes .drawing-layer {
+  height: 72% !important;
+}
+
+.bitgak-chart-body #drawingLayer svg,
+.bitgak-chart-body #drawingLayer path,
+.bitgak-chart-body #drawingLayer line,
+.bitgak-chart-body #drawingLayer polyline,
+.bitgak-chart-body #drawingLayer polygon,
+.bitgak-chart-body #drawingLayer circle,
+.bitgak-chart-body #drawingLayer ellipse,
+.bitgak-chart-body #drawingLayer rect {
+  vector-effect: non-scaling-stroke;
+  shape-rendering: geometricPrecision;
+}
+
+.bitgak-chart-body .chart-wrap.drawing-mode #drawingLayer,
+.bitgak-chart-body .chart-wrap.drawing-mode .drawing-layer {
+  pointer-events: all !important;
+  cursor: crosshair !important;
+}
+
+.bitgak-chart-body #chartIndicatorOverlay,
+.bitgak-chart-body .chart-indicator-overlay {
+  z-index: 25 !important;
+  pointer-events: none !important;
+  overflow: hidden !important;
+}
+
+/* 상단 툴바가 좁은 폭에서 차트를 밀거나 깨지지 않게 */
+.bitgak-chart-body .chart-card-top {
+  min-width: 0 !important;
+  overflow: visible !important;
+  gap: 8px !important;
+}
+
+.bitgak-chart-body .chart-title {
+  min-width: 118px !important;
+  max-width: 220px !important;
+  overflow: hidden !important;
+  white-space: nowrap !important;
+  text-overflow: ellipsis !important;
+}
+
+.bitgak-chart-body .bv-drawing-toolbar {
+  min-width: 0 !important;
+  margin-left: 6px !important;
+  gap: 3px !important;
+}
+
+.bitgak-chart-body .bv-drawing-toolbar .tool-btn {
+  width: 27px !important;
+  height: 27px !important;
+  border-radius: 9px !important;
+}
+
+.bitgak-chart-body .bv-drawing-toolbar .bv-drawing-continuous-btn {
+  width: auto !important;
+  min-width: 44px !important;
+  padding: 0 8px !important;
+  font-size: 11px !important;
+}
+
+/* ---- Responsive ---- */
+@media (max-width: 1450px) {
+  .bitgak-chart-body .bv-layout:not(.bv-drawer-open),
+  .bitgak-chart-body .bv-layout-full:not(.bv-drawer-open),
+  .bitgak-chart-body .bv-layout.bv-drawer-open,
+  .bitgak-chart-body .bv-layout-full.bv-drawer-open {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .bitgak-chart-body .bv-symbol-panel {
+    display: none !important;
+  }
+}
+
+@media (max-width: 900px) {
+  .bitgak-chart-body .chart-active-indicator-bar {
+    grid-template-columns: auto minmax(0, 1fr) !important;
+    row-gap: 5px !important;
+  }
+
+  .bitgak-chart-body .chart-indicator-add-mini {
+    display: none !important;
+  }
+
+  .bitgak-chart-body .chart-indicator-chip-list {
+    max-height: 66px !important;
+  }
+}
+
+@media (max-width: 760px) {
+  .bitgak-chart-body .chart-active-indicator-bar {
+    display: none !important;
+  }
+
+  .bitgak-chart-body .chart-wrap.bitgak-chart-wrap-stack-ready.bitgak-has-subpanes .bv-chart-stack {
+    grid-template-rows: minmax(0, 70%) minmax(104px, 30%) !important;
+  }
+
+  .bitgak-chart-body .chart-wrap.bitgak-has-subpanes #drawingLayer,
+  .bitgak-chart-body .chart-wrap.bitgak-has-subpanes .drawing-layer,
+  .bitgak-chart-body .chart-wrap.bitgak-chart-wrap-stack-ready.bitgak-has-subpanes #drawingLayer,
+  .bitgak-chart-body .chart-wrap.bitgak-chart-wrap-stack-ready.bitgak-has-subpanes .drawing-layer {
+    height: 70% !important;
+  }
+}

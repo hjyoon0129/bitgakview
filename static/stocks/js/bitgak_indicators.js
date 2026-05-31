@@ -5,6 +5,9 @@
   const api = window.BitgakChart;
   if (!api) return;
 
+  const app = document.querySelector(".bv-app");
+  const IS_INSIGHT_EMBED = !!(app && (app.dataset.insightEditor === "1" || app.dataset.insightViewer === "1" || app.dataset.insightEmbed === "1"));
+
   const modal = document.getElementById("indicatorModal");
   const panel = modal ? modal.querySelector(".indicator-panel") : null;
   const openTopBtn = document.getElementById("openIndicatorBtn");
@@ -31,8 +34,17 @@
 
   if (!modal || !catalogEl || !rightList) return;
 
-  const STORAGE_KEY = "bitgak_chart_indicators_v5_tv";
-  const LEGACY_KEYS = ["bitgak_chart_indicators_v3", "bitgak_chart_indicators_v2", "bitgakview_applied_indicators_v2"];
+  const CURRENT_STOCK_CODE = String((app && app.dataset && app.dataset.code) || "global").trim() || "global";
+
+  // 종목별 지표 저장으로 변경합니다.
+  // 이전 전역 key를 그대로 쓰면 A종목에서 켠 거래량/이평선/RSI가 B종목에서도 자동으로 떠서
+  // "새 종목은 기본 캔들 차트만"이라는 동작이 깨집니다.
+  const STORAGE_KEY_BASE = "bitgak_chart_indicators_v6_tv";
+  const STORAGE_KEY = IS_INSIGHT_EMBED ? STORAGE_KEY_BASE + ":insight" : STORAGE_KEY_BASE + ":" + CURRENT_STOCK_CODE;
+  const LEGACY_KEYS = IS_INSIGHT_EMBED ? [] : [
+    STORAGE_KEY_BASE + ":" + CURRENT_STOCK_CODE,
+    "bitgak_chart_indicators_v5_tv:" + CURRENT_STOCK_CODE
+  ];
   const FAVORITE_KEY = "bitgak_indicator_favorites_v1";
 
   const PALETTE_COLORS = [
@@ -222,6 +234,44 @@
     localStorage.setItem(FAVORITE_KEY, JSON.stringify(Array.from(new Set(favoriteTypes.map(fixType)))));
   }
 
+  let insightIndicatorNotifyTimer = null;
+
+  function notifyInsightIndicatorsChanged() {
+    if (!IS_INSIGHT_EMBED) return;
+    clearTimeout(insightIndicatorNotifyTimer);
+    insightIndicatorNotifyTimer = setTimeout(function () {
+      try {
+        const payload = {
+          type: "bitgak:insight-indicators-changed",
+          code: app && app.dataset ? app.dataset.code || "" : "",
+          indicators: getPlainIndicators(),
+        };
+        if (window.parent && window.parent !== window) window.parent.postMessage(payload, "*");
+      } catch (e) {}
+    }, 40);
+  }
+
+  function forceInsightIndicatorRebuildAndNotify() {
+    rebuildAll();
+    renderRightList();
+    notifyInsightIndicatorsChanged();
+    scheduleChartRelayout();
+  }
+
+  function scheduleChartRelayout() {
+    const run = function () {
+      try { if (api.syncPaneTimeScales) api.syncPaneTimeScales(); } catch (e) {}
+      try { if (api.refreshPaneLabels) api.refreshPaneLabels(); } catch (e) {}
+      try { window.dispatchEvent(new Event("resize")); } catch (e) {}
+      try { normalizePaneLabelDom(); } catch (e) {}
+    };
+
+    requestAnimationFrame(run);
+    [40, 120, 260, 520].forEach(function (delay) {
+      setTimeout(run, delay);
+    });
+  }
+
   function isFavorite(type) {
     return favoriteTypes.includes(fixType(type));
   }
@@ -295,7 +345,7 @@
     const method = METHOD_OPTIONS.some(function (x) { return x.value === raw.method; }) ? raw.method : fallback.method;
     return {
       id: raw.id || makeId("ma_line_" + index),
-      visible: raw.visible !== false && raw.enabled !== false,
+      visible: normalizeBool(raw.visible ?? raw.enabled, true),
       period: clampNumber(raw.period, 1, 2000, fallback.period),
       width: clampNumber(raw.width, 1, 6, fallback.width),
       source,
@@ -329,7 +379,7 @@
         lines = settings.lines.map(function (line) {
           return {
             id: line.id,
-            visible: line.visible !== false && line.enabled !== false,
+            visible: normalizeBool(line.visible ?? line.enabled, true),
             period: line.period,
             width: line.width,
             source: line.source || "close",
@@ -341,7 +391,7 @@
       if (!lines && (originalType === "ma" || originalType === "ema")) {
         lines = [{
           id: raw.id || raw.uid || makeId("ma_line"),
-          visible: raw.visible !== false,
+          visible: normalizeBool(raw.visible ?? raw.enabled, true),
           period: Number(raw.period || settings.period || meta.defaultPeriod || 20),
           width: Number(raw.width || settings.width || 2),
           source: raw.source || settings.source || "close",
@@ -359,7 +409,7 @@
       return {
         id: raw.id || raw.uid || makeId("ma_pack"),
         type: "ma_pack",
-        visible: raw.visible !== false,
+        visible: normalizeBool(raw.visible ?? raw.enabled, true),
         lines: fixedLines.slice(0, 10),
         series: [],
       };
@@ -368,7 +418,7 @@
     const base = {
       id: raw.id || raw.uid || makeId(type),
       type,
-      visible: raw.visible !== false,
+      visible: normalizeBool(raw.visible ?? raw.enabled, true),
       source: raw.source || settings.source || (type === "volume" ? "volume" : "close"),
       color: normalizeColor(raw.color || settings.color, meta.color),
       width: clampNumber(raw.width || settings.width || 2, 1, 6, type === "boll" ? 1 : 2),
@@ -473,13 +523,26 @@
   }
 
   function readStoredIndicators() {
+    // 인사이트 글쓰기/상세 iframe에서는 일반 stock_detail에서 저장해둔
+    // 이동평균·거래량·RSI 같은 개인 지표 설정을 가져오지 않는다.
+    // 처음 차트를 열면 진짜 기본 캔들 차트만 보이고, 저장된 글의 경우에만
+    // chart_snapshot 안의 indicators 값을 아래 setIndicatorsFromSnapshot에서 복원한다.
+    if (IS_INSIGHT_EMBED) return [];
+
     const keys = [STORAGE_KEY].concat(LEGACY_KEYS);
+    const seen = new Set();
+
     for (const key of keys) {
+      if (!key || seen.has(key)) continue;
+      seen.add(key);
       try {
         const saved = JSON.parse(localStorage.getItem(key));
         if (Array.isArray(saved)) return saved;
       } catch (e) {}
     }
+
+    // v6부터는 전역 지표 key를 자동 마이그레이션하지 않는다.
+    // 그래야 종목 검색/이동 시 이전 종목의 거래량·이평선·RSI가 따라오지 않는다.
     return [];
   }
 
@@ -512,6 +575,10 @@
       delete copy.series;
       return copy;
     });
+    if (IS_INSIGHT_EMBED) {
+      notifyInsightIndicatorsChanged();
+      return;
+    }
     localStorage.setItem(STORAGE_KEY, JSON.stringify(plain));
   }
 
@@ -1973,6 +2040,8 @@
       updatePaneLegendValues();
       schedulePaneLabelRefresh();
     });
+
+    scheduleChartRelayout();
   }
 
   function buildIndicatorRowsHtml(emptyMessage) {
@@ -1988,7 +2057,7 @@
       const color = indicator.type === "ma_pack" ? ((visibleLine && visibleLine.color) || meta.color) : (indicator.color || meta.color);
 
       return `
-        <div class="indicator-row ${indicator.visible ? "" : "off"}" data-indicator-row="${escapeHtml(indicator.id)}" title="더블클릭하면 설정창이 열립니다.">
+        <div class="indicator-row ${indicator.visible ? "" : "off"}" data-indicator-row="${escapeHtml(indicator.id)}" data-indicator-type="${escapeHtml(indicator.type)}" title="더블클릭하면 설정창이 열립니다.">
           <div class="indicator-row-main">
             <div class="indicator-row-title">
               <span class="indicator-color-dot" style="background:${escapeHtml(color)}; box-shadow:0 0 10px ${escapeHtml(color)}66;"></span>
@@ -2015,6 +2084,7 @@
 
   function renderRightList() {
     const total = indicators.length;
+    const visibleTotal = indicators.filter(function (item) { return item && item.visible !== false; }).length;
     if (countEl) countEl.textContent = String(total);
     if (mobileCountEl) mobileCountEl.textContent = String(total);
     if (mobileBadgeEl) {
@@ -2022,8 +2092,16 @@
       mobileBadgeEl.classList.toggle("is-empty", total === 0);
     }
 
+    const bar = document.querySelector(".chart-active-indicator-bar");
+    if (bar) {
+      bar.classList.toggle("has-indicators", total > 0);
+      bar.classList.toggle("has-visible-indicators", visibleTotal > 0);
+      bar.dataset.indicatorCount = String(total);
+      bar.dataset.visibleIndicatorCount = String(visibleTotal);
+    }
+
     if (rightList) {
-      rightList.innerHTML = buildIndicatorRowsHtml("아직 추가된 지표가 없습니다. 위 검색창 또는 [지표추가] 버튼으로 지표를 추가하세요.");
+      rightList.innerHTML = buildIndicatorRowsHtml("아직 추가된 지표가 없습니다. [지표검색]으로 필요한 지표를 먼저 추가하세요.");
     }
 
     if (mobileList) {
@@ -2047,12 +2125,29 @@
   }
 
   function handleIndicatorListClick(event) {
+    if (!event || event.__bitgakIndicatorHandled) return;
+
     const toggleBtn = event.target.closest("[data-toggle-indicator-visible]");
-    if (toggleBtn) { event.preventDefault(); event.stopPropagation(); toggleIndicatorVisible(toggleBtn.dataset.toggleIndicatorVisible); return; }
+    if (toggleBtn) {
+      event.__bitgakIndicatorHandled = true;
+      event.preventDefault();
+      event.stopPropagation();
+      toggleIndicatorVisible(toggleBtn.dataset.toggleIndicatorVisible);
+      return;
+    }
+
     const removeBtn = event.target.closest("[data-remove-indicator]");
-    if (removeBtn) { event.preventDefault(); event.stopPropagation(); removeIndicator(removeBtn.dataset.removeIndicator); return; }
+    if (removeBtn) {
+      event.__bitgakIndicatorHandled = true;
+      event.preventDefault();
+      event.stopPropagation();
+      removeIndicator(removeBtn.dataset.removeIndicator);
+      return;
+    }
+
     const editBtn = event.target.closest("[data-edit-indicator]");
     if (editBtn) {
+      event.__bitgakIndicatorHandled = true;
       event.preventDefault();
       event.stopPropagation();
       closeMobileIndicatorModal();
@@ -2627,6 +2722,7 @@
         existing.visible = true;
         saveIndicators();
         rebuildAll();
+        scheduleChartRelayout();
         closeModal();
         return;
       }
@@ -2644,15 +2740,16 @@
 
     saveIndicators();
     rebuildAll();
+    scheduleChartRelayout();
     closeModal();
   }
 
   function toggleIndicatorVisible(id) {
     const indicator = indicators.find(function (item) { return item.id === id; });
     if (!indicator) return;
-    indicator.visible = !indicator.visible;
+    indicator.visible = !normalizeBool(indicator.visible, true);
     saveIndicators();
-    rebuildAll();
+    forceInsightIndicatorRebuildAndNotify();
   }
 
   function removeIndicator(id) {
@@ -2663,7 +2760,7 @@
     }
     indicators = indicators.filter(function (item) { return item.id !== id; });
     saveIndicators();
-    rebuildAll();
+    forceInsightIndicatorRebuildAndNotify();
   }
 
   function applyMaSettings(indicator) {
@@ -2713,6 +2810,7 @@
       applyMaSettings(indicator);
       saveIndicators();
       rebuildAll();
+      scheduleChartRelayout();
       closeModal();
       return;
     }
@@ -2806,6 +2904,7 @@
 
     saveIndicators();
     rebuildAll();
+    scheduleChartRelayout();
     closeModal();
   }
 
@@ -2946,6 +3045,18 @@
   mobileList && mobileList.addEventListener("click", handleIndicatorListClick);
   mobileList && mobileList.addEventListener("dblclick", handleIndicatorListDblClick);
 
+  // iframe/srcdoc 환경에서는 rightList가 다시 그려지는 타이밍에 직접 바인딩이 끊긴 것처럼
+  // 보일 수 있어 문서 레벨에서도 한 번 더 위임 처리한다.
+  document.addEventListener("click", function (event) {
+    if (!event.target.closest("#rightIndicatorList, #mobileIndicatorList")) return;
+    handleIndicatorListClick(event);
+  }, true);
+
+  document.addEventListener("dblclick", function (event) {
+    if (!event.target.closest("#rightIndicatorList, #mobileIndicatorList")) return;
+    handleIndicatorListDblClick(event);
+  }, true);
+
   openMobileBtn && openMobileBtn.addEventListener("click", function (event) {
     event.preventDefault();
     event.stopPropagation();
@@ -3000,6 +3111,55 @@
   });
 
   document.addEventListener("bitgak:chart-data-loaded", rebuildAll);
+
+  function getPlainIndicators() {
+    return indicators.map(function (item) {
+      if (item.type === "ma_pack") {
+        return {
+          id: item.id,
+          type: item.type,
+          visible: item.visible,
+          lines: (item.lines || []).map(function (line) {
+            return {
+              id: line.id,
+              visible: line.visible,
+              period: line.period,
+              width: line.width,
+              source: line.source,
+              method: line.method,
+              color: line.color,
+            };
+          }),
+        };
+      }
+      const copy = { ...item };
+      delete copy.series;
+      return copy;
+    });
+  }
+
+  function setIndicatorsFromSnapshot(list) {
+    indicators = (Array.isArray(list) ? list : []).map(normalizeIndicator).filter(Boolean);
+    saveIndicators();
+    rebuildAll();
+    renderCatalog();
+    renderFavoritePanel();
+    renderRightList();
+    schedulePaneLabelRefresh();
+  }
+
+  window.BitgakIndicators = {
+    getIndicators: getPlainIndicators,
+    setIndicators: setIndicatorsFromSnapshot,
+    clear: function () { setIndicatorsFromSnapshot([]); },
+    removeIndicator: removeIndicator,
+    toggleIndicatorVisible: toggleIndicatorVisible,
+  };
+
+  document.addEventListener("bitgak:apply-insight-indicators", function (event) {
+    const detail = event.detail || {};
+    setIndicatorsFromSnapshot(detail.indicators || []);
+  });
 
 
   window.BitgakClearIndicatorPaneLabels = function () {

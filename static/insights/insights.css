@@ -836,3 +836,1748 @@
     width: 100%;
   }
 }
+
+/* =========================================================
+   Insight polish + chart-mode viewpoint
+   ========================================================= */
+.insight-kicker {
+  letter-spacing: .18em;
+}
+
+.insight-carousel {
+  margin: 30px 0 34px;
+  padding: 24px 26px 20px;
+}
+
+.insight-carousel-head {
+  margin-bottom: 18px;
+  align-items: center;
+}
+
+.insight-carousel-head h2 {
+  margin-top: 2px;
+  line-height: 1.06;
+}
+
+.insight-carousel-head p {
+  margin-top: 8px;
+  line-height: 1.45;
+}
+
+.insight-card-media.is-chart {
+  background:
+    linear-gradient(115deg, rgba(37, 99, 235, .15), transparent 42%),
+    repeating-linear-gradient(0deg, rgba(148,163,184,.09) 0 1px, transparent 1px 28px),
+    repeating-linear-gradient(90deg, rgba(148,163,184,.08) 0 1px, transparent 1px 34px),
+    #f8fafc;
+}
+
+.insight-card-chart-placeholder {
+  width: 100%;
+  height: 100%;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 6px;
+  color: #0f172a;
+  position: relative;
+  overflow: hidden;
+}
+
+.insight-card-chart-placeholder::before,
+.insight-card-chart-placeholder::after {
+  content: "";
+  position: absolute;
+  left: -18px;
+  right: -18px;
+  height: 2px;
+  border-radius: 999px;
+  transform: rotate(-10deg);
+}
+
+.insight-card-chart-placeholder::before {
+  top: 52%;
+  background: #2563eb;
+  box-shadow: 0 34px 0 rgba(37, 99, 235, .78), 0 -34px 0 rgba(37, 99, 235, .50);
+}
+
+.insight-card-chart-placeholder::after {
+  top: 36%;
+  background: #f97316;
+}
+
+.insight-card-chart-placeholder span,
+.insight-card-chart-placeholder strong,
+.insight-card-chart-placeholder small {
+  position: relative;
+  z-index: 1;
+}
+
+.insight-card-chart-placeholder span {
+  color: #2563eb;
+  font-size: 11px;
+  font-weight: 1000;
+  letter-spacing: .16em;
+}
+
+.insight-card-chart-placeholder strong {
+  color: #0f172a;
+  font-size: 20px;
+  line-height: 1.1;
+  font-weight: 1000;
+  letter-spacing: -0.06em;
+}
+
+.insight-card-chart-placeholder small {
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.insight-pill.chart {
+  background: rgba(37, 99, 235, .18);
+  color: #bfdbfe;
+}
+
+.insight-detail-head {
+  min-height: 136px;
+  padding: 30px 38px 28px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  overflow: hidden;
+}
+
+.insight-detail-title-wrap {
+  min-width: 0;
+  padding-right: 170px;
+}
+
+.insight-detail-head h1 {
+  max-width: 100%;
+  padding-bottom: 4px;
+  font-size: clamp(32px, 3.55vw, 52px);
+  line-height: 1.08;
+  letter-spacing: -0.075em;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
+.insight-detail-meta-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.insight-detail-actions-top {
+  top: 28px;
+  right: 28px;
+}
+
+.insight-media-editor {
+  border-radius: 22px;
+  border: 1px solid rgba(96,165,250,.22);
+  background: rgba(8,17,31,.56);
+  padding: 15px;
+  position: relative;
+}
+
+.insight-media-tabs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 13px;
+}
+
+.insight-media-tab {
+  min-height: 38px;
+  border: 1px solid rgba(96,165,250,.24);
+  border-radius: 14px;
+  background: rgba(15,23,42,.52);
+  color: #a9c2e3;
+  font-size: 13px;
+  font-weight: 1000;
+  cursor: pointer;
+}
+
+.insight-media-tab.active {
+  border-color: rgba(56,189,248,.68);
+  background: linear-gradient(135deg, #2563eb, #22d3ee);
+  color: #fff;
+  box-shadow: 0 12px 24px rgba(37,99,235,.22);
+}
+
+.insight-media-panel {
+  display: none;
+}
+
+.insight-media-panel.active {
+  display: block;
+}
+
+.insight-media-panel.insight-image-editor {
+  border: 0;
+  background: transparent;
+  padding: 0;
+}
+
+.insight-chart-editor h3,
+.insight-chart-player h2 {
+  margin: 0;
+  color: #fff;
+  font-weight: 1000;
+  letter-spacing: -0.055em;
+}
+
+.insight-chart-editor h3 {
+  font-size: 18px;
+}
+
+.insight-chart-editor p {
+  margin: 6px 0 14px;
+  color: #92aacb;
+  font-size: 12px;
+  font-weight: 850;
+  line-height: 1.5;
+}
+
+.insight-chart-editor-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 9px;
+  margin-bottom: 13px;
+}
+
+.insight-chart-manual-grid {
+  display: grid;
+  gap: 10px;
+}
+
+.insight-chart-manual-grid label {
+  display: grid;
+  gap: 7px;
+  color: #dbeafe;
+  font-size: 12px;
+  font-weight: 1000;
+}
+
+.insight-chart-manual-grid .insight-input,
+.insight-chart-manual-grid select.insight-input {
+  height: 40px;
+  padding: 0 12px;
+  color-scheme: dark;
+}
+
+.insight-chart-preview {
+  margin-top: 13px;
+  min-height: 170px;
+  border-radius: 18px;
+  border: 1px dashed rgba(96,165,250,.38);
+  background:
+    linear-gradient(115deg, rgba(37, 99, 235, .12), transparent 42%),
+    repeating-linear-gradient(0deg, rgba(148,163,184,.08) 0 1px, transparent 1px 25px),
+    repeating-linear-gradient(90deg, rgba(148,163,184,.07) 0 1px, transparent 1px 30px),
+    #0b1424;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.insight-chart-preview::before,
+.insight-chart-preview::after {
+  content: "";
+  position: absolute;
+  left: -22px;
+  right: -22px;
+  height: 2px;
+  transform: rotate(-10deg);
+  border-radius: 999px;
+}
+
+.insight-chart-preview::before {
+  top: 55%;
+  background: #3b82f6;
+  box-shadow: 0 32px 0 rgba(59, 130, 246, .42), 0 -32px 0 rgba(59, 130, 246, .38);
+}
+
+.insight-chart-preview::after {
+  top: 38%;
+  background: #fb923c;
+}
+
+.insight-chart-preview-empty,
+.insight-chart-preview-info {
+  position: relative;
+  z-index: 1;
+  padding: 14px;
+}
+
+.insight-chart-preview-empty {
+  color: #dbeafe;
+  font-size: 15px;
+  font-weight: 1000;
+}
+
+.insight-chart-preview-empty small {
+  display: block;
+  margin-top: 8px;
+  color: #8aa3c3;
+  font-size: 12px;
+  line-height: 1.45;
+  font-weight: 850;
+}
+
+.insight-chart-preview-info strong {
+  display: block;
+  color: #fff;
+  font-size: 20px;
+  font-weight: 1000;
+  line-height: 1.12;
+}
+
+.insight-chart-preview-info span {
+  display: block;
+  margin-top: 8px;
+  color: #bfdbfe;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.insight-chart-player {
+  margin: 18px 0;
+  padding: 18px;
+  border-radius: 24px;
+  border: 1px solid rgba(96,165,250,.22);
+  background: rgba(15,23,42,.54);
+}
+
+.insight-chart-player-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.insight-chart-player h2 {
+  font-size: clamp(22px, 2.4vw, 34px);
+  line-height: 1.1;
+}
+
+.insight-chart-player-head p:not(.insight-kicker) {
+  margin: 8px 0 0;
+  color: #9db7d9;
+  font-size: 13px;
+  line-height: 1.5;
+  font-weight: 850;
+}
+
+.insight-chart-frame-wrap {
+  min-height: 620px;
+  border-radius: 20px;
+  border: 1px solid rgba(96,165,250,.20);
+  background: #071020;
+  overflow: hidden;
+  position: relative;
+}
+
+.insight-chart-frame-wrap iframe {
+  width: 100%;
+  height: 620px;
+  border: 0;
+  display: block;
+  background: #fff;
+}
+
+.insight-chart-frame-empty {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  color: #dbeafe;
+  text-align: center;
+  font-size: 16px;
+  font-weight: 1000;
+}
+
+.insight-chart-frame-empty small {
+  display: block;
+  margin-top: 9px;
+  color: #8aa3c3;
+  font-size: 13px;
+  font-weight: 850;
+  line-height: 1.5;
+}
+
+.insight-chart-frame-wrap.has-frame .insight-chart-frame-empty {
+  display: none;
+}
+
+@media (max-width: 920px) {
+  .insight-detail-head {
+    display: block;
+  }
+
+  .insight-detail-title-wrap {
+    padding-right: 0;
+  }
+
+  .insight-detail-actions-top {
+    position: static;
+    margin-top: 18px;
+  }
+
+  .insight-chart-frame-wrap,
+  .insight-chart-frame-wrap iframe {
+    min-height: 520px;
+    height: 520px;
+  }
+}
+
+@media (max-width: 620px) {
+  .insight-carousel {
+    padding: 20px 16px 16px;
+    margin: 22px 0 28px;
+  }
+
+  .insight-detail-head {
+    padding: 24px 22px;
+  }
+
+  .insight-detail-head h1 {
+    font-size: clamp(28px, 10vw, 40px);
+  }
+
+  .insight-chart-editor-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .insight-chart-player {
+    padding: 14px;
+  }
+
+  .insight-chart-player-head {
+    flex-direction: column;
+  }
+
+  .insight-chart-frame-wrap,
+  .insight-chart-frame-wrap iframe {
+    min-height: 440px;
+    height: 440px;
+  }
+}
+
+.insight-detail-meta-row .insight-pill {
+  min-height: 28px;
+  padding: 0 12px;
+  font-size: 12px;
+}
+
+/* =========================================================
+   Insight chart mode v2 - real embedded chart, fixed title spacing
+   ========================================================= */
+.insight-detail-head {
+  align-items: flex-end;
+  gap: 18px;
+  padding-bottom: 28px;
+}
+
+.insight-detail-title-wrap {
+  min-width: 0;
+  display: grid;
+  gap: 12px;
+}
+
+.insight-detail-title-wrap .insight-kicker {
+  margin-bottom: 0;
+}
+
+.insight-detail-meta-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 9px;
+  margin-top: 2px;
+}
+
+.insight-detail-meta-row .insight-pill,
+.insight-card-meta .insight-pill {
+  min-height: 28px;
+  padding: 0 12px;
+  font-size: 12px;
+  transform: none;
+}
+
+.insight-pill.chart {
+  background: rgba(14, 165, 233, .18);
+  color: #7dd3fc;
+  border: 1px solid rgba(56, 189, 248, .22);
+}
+
+.insight-carousel {
+  padding-top: 30px;
+  padding-bottom: 28px;
+}
+
+.insight-carousel-head {
+  margin-bottom: 18px;
+}
+
+.insight-carousel-head h2 {
+  margin-top: 4px;
+  margin-bottom: 8px;
+}
+
+.insight-carousel-head p:not(.insight-kicker) {
+  margin-top: 0;
+}
+
+.insight-chart-search-box {
+  position: relative;
+  display: grid;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.insight-chart-search-box label {
+  display: grid;
+  gap: 8px;
+}
+
+.insight-chart-search-box label > span,
+.insight-chart-manual-grid label > span {
+  color: #a8c7f7;
+  font-size: 12px;
+  font-weight: 1000;
+}
+
+.insight-chart-search-results {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(100% + 6px);
+  z-index: 60;
+  max-height: 260px;
+  overflow: auto;
+  padding: 8px;
+  border-radius: 16px;
+  border: 1px solid rgba(96, 165, 250, .28);
+  background: rgba(6, 16, 31, .98);
+  box-shadow: 0 22px 52px rgba(0,0,0,.34);
+}
+
+.insight-chart-search-result {
+  width: 100%;
+  min-height: 44px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: #eaf4ff;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 10px;
+  cursor: pointer;
+  text-align: left;
+}
+
+.insight-chart-search-result:hover {
+  background: rgba(37, 99, 235, .22);
+}
+
+.insight-chart-search-result strong {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  font-weight: 1000;
+}
+
+.insight-chart-search-result span {
+  flex: 0 0 auto;
+  color: #8bb7f2;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.insight-embedded-chart {
+  position: relative;
+  width: 100%;
+  height: 560px;
+  min-height: 420px;
+  border-radius: 20px;
+  overflow: hidden;
+  background: #ffffff;
+}
+
+.insight-embedded-chart-small {
+  height: 250px;
+  min-height: 250px;
+  border-radius: 16px;
+}
+
+.insight-embedded-chart-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  background: #ffffff;
+}
+
+.insight-embedded-drawing-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.insight-chart-frame-wrap {
+  position: relative;
+  min-height: 420px;
+  padding: 0;
+  border: 1px solid rgba(96, 165, 250, .22);
+  background: rgba(2, 6, 23, .22);
+}
+
+.insight-chart-frame-empty {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: rgba(255, 255, 255, .82);
+  color: #0f172a;
+  font-size: 14px;
+  font-weight: 1000;
+  text-align: center;
+  padding: 20px;
+}
+
+.insight-chart-frame-empty[hidden] {
+  display: none !important;
+}
+
+.insight-chart-frame-empty small {
+  color: #475569;
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.insight-chart-preview {
+  height: auto;
+  min-height: 312px;
+  padding: 0;
+  overflow: hidden;
+}
+
+.insight-chart-preview .insight-chart-preview-info {
+  position: relative;
+  z-index: 8;
+  margin: 10px 12px 12px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: rgba(2, 6, 23, .68);
+  border: 1px solid rgba(96, 165, 250, .20);
+}
+
+.insight-chart-preview-info strong {
+  display: block;
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 1000;
+}
+
+.insight-chart-preview-info span {
+  display: block;
+  margin-top: 4px;
+  color: #a8c7f7;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.insight-chart-editor-actions {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.insight-chart-editor-actions .insight-btn {
+  width: 100%;
+  padding-left: 8px;
+  padding-right: 8px;
+}
+
+@media (max-width: 920px) {
+  .insight-detail-head {
+    align-items: stretch;
+  }
+
+  .insight-embedded-chart {
+    height: 430px;
+    min-height: 360px;
+  }
+
+  .insight-chart-frame-wrap {
+    min-height: 360px;
+  }
+
+  .insight-chart-editor-actions {
+    grid-template-columns: 1fr;
+  }
+}
+
+
+/* =========================================================
+   Insight chart editor v6: 본문 위 차트 편집/저장
+   ========================================================= */
+.insight-form-card-v6 {
+  display: grid !important;
+  grid-template-columns: 1fr !important;
+  gap: 18px !important;
+  padding: 24px !important;
+}
+
+.insight-form-card-v6 .insight-field {
+  min-width: 0;
+}
+
+.insight-media-switch-card,
+.insight-media-panel,
+.insight-chart-player {
+  border: 1px solid rgba(96, 165, 250, 0.24);
+  border-radius: 24px;
+  background: linear-gradient(180deg, rgba(13, 24, 42, 0.96), rgba(8, 17, 31, 0.96));
+  box-shadow: 0 20px 46px rgba(2, 6, 23, 0.22);
+}
+
+.insight-media-switch-card {
+  padding: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.insight-media-switch-card h2,
+.insight-panel-headline h2,
+.insight-chart-player-head h2 {
+  margin: 0;
+  color: #ffffff;
+  font-size: 26px;
+  line-height: 1.05;
+  font-weight: 1000;
+  letter-spacing: -0.065em;
+}
+
+.insight-media-switch-card p,
+.insight-panel-headline p,
+.insight-chart-player-head p {
+  margin: 8px 0 0;
+  color: #a9c9f2;
+  font-size: 13px;
+  line-height: 1.55;
+  font-weight: 850;
+}
+
+.insight-media-tabs {
+  flex: 0 0 auto;
+  display: inline-flex;
+  gap: 8px;
+  padding: 8px;
+  border-radius: 20px;
+  border: 1px solid rgba(96, 165, 250, 0.20);
+  background: rgba(2, 6, 23, 0.34);
+}
+
+.insight-media-tab {
+  min-width: 128px;
+  height: 42px;
+  padding: 0 18px;
+  border: 1px solid rgba(96, 165, 250, 0.28);
+  border-radius: 15px;
+  background: rgba(15, 23, 42, 0.40);
+  color: #cbe4ff;
+  font-size: 13px;
+  font-weight: 1000;
+  cursor: pointer;
+}
+
+.insight-media-tab.active {
+  border-color: rgba(255,255,255,0.78);
+  background: linear-gradient(135deg, #2563eb, #22d3ee);
+  color: #ffffff;
+  box-shadow: 0 14px 28px rgba(37, 99, 235, 0.26);
+}
+
+.insight-media-panel {
+  display: none;
+  padding: 20px;
+}
+
+.insight-media-panel.active {
+  display: block;
+}
+
+.insight-panel-headline,
+.insight-chart-player-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 18px;
+  margin-bottom: 16px;
+}
+
+.insight-image-wide-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 260px;
+  gap: 18px;
+  align-items: stretch;
+}
+
+.insight-image-wide-grid .insight-preview {
+  min-height: 360px;
+}
+
+.insight-image-side-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.insight-image-side-actions .insight-btn {
+  width: 100%;
+}
+
+.insight-chart-save-state {
+  flex: 0 0 auto;
+  min-height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 13px;
+  border-radius: 999px;
+  background: rgba(20, 184, 166, 0.14);
+  border: 1px solid rgba(45, 212, 191, 0.26);
+  color: #67e8f9;
+  font-size: 12px;
+  font-weight: 1000;
+  transition: transform .2s ease, background .2s ease;
+}
+
+.insight-chart-save-state.pulse {
+  transform: translateY(-1px) scale(1.03);
+  background: rgba(14, 165, 233, 0.22);
+}
+
+.insight-chart-topbar {
+  display: grid;
+  grid-template-columns: minmax(220px, 1.3fr) minmax(120px, .7fr) minmax(140px, .8fr) 120px auto;
+  gap: 10px;
+  align-items: end;
+  margin-bottom: 12px;
+}
+
+.insight-chart-topbar label,
+.insight-chart-search-box {
+  position: relative;
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+}
+
+.insight-chart-topbar label > span,
+.insight-chart-search-box > span {
+  color: #b9d7ff;
+  font-size: 12px;
+  line-height: 1;
+  font-weight: 1000;
+}
+
+.insight-input {
+  width: 100%;
+  height: 42px;
+  border-radius: 14px;
+  border: 1px solid rgba(96, 165, 250, 0.26);
+  background: #071020;
+  color: #ffffff;
+  outline: none;
+  padding: 0 13px;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.insight-input:focus {
+  border-color: rgba(56, 189, 248, .78);
+  box-shadow: 0 0 0 4px rgba(56, 189, 248, .10);
+}
+
+.insight-input option {
+  background: #0f172a;
+  color: #ffffff;
+}
+
+.insight-chart-search-results {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(100% + 7px);
+  z-index: 50;
+  padding: 8px;
+  border-radius: 16px;
+  border: 1px solid rgba(96, 165, 250, 0.26);
+  background: rgba(8, 17, 31, 0.985);
+  box-shadow: 0 22px 58px rgba(0,0,0,.38);
+}
+
+.insight-chart-search-result {
+  width: 100%;
+  min-height: 42px;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: #eaf4ff;
+  cursor: pointer;
+  text-align: left;
+}
+
+.insight-chart-search-result:hover {
+  background: rgba(37, 99, 235, 0.24);
+}
+
+.insight-chart-search-result strong {
+  font-size: 13px;
+  font-weight: 1000;
+}
+
+.insight-chart-search-result span {
+  color: #93c5fd;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.insight-chart-toolbar {
+  margin: 0 0 12px;
+  padding: 9px;
+  border-radius: 17px;
+  border: 1px solid rgba(96, 165, 250, 0.18);
+  background: rgba(2, 6, 23, 0.34);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  align-items: center;
+}
+
+.insight-chart-toolbar button {
+  height: 34px;
+  padding: 0 12px;
+  border: 1px solid rgba(96, 165, 250, 0.22);
+  border-radius: 12px;
+  background: rgba(15, 23, 42, 0.56);
+  color: #dbeafe;
+  font-size: 12px;
+  font-weight: 1000;
+  cursor: pointer;
+}
+
+.insight-chart-toolbar button:hover,
+.insight-chart-toolbar button.active {
+  border-color: rgba(56, 189, 248, 0.64);
+  background: linear-gradient(135deg, rgba(37,99,235,.90), rgba(34,211,238,.78));
+  color: #ffffff;
+}
+
+.insight-chart-toolbar-divider {
+  width: 1px;
+  height: 24px;
+  background: rgba(148, 163, 184, 0.22);
+  margin: 0 3px;
+}
+
+.insight-chart-workspace {
+  border-radius: 22px;
+  border: 1px solid rgba(96, 165, 250, 0.22);
+  background: #ffffff;
+  overflow: hidden;
+}
+
+.insight-native-chart {
+  position: relative;
+  width: 100%;
+  height: 620px;
+  min-height: 420px;
+  background: #ffffff;
+  overflow: hidden;
+  touch-action: none;
+}
+
+.insight-native-chart-detail {
+  height: 620px;
+}
+
+.insight-native-chart canvas,
+.insight-native-chart svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.insight-native-chart svg {
+  z-index: 2;
+  pointer-events: none;
+}
+
+.insight-native-chart canvas {
+  z-index: 1;
+  cursor: grab;
+}
+
+.insight-native-chart[data-active-tool]:not([data-active-tool="cursor"]) canvas,
+.insight-native-chart-editor[data-active-tool]:not([data-active-tool="cursor"]) canvas {
+  cursor: crosshair;
+}
+
+.insight-chart-frame-empty {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  color: #0f172a;
+  font-size: 16px;
+  font-weight: 1000;
+  text-align: center;
+  background: #ffffff;
+}
+
+.insight-chart-frame-empty[hidden] {
+  display: none !important;
+}
+
+.insight-chart-frame-empty small {
+  color: #475569;
+  font-size: 13px;
+  font-weight: 850;
+}
+
+.insight-chart-player {
+  padding: 20px;
+  margin: 18px 0;
+}
+
+.insight-chart-workspace-detail {
+  margin-top: 10px;
+}
+
+.insight-form-actions-bottom {
+  justify-content: flex-end;
+  margin-top: 4px;
+}
+
+@media (max-width: 1100px) {
+  .insight-media-switch-card,
+  .insight-panel-headline,
+  .insight-chart-player-head {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .insight-media-tabs {
+    width: 100%;
+  }
+
+  .insight-media-tab {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+
+  .insight-chart-topbar {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .insight-image-wide-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .insight-page,
+  .insight-detail-page,
+  .insight-form-page,
+  .insight-delete-page {
+    width: min(100% - 24px, 1360px);
+  }
+
+  .insight-form-card-v6,
+  .insight-media-panel,
+  .insight-chart-player {
+    padding: 14px !important;
+  }
+
+  .insight-chart-topbar {
+    grid-template-columns: 1fr;
+  }
+
+  .insight-native-chart,
+  .insight-native-chart-detail {
+    height: 480px;
+  }
+}
+
+/* =========================================================
+   Insight stock iframe editor v7
+   - 실제 /stocks/<code>/ 차트를 본문 위 편집기로 사용
+   - 기존 v6 canvas 툴바 대신 stock chart 화면 자체를 iframe으로 표시
+   ========================================================= */
+.insight-form-card-v7 {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 18px;
+  padding: 26px;
+}
+
+.insight-form-card-v7 .insight-field {
+  min-width: 0;
+}
+
+.insight-form-card-v7 .insight-field input,
+.insight-form-card-v7 .insight-field textarea,
+.insight-form-card-v7 .insight-field select,
+.insight-stock-editor-controls .insight-input {
+  width: 100%;
+  min-width: 0;
+  color: #f8fbff;
+}
+
+.insight-form-hero-compact {
+  min-height: 114px;
+}
+
+.insight-media-switch-card-v7 {
+  margin: 0;
+  padding: 18px 20px;
+  border-radius: 22px;
+  border: 1px solid rgba(96, 165, 250, .22);
+  background:
+    radial-gradient(circle at 0% 0%, rgba(49,215,241,.10), transparent 30%),
+    rgba(10, 18, 33, .72);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.insight-media-switch-card-v7 h2 {
+  margin: 0;
+  color: #fff;
+  font-size: 24px;
+  font-weight: 1000;
+  letter-spacing: -.065em;
+}
+
+.insight-media-switch-card-v7 p:not(.insight-kicker) {
+  margin: 7px 0 0;
+  color: #a9c2e3;
+  font-size: 13px;
+  line-height: 1.52;
+  font-weight: 850;
+}
+
+.insight-stock-editor-panel {
+  margin: 0;
+  padding: 20px;
+  border-radius: 24px;
+  border: 1px solid rgba(96, 165, 250, .22);
+  background:
+    radial-gradient(circle at top left, rgba(56, 189, 248, .10), transparent 36%),
+    linear-gradient(180deg, rgba(13, 24, 42, .98), rgba(7, 16, 29, .98));
+  box-shadow: 0 22px 54px rgba(0, 0, 0, .20);
+}
+
+.insight-stock-editor-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 16px;
+}
+
+.insight-stock-editor-head h2 {
+  margin: 0;
+  color: #fff;
+  font-size: 26px;
+  font-weight: 1000;
+  letter-spacing: -.065em;
+  line-height: 1.1;
+}
+
+.insight-stock-editor-head p:not(.insight-kicker) {
+  margin: 8px 0 0;
+  max-width: 880px;
+  color: #a9c2e3;
+  font-size: 13px;
+  line-height: 1.55;
+  font-weight: 850;
+}
+
+.insight-stock-editor-controls {
+  position: relative;
+  z-index: 5;
+  display: grid;
+  grid-template-columns: minmax(220px, 1.4fr) minmax(124px, .7fr) minmax(150px, .9fr) minmax(120px, .55fr) auto;
+  gap: 10px;
+  align-items: end;
+  padding: 14px;
+  border-radius: 18px;
+  border: 1px solid rgba(148, 163, 184, .14);
+  background: rgba(2, 6, 23, .42);
+}
+
+.insight-stock-editor-controls label {
+  min-width: 0;
+  display: grid;
+  gap: 7px;
+  color: #b9d7ff;
+  font-size: 12px;
+  font-weight: 1000;
+}
+
+.insight-stock-editor-controls .insight-input {
+  height: 42px;
+  padding: 0 13px;
+  border-radius: 14px;
+  border: 1px solid rgba(96, 165, 250, .25);
+  background: rgba(3, 10, 22, .82);
+  outline: none;
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.insight-stock-editor-controls .insight-input:focus {
+  border-color: rgba(56, 189, 248, .75);
+  box-shadow: 0 0 0 4px rgba(56, 189, 248, .10);
+}
+
+.insight-stock-search-cell {
+  position: relative;
+}
+
+.insight-stock-frame-shell {
+  position: relative;
+  margin-top: 14px;
+  border-radius: 24px;
+  border: 1px solid rgba(96, 165, 250, .22);
+  background:
+    linear-gradient(180deg, #0c1728, #050b16);
+  overflow: hidden;
+  box-shadow: 0 22px 58px rgba(0,0,0,.30);
+}
+
+.insight-stock-frame-top {
+  min-height: 58px;
+  padding: 12px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px solid rgba(148, 163, 184, .14);
+  background: rgba(8, 17, 31, .98);
+}
+
+.insight-stock-frame-top strong {
+  display: block;
+  color: #fff;
+  font-size: 17px;
+  font-weight: 1000;
+  letter-spacing: -.045em;
+}
+
+.insight-stock-frame-top span {
+  display: block;
+  margin-top: 4px;
+  color: #8aa5c7;
+  font-size: 12px;
+  line-height: 1.35;
+  font-weight: 850;
+}
+
+.insight-stock-frame-actions {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.insight-mini-btn {
+  height: 34px;
+  padding: 0 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(96, 165, 250, .34);
+  background: linear-gradient(135deg, rgba(37, 99, 235, .86), rgba(14, 165, 233, .92));
+  color: #fff;
+  font-size: 12px;
+  font-weight: 1000;
+  white-space: nowrap;
+}
+
+.insight-mini-btn.ghost {
+  background: rgba(15, 23, 42, .72);
+  color: #dbeafe;
+}
+
+.insight-mini-btn:hover {
+  transform: translateY(-1px);
+  border-color: rgba(56, 189, 248, .7);
+}
+
+.insight-stock-frame {
+  position: relative;
+  z-index: 1;
+  display: block;
+  width: 100%;
+  height: min(760px, 78vh);
+  min-height: 660px;
+  border: 0;
+  background: #050a14;
+}
+
+.insight-stock-frame-detail {
+  height: min(760px, 72vh);
+  min-height: 620px;
+}
+
+.insight-stock-frame-shell-detail {
+  margin-top: 16px;
+}
+
+.insight-stock-frame-empty {
+  position: absolute;
+  inset: 58px 0 0;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background:
+    radial-gradient(circle at 50% 20%, rgba(56, 189, 248, .10), transparent 36%),
+    #08111f;
+  color: #fff;
+  font-size: 16px;
+  font-weight: 1000;
+  text-align: center;
+}
+
+.insight-stock-frame-empty[hidden] {
+  display: none !important;
+}
+
+.insight-stock-frame-empty small {
+  display: block;
+  color: #9db7d9;
+  font-size: 13px;
+  font-weight: 850;
+}
+
+.insight-chart-save-state {
+  flex: 0 0 auto;
+  min-height: 34px;
+  padding: 0 13px;
+  border-radius: 999px;
+  border: 1px solid rgba(96, 165, 250, .28);
+  background: rgba(15, 23, 42, .62);
+  color: #bfdbfe;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 1000;
+  white-space: nowrap;
+}
+
+.insight-chart-save-state.ok {
+  color: #67e8f9;
+  border-color: rgba(45, 212, 191, .35);
+  background: rgba(20, 184, 166, .12);
+}
+
+.insight-chart-save-state.warn {
+  color: #fde68a;
+  border-color: rgba(245, 158, 11, .30);
+  background: rgba(245, 158, 11, .10);
+}
+
+.insight-chart-save-state.danger {
+  color: #fecaca;
+  border-color: rgba(248, 113, 113, .30);
+  background: rgba(127, 29, 29, .22);
+}
+
+.insight-chart-save-state.pulse {
+  animation: insightPulse .8s ease;
+}
+
+@keyframes insightPulse {
+  0% { transform: scale(1); }
+  45% { transform: scale(1.035); }
+  100% { transform: scale(1); }
+}
+
+.insight-chart-search-results {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(100% + 8px);
+  z-index: 30;
+  max-height: 280px;
+  overflow-y: auto;
+  padding: 8px;
+  border-radius: 16px;
+  border: 1px solid rgba(96, 165, 250, .28);
+  background: rgba(8, 17, 31, .985);
+  box-shadow: 0 22px 54px rgba(0,0,0,.36);
+}
+
+.insight-chart-search-results[hidden] {
+  display: none !important;
+}
+
+.insight-chart-search-result {
+  width: 100%;
+  min-height: 48px;
+  padding: 9px 10px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: #fff;
+  display: grid;
+  gap: 3px;
+  text-align: left;
+}
+
+.insight-chart-search-result:hover {
+  background: rgba(56, 189, 248, .12);
+}
+
+.insight-chart-search-result strong {
+  color: #fff;
+  font-size: 13px;
+  font-weight: 1000;
+}
+
+.insight-chart-search-result span {
+  color: #8fb7ff;
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.insight-stock-player {
+  padding: 18px;
+  border-radius: 24px;
+  border: 1px solid rgba(96, 165, 250, .22);
+  background:
+    radial-gradient(circle at top left, rgba(56, 189, 248, .10), transparent 36%),
+    linear-gradient(180deg, rgba(13, 24, 42, .98), rgba(7, 16, 29, .98));
+}
+
+.insight-stock-player .insight-chart-player-head {
+  margin-bottom: 12px;
+}
+
+.insight-stock-player .insight-chart-player-head h2 {
+  margin: 0;
+  font-size: 28px;
+  line-height: 1.1;
+}
+
+@media (max-width: 1120px) {
+  .insight-media-switch-card-v7,
+  .insight-stock-editor-head,
+  .insight-stock-frame-top {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .insight-stock-editor-controls {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .insight-stock-editor-controls .insight-btn {
+    grid-column: 1 / -1;
+  }
+
+  .insight-stock-frame {
+    min-height: 580px;
+    height: 68vh;
+  }
+}
+
+@media (max-width: 720px) {
+  .insight-form-card-v7,
+  .insight-stock-editor-panel {
+    padding: 16px;
+  }
+
+  .insight-stock-editor-controls {
+    grid-template-columns: 1fr;
+  }
+
+  .insight-stock-frame {
+    min-height: 520px;
+    height: 72vh;
+  }
+
+  .insight-stock-frame-actions {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .insight-mini-btn {
+    width: 100%;
+  }
+}
+
+/* =========================================================
+   Insight stock embed v8 - one search input layout
+   ========================================================= */
+.insight-stock-editor-controls-simple {
+  grid-template-columns: minmax(360px, 1fr) 170px 132px !important;
+  align-items: start !important;
+}
+
+.insight-stock-search-cell-wide {
+  position: relative;
+  min-width: 0;
+}
+
+.insight-stock-search-cell-wide .insight-input {
+  font-weight: 1000;
+}
+
+.insight-chart-search-help {
+  display: block;
+  margin-top: 7px;
+  color: #8fb7ff;
+  font-size: 11px;
+  font-weight: 850;
+  line-height: 1.35;
+}
+
+.insight-stock-interval-cell {
+  min-width: 0;
+}
+
+.insight-chart-open-btn {
+  align-self: end;
+  min-height: 44px;
+  margin-top: 22px;
+}
+
+.insight-chart-search-results {
+  position: absolute;
+  z-index: 70;
+  top: calc(100% - 2px);
+  left: 0;
+  right: 0;
+  max-height: 270px;
+  overflow-y: auto;
+  padding: 8px;
+  border-radius: 16px;
+  border: 1px solid rgba(96, 165, 250, .28);
+  background: rgba(7, 16, 32, .985);
+  box-shadow: 0 22px 60px rgba(0, 0, 0, .38);
+  backdrop-filter: blur(14px);
+}
+
+.insight-chart-search-result {
+  width: 100%;
+  min-height: 48px;
+  padding: 9px 11px;
+  border: 0;
+  border-radius: 13px;
+  background: transparent;
+  color: #eaf2ff;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  text-align: left;
+}
+
+.insight-chart-search-result:hover,
+.insight-chart-search-result:focus {
+  background: rgba(56, 189, 248, .12);
+  outline: none;
+}
+
+.insight-chart-search-result strong {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 1000;
+}
+
+.insight-chart-search-result span {
+  flex: 0 0 auto;
+  color: #67e8f9;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+@media (max-width: 980px) {
+  .insight-stock-editor-controls-simple {
+    grid-template-columns: 1fr !important;
+  }
+
+  .insight-chart-open-btn {
+    width: 100%;
+    margin-top: 0;
+  }
+}
+
+/* =========================================================
+   Insight stock srcdoc embed v9
+   - /stocks 페이지 iframe 직접 호출 대신 srcdoc 내부에서 차트 실행
+   - 검색 입력은 자유 타이핑 유지
+   ========================================================= */
+.insight-stock-frame-shell {
+  background: #050a14;
+}
+
+.insight-stock-frame {
+  background: #050a14;
+  color-scheme: dark;
+}
+
+.insight-stock-frame-empty {
+  background:
+    radial-gradient(circle at 50% 24%, rgba(56, 189, 248, .10), transparent 36%),
+    #050a14;
+}
+
+.insight-stock-editor-controls-simple {
+  grid-template-columns: minmax(360px, 1fr) 170px 132px !important;
+  overflow: visible;
+}
+
+.insight-stock-search-cell-wide {
+  z-index: 90;
+}
+
+.insight-chart-search-results {
+  z-index: 200;
+}
+
+.insight-chart-search-result {
+  cursor: pointer;
+}
+
+.insight-stock-frame-top {
+  position: relative;
+  z-index: 2;
+}
+
+.insight-stock-frame-detail,
+.insight-stock-frame {
+  min-height: 680px;
+}
+
+@media (max-width: 980px) {
+  .insight-stock-editor-controls-simple {
+    grid-template-columns: 1fr !important;
+  }
+
+  .insight-stock-frame-detail,
+  .insight-stock-frame {
+    min-height: 620px;
+    height: 72vh;
+  }
+}
+
+
+/* chart snapshot thumbnail in carousel */
+.insight-card-media.is-chart img {
+  object-fit: contain;
+  background: #ffffff;
+}
+.insight-card-media.is-chart::after {
+  content: "CHART SNAPSHOT";
+  position: absolute;
+  left: 10px;
+  top: 10px;
+  padding: 5px 8px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.78);
+  color: #67e8f9;
+  font-size: 10px;
+  font-weight: 1000;
+  letter-spacing: .08em;
+  pointer-events: none;
+}
+
+
+/* =========================================================
+   v13: stock search + clean chart embed final safety
+   - 검색 결과를 stock_detail 검색처럼 넓고 많이 보여줌
+   - 처음 차트는 개인 저장 지표 없이 순수 캔들로 시작
+   ========================================================= */
+.insight-chart-search-results {
+  max-height: 420px !important;
+  overflow-y: auto !important;
+  scrollbar-width: thin;
+  border-radius: 0 0 18px 18px !important;
+}
+
+.insight-chart-search-result {
+  min-height: 52px !important;
+}
+
+.insight-chart-search-result strong {
+  max-width: 62% !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+.insight-chart-search-result span {
+  white-space: nowrap !important;
+}
+
+.insight-stock-editor-controls-simple {
+  grid-template-columns: minmax(420px, 1fr) 170px 132px !important;
+}
+
+@media (max-width: 980px) {
+  .insight-stock-editor-controls-simple {
+    grid-template-columns: 1fr !important;
+  }
+}

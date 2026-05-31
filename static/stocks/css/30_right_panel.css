@@ -330,3 +330,26 @@
   background: rgba(96, 165, 250, 0.28);
   border-radius: 999px;
 }
+
+
+/* 2026-05-31 compact watchlist override: right panel is watchlist-only */
+.bitgak-chart-body .bv-symbol-panel {
+  grid-template-rows: minmax(0, 1fr) !important;
+  gap: 0 !important;
+  padding: 10px !important;
+}
+.bitgak-chart-body .bv-symbol-panel .indicator-dock-section { display: none !important; }
+.bitgak-chart-body .symbol-dock-section { height: 100% !important; min-height: 0 !important; }
+.bitgak-chart-body .symbol-dock-section .right-dock-head { min-height: 48px !important; padding: 10px 10px 8px !important; }
+.bitgak-chart-body .symbol-dock-section .right-dock-title strong { font-size: 15px !important; }
+.bitgak-chart-body .symbol-dock-section .right-dock-title span { margin-top: 2px !important; font-size: 10px !important; }
+.bitgak-chart-body .right-dock-body { padding: 8px !important; }
+.bitgak-chart-body .symbol-group-select,
+.bitgak-chart-body .symbol-select-wrap .bv-select-btn { height: 34px !important; min-height: 34px !important; font-size: 12px !important; border-radius: 12px !important; }
+.bitgak-chart-body .selected-group-head { min-height: 34px !important; height: 34px !important; padding: 0 9px !important; }
+.bitgak-chart-body .selected-symbol-list { gap: 4px !important; padding: 6px !important; }
+.bitgak-chart-body .symbol-row { min-height: 34px !important; height: 34px !important; padding: 5px 6px 5px 8px !important; border-radius: 10px !important; grid-template-columns: minmax(0, 1fr) 22px !important; gap: 5px !important; }
+.bitgak-chart-body .symbol-row a { display: grid !important; grid-template-columns: minmax(0, 1fr) auto !important; align-items: baseline !important; gap: 6px !important; }
+.bitgak-chart-body .symbol-row strong { font-size: 12px !important; line-height: 1.1 !important; overflow: hidden !important; white-space: nowrap !important; text-overflow: ellipsis !important; }
+.bitgak-chart-body .symbol-row span { margin-top: 0 !important; font-size: 10px !important; line-height: 1 !important; white-space: nowrap !important; }
+.bitgak-chart-body .symbol-trash-btn { width: 22px !important; height: 22px !important; border-radius: 8px !important; }

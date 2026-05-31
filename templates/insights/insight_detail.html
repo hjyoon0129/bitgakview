@@ -11,12 +11,15 @@
 {% block content %}
 <section class="insight-detail-page">
   <header class="insight-detail-head">
-    <div>
+    <div class="insight-detail-title-wrap">
       <p class="insight-kicker">BITGAK VIEWPOINT</p>
       <h1>{{ post.title }}</h1>
 
-      <div class="insight-card-meta">
+      <div class="insight-detail-meta-row">
         <span class="insight-pill">{{ post.published_date|date:"Y.m.d" }}</span>
+        {% if post.media_type == 'chart' or post.chart_snapshot %}
+          <span class="insight-pill chart">차트 관점</span>
+        {% endif %}
         {% if post.has_youtube %}
           <span class="insight-pill muted">유튜브 링크 포함</span>
         {% endif %}
@@ -31,11 +34,45 @@
     {% endif %}
   </header>
 
-  <div class="insight-notice">
-    {{ post.risk_notice }}
-  </div>
+  <div class="insight-notice">{{ post.risk_notice }}</div>
 
-  {% if post.image_url %}
+  {% if post.media_type == 'chart' or post.chart_snapshot %}
+    <section
+      class="insight-chart-player insight-stock-player"
+      data-insight-chart-player
+      data-chart-code="{{ post.chart_code|default:post.related_symbol|default:'' }}"
+      data-chart-name="{{ post.chart_name|default:post.related_name|default:'' }}"
+      data-chart-interval="{{ post.chart_interval|default:'1d' }}"
+      data-chart-api-url="{{ post.chart_api_url|default:'' }}"
+    >
+      <textarea hidden data-chart-snapshot-json>{{ post.chart_snapshot|default:'' }}</textarea>
+      <div class="insight-chart-player-head">
+        <div>
+          <p class="insight-kicker">SAVED CHART VIEW</p>
+          <h2>{{ post.chart_name|default:post.related_name|default:post.chart_code|default:post.related_symbol|default:"저장된 차트 관점" }}</h2>
+          <p>본문 위에 저장 당시의 종목, 시간봉, 빗각 드로잉, 화면 위치를 표시합니다. 방문자가 움직여도 저장값은 바뀌지 않습니다.</p>
+        </div>
+        {% if post.chart_code or post.related_symbol %}<span class="insight-pill chart">{{ post.chart_code|default:post.related_symbol }}</span>{% endif %}
+      </div>
+
+      <div class="insight-stock-frame-shell insight-stock-frame-shell-detail">
+        <iframe
+          class="insight-stock-frame insight-stock-frame-detail"
+          title="저장된 빗각관점 차트"
+          data-insight-stock-player-frame
+          data-stock-css-url="{% static 'stocks/css/bitgak_chart.css' %}?v=20260531-stock-srcdoc-v15-server-draft"
+          data-stock-core-url="{% static 'stocks/js/bitgak_chart_core.js' %}?v=20260531-stock-srcdoc-v15-server-draft"
+          data-stock-indicators-url="{% static 'stocks/js/bitgak_indicators.js' %}?v=20260531-stock-srcdoc-v15-server-draft"
+          data-stock-lw-url="https://unpkg.com/lightweight-charts@5.0.8/dist/lightweight-charts.standalone.production.js"
+          loading="lazy"
+        ></iframe>
+        <div class="insight-stock-frame-empty" data-insight-stock-frame-empty>
+          저장된 차트 관점 불러오는 중
+          <small>저장된 종목과 드로잉 상태를 적용하고 있습니다.</small>
+        </div>
+      </div>
+    </section>
+  {% elif post.image_url %}
     <figure class="insight-detail-image">
       <img src="{{ post.image_url }}" alt="{{ post.title }}">
     </figure>

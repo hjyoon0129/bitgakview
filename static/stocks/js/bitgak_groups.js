@@ -415,6 +415,7 @@
     group.items.forEach(function (item) {
       const row = document.createElement("div");
       row.className = "symbol-row";
+      row.dataset.stockCode = item.code;
 
       row.innerHTML = `
         <a href="${stockHref(item.code)}">

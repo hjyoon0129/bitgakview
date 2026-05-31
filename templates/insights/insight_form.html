@@ -10,85 +10,180 @@
 
 {% block content %}
 <section class="insight-form-page">
-  <header class="insight-hero">
+  <header class="insight-hero insight-form-hero-compact">
     <div>
       <p class="insight-kicker">{% if mode == "update" %}EDIT VIEWPOINT{% else %}WRITE VIEWPOINT{% endif %}</p>
       <h1>{% if mode == "update" %}빗각관점 수정{% else %}빗각관점 글쓰기{% endif %}</h1>
-      <p>제목, 대표 이미지, 본문 중심으로 관점을 작성합니다. 유튜브 URL은 선택사항입니다.</p>
+      <p>이미지 방식 또는 차트 방식을 선택해서 관점을 작성합니다. 차트 방식은 실제 주식 차트 화면에서 드로잉한 상태를 본문 위에 저장합니다.</p>
     </div>
   </header>
 
-  <form class="insight-form-card" method="post" enctype="multipart/form-data" data-insight-image-editor>
+  <form class="insight-form-card insight-form-card-v7" method="post" enctype="multipart/form-data" data-insight-image-editor data-insight-media-editor data-stock-search-api-url="{% url 'insights:stock_search_api' %}" data-chart-draft-url="{% if post %}{% url 'insights:chart_draft_post_api' post.slug %}{% else %}{% url 'insights:chart_draft_api' %}{% endif %}">
     {% csrf_token %}
     <input type="hidden" name="delete_cover_image" value="0" data-delete-cover-image>
+    <input type="hidden" name="media_type" value="{{ initial_media_type|default:'image' }}" data-insight-media-type>
+    <input type="hidden" name="chart_code" value="{{ initial_chart_code|default:'' }}" data-insight-chart-code-input>
+    <input type="hidden" name="chart_name" value="{{ initial_chart_name|default:'' }}" data-insight-chart-name-input>
+    <input type="hidden" name="chart_interval" value="{{ initial_chart_interval|default:'1d' }}" data-insight-chart-interval-input>
+    <input type="hidden" name="chart_api_url" value="{{ initial_chart_api_url|default:'' }}" data-insight-chart-api-url-input>
+    <textarea name="chart_snapshot" hidden data-insight-chart-snapshot-input>{{ initial_chart_snapshot|default:'' }}</textarea>
 
-    <div class="insight-form-main">
-      {% if form.non_field_errors %}
-        <div class="insight-errors">{{ form.non_field_errors }}</div>
-      {% endif %}
+    {% if form.non_field_errors %}
+      <div class="insight-errors">{{ form.non_field_errors }}</div>
+    {% endif %}
 
-      <div class="insight-field">
-        <label for="{{ form.title.id_for_label }}">제목</label>
-        {{ form.title }}
-        {% for error in form.title.errors %}<div class="insight-errors">{{ error }}</div>{% endfor %}
-      </div>
-
-      <div class="insight-field">
-        <label for="{{ form.content.id_for_label }}">본문</label>
-        {{ form.content }}
-        {% for error in form.content.errors %}<div class="insight-errors">{{ error }}</div>{% endfor %}
-      </div>
-
-      <div class="insight-field">
-        <label for="{{ form.youtube_url.id_for_label }}">유튜브 URL <span>선택사항</span></label>
-        {{ form.youtube_url }}
-        <p class="insight-help">입력하면 상세 글 하단 왼쪽에 링크 버튼만 표시됩니다.</p>
-        {% for error in form.youtube_url.errors %}<div class="insight-errors">{{ error }}</div>{% endfor %}
-      </div>
-
-      <div class="insight-form-actions">
-        <a class="insight-btn ghost" href="{% if post %}{{ post.get_absolute_url }}{% else %}{% url 'insights:list' %}{% endif %}">취소</a>
-        <button class="insight-btn primary" type="submit">{% if mode == "update" %}수정하기{% else %}등록하기{% endif %}</button>
-      </div>
+    <div class="insight-field">
+      <label for="{{ form.title.id_for_label }}">제목</label>
+      {{ form.title }}
+      {% for error in form.title.errors %}<div class="insight-errors">{{ error }}</div>{% endfor %}
     </div>
 
-    <aside class="insight-image-editor">
-      <h3>대표 이미지</h3>
-      <p>글 카드와 상세페이지에 표시됩니다. 저장 전에도 즉시 미리보기가 바뀝니다.</p>
+    <section class="insight-media-switch-card insight-media-switch-card-v7">
+      <div>
+        <p class="insight-kicker">VIEW TYPE</p>
+        <h2>관점 표시 방식</h2>
+        <p>차트 방식을 선택하면 아래에 실제 BitgakView 차트가 열립니다. 여기서 그린 빗각, 연장선, 수평선, 원, 피보나치와 화면 위치가 글에 저장됩니다.</p>
+      </div>
+      <div class="insight-media-tabs" role="tablist" aria-label="관점 표시 방식">
+        <button class="insight-media-tab {% if initial_media_type != 'chart' %}active{% endif %}" type="button" data-media-mode="image" aria-selected="{% if initial_media_type != 'chart' %}true{% else %}false{% endif %}">이미지 방식</button>
+        <button class="insight-media-tab {% if initial_media_type == 'chart' %}active{% endif %}" type="button" data-media-mode="chart" aria-selected="{% if initial_media_type == 'chart' %}true{% else %}false{% endif %}">차트 방식</button>
+      </div>
+    </section>
 
-      <div class="insight-preview {% if post and post.image_url %}has-image{% endif %}" data-image-preview>
-        <img
-          data-image-preview-img
-          {% if post and post.image_url %}src="{{ post.image_url }}"{% endif %}
-          alt="대표 이미지 미리보기"
-        >
-        <div class="insight-preview-empty" data-image-preview-empty>
-          이미지 없음
-          <small>차트 캡처, 썸네일, 분석 이미지를 올려보세요.</small>
+    <section class="insight-media-panel insight-image-editor insight-image-editor-wide {% if initial_media_type != 'chart' %}active{% endif %}" data-media-panel="image" {% if initial_media_type == 'chart' %}hidden aria-hidden="true"{% else %}aria-hidden="false"{% endif %}>
+      <div class="insight-panel-headline">
+        <div>
+          <p class="insight-kicker">IMAGE VIEW</p>
+          <h2>대표 이미지</h2>
+          <p>기존 방식입니다. 글 카드와 상세페이지에 이미지가 표시됩니다.</p>
         </div>
-        <span class="insight-status-badge" data-image-status></span>
       </div>
 
-      <div class="insight-file-input-wrap">
-        {{ form.cover_image }}
+      <div class="insight-image-wide-grid">
+        <div class="insight-preview {% if post and post.image_url %}has-image{% endif %}" data-image-preview>
+          <img
+            data-image-preview-img
+            {% if post and post.image_url %}src="{{ post.image_url }}"{% endif %}
+            alt="대표 이미지 미리보기"
+          >
+          <div class="insight-preview-empty" data-image-preview-empty>
+            이미지 없음
+            <small>차트 캡처, 썸네일, 분석 이미지를 올려보세요.</small>
+          </div>
+          <span class="insight-status-badge" data-image-status></span>
+        </div>
+
+        <div class="insight-image-side-actions">
+          <div class="insight-file-input-wrap">{{ form.cover_image }}</div>
+          <button class="insight-btn primary" type="button" data-image-select>이미지 선택</button>
+          <button class="insight-btn danger" type="button" data-image-delete>이미지 삭제</button>
+          <button class="insight-btn ghost wide" type="button" data-image-cancel>선택/삭제 취소</button>
+          <p class="insight-help" data-image-help>
+            {% if post and post.cover_image %}
+              현재 파일: {{ post.cover_image.name }}
+            {% else %}
+              이미지 없이도 글은 등록됩니다.
+            {% endif %}
+          </p>
+          {% for error in form.cover_image.errors %}<div class="insight-errors">{{ error }}</div>{% endfor %}
+        </div>
+      </div>
+    </section>
+
+    <section class="insight-media-panel insight-stock-editor-panel {% if initial_media_type == 'chart' %}active{% endif %}" data-media-panel="chart" {% if initial_media_type != 'chart' %}hidden aria-hidden="true"{% else %}aria-hidden="false"{% endif %}>
+      <div class="insight-stock-editor-head">
+        <div>
+          <p class="insight-kicker">BITGAKVIEW CHART EDITOR</p>
+          <h2>본문 위에 저장될 차트 관점</h2>
+          <p>아래 차트는 실제 종목 차트 화면입니다. 종목을 불러온 뒤 차트 안에서 직접 이동, 확대, 드로잉을 하고 등록하면 현재 상태가 글에 저장됩니다.</p>
+        </div>
+        <div class="insight-chart-save-state" data-chart-save-state>저장 준비</div>
       </div>
 
-      <div class="insight-image-actions">
-        <button class="insight-btn primary" type="button" data-image-select>이미지 선택</button>
-        <button class="insight-btn danger" type="button" data-image-delete>이미지 삭제</button>
-        <button class="insight-btn ghost wide" type="button" data-image-cancel>선택/삭제 취소</button>
+      <div class="insight-stock-editor-controls insight-stock-editor-controls-simple">
+        <label class="insight-stock-search-cell insight-stock-search-cell-wide">
+          <span>종목검색</span>
+          <input
+            class="insight-input"
+            type="search"
+            value="{{ initial_chart_name|default:initial_chart_code|default:'' }}"
+            placeholder="삼성전자 또는 005930 입력"
+            autocomplete="off"
+            data-chart-symbol-search
+            data-selected-code="{{ initial_chart_code|default:'' }}"
+            data-selected-name="{{ initial_chart_name|default:'' }}"
+          >
+          <div class="insight-chart-search-results" data-chart-search-results hidden></div>
+          <small class="insight-chart-search-help">종목명을 입력하면 아래에서 선택하거나, 바로 차트 열기를 눌러도 됩니다.</small>
+        </label>
+
+        <label class="insight-stock-interval-cell">
+          <span>기본 시간봉</span>
+          <select class="insight-input" data-chart-interval-select>
+            <option value="1h" {% if initial_chart_interval == '1h' %}selected{% endif %}>1시간</option>
+            <option value="2h" {% if initial_chart_interval == '2h' %}selected{% endif %}>2시간</option>
+            <option value="3h" {% if initial_chart_interval == '3h' %}selected{% endif %}>3시간</option>
+            <option value="4h" {% if initial_chart_interval == '4h' %}selected{% endif %}>4시간</option>
+            <option value="1d" {% if not initial_chart_interval or initial_chart_interval == '1d' %}selected{% endif %}>일</option>
+            <option value="1w" {% if initial_chart_interval == '1w' %}selected{% endif %}>주</option>
+            <option value="1mo" {% if initial_chart_interval == '1mo' %}selected{% endif %}>월</option>
+          </select>
+        </label>
+
+        <button class="insight-btn primary insight-chart-open-btn" type="button" data-chart-refresh>차트 열기</button>
       </div>
 
-      <p class="insight-help" data-image-help>
-        {% if post and post.cover_image %}
-          현재 파일: {{ post.cover_image.name }}
-        {% else %}
-          이미지 없이도 글은 등록됩니다.
-        {% endif %}
-      </p>
+      <div class="insight-stock-frame-shell" data-insight-stock-frame-shell>
+        <div class="insight-stock-frame-top">
+          <div>
+            <strong data-insight-frame-title>{{ initial_chart_name|default:initial_chart_code|default:'차트 미선택' }}</strong>
+            <span>차트 안의 드로잉 도구와 시간봉 메뉴를 그대로 사용할 수 있습니다.</span>
+          </div>
+          <div class="insight-stock-frame-actions">
+            <button type="button" class="insight-mini-btn" data-chart-capture-now>현재 차트상태 저장</button>
+            <button type="button" class="insight-mini-btn ghost" data-chart-frame-reload>다시 불러오기</button>
+          </div>
+        </div>
+        <iframe
+          class="insight-stock-frame"
+          title="빗각관점 차트 편집기"
+          data-insight-stock-frame
+          data-initial-code="{{ initial_chart_code|default:'' }}"
+          data-initial-name="{{ initial_chart_name|default:'' }}"
+          data-initial-interval="{{ initial_chart_interval|default:'1d' }}"
+          data-has-snapshot="{% if initial_chart_snapshot %}1{% else %}0{% endif %}"
+          data-stock-css-url="{% static 'stocks/css/bitgak_chart.css' %}?v=20260531-stock-srcdoc-v15-server-draft"
+          data-stock-core-url="{% static 'stocks/js/bitgak_chart_core.js' %}?v=20260531-stock-srcdoc-v15-server-draft"
+          data-stock-indicators-url="{% static 'stocks/js/bitgak_indicators.js' %}?v=20260531-stock-srcdoc-v15-server-draft"
+          data-stock-lw-url="https://unpkg.com/lightweight-charts@5.0.8/dist/lightweight-charts.standalone.production.js"
+          loading="lazy"
+        ></iframe>
+        <div class="insight-stock-frame-empty" data-insight-stock-frame-empty>
+          차트 대기 중
+          <small>종목코드를 입력하고 차트 열기를 누르면 실제 BitgakView 차트가 이 영역에 표시됩니다.</small>
+        </div>
+      </div>
 
-      {% for error in form.cover_image.errors %}<div class="insight-errors">{{ error }}</div>{% endfor %}
-    </aside>
+      <p class="insight-help">등록하기를 누르면 차트 안의 현재 화면, 시간봉, 빗각 드로잉이 자동으로 저장됩니다. 저장 전 <b>현재 차트상태 저장</b>을 눌러도 됩니다.</p>
+    </section>
+
+    <div class="insight-field">
+      <label for="{{ form.content.id_for_label }}">본문</label>
+      {{ form.content }}
+      {% for error in form.content.errors %}<div class="insight-errors">{{ error }}</div>{% endfor %}
+    </div>
+
+    <div class="insight-field">
+      <label for="{{ form.youtube_url.id_for_label }}">유튜브 URL <span>선택사항</span></label>
+      {{ form.youtube_url }}
+      <p class="insight-help">입력하면 상세 글 하단 왼쪽에 링크 버튼만 표시됩니다.</p>
+      {% for error in form.youtube_url.errors %}<div class="insight-errors">{{ error }}</div>{% endfor %}
+    </div>
+
+    <div class="insight-form-actions insight-form-actions-bottom">
+      <a class="insight-btn ghost" href="{% if post %}{{ post.get_absolute_url }}{% else %}{% url 'insights:list' %}{% endif %}">취소</a>
+      <button class="insight-btn primary" type="submit">{% if mode == "update" %}수정하기{% else %}등록하기{% endif %}</button>
+    </div>
   </form>
 </section>
 {% endblock %}

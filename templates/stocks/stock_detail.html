@@ -8,7 +8,7 @@
 
 <link rel="preconnect" href="https://unpkg.com" crossorigin>
 <link rel="dns-prefetch" href="//unpkg.com">
-<link rel="stylesheet" href="{% static 'stocks/css/bitgak_chart.css' %}?v=20260523-drawing-pane-vertical-lock-v3">
+<link rel="stylesheet" href="{% static 'stocks/css/bitgak_chart.css' %}?v=20260531-watchlist-indicator-strip-v1">
 {% endblock %}
 
 {% block content %}
@@ -276,7 +276,9 @@
             <button class="tool-btn" type="button" data-tool="extend" title="연장선">━</button>
             <button class="tool-btn" type="button" data-tool="hline" title="수평선">─</button>
             <button class="tool-btn" type="button" data-tool="vline" title="수직선">│</button>
+            <button class="tool-btn" type="button" data-tool="circle" title="원형 표시">○</button>
             <button class="tool-btn" type="button" data-tool="fibo" title="피보나치">⌁</button>
+            <button class="tool-btn bv-drawing-continuous-btn" type="button" data-drawing-continuous="1" title="연속 그리기" aria-label="연속 그리기" aria-pressed="false">연속</button>
             <button class="tool-btn" type="button" data-tool="undo" title="마지막 삭제">↶</button>
             <button class="tool-btn" type="button" data-tool="clear" title="전체 삭제">⌂</button>
           </div>
@@ -290,6 +292,32 @@
 
         <div id="ohlcInfo" class="ohlc-info">
           날짜 -　시가 -　고가 -　저가 -　종가 -　거래량 -
+        </div>
+
+        <div class="chart-active-indicator-bar" aria-label="차트 적용 지표 관리">
+          <div class="chart-active-indicator-head">
+            <span>적용 지표</span>
+            <b id="activeIndicatorCount" class="indicator-count">0</b>
+          </div>
+
+          <div id="rightIndicatorList" class="indicator-list-scroll chart-indicator-chip-list">
+            <div class="indicator-empty">
+              아직 추가된 지표가 없습니다. [지표검색]으로 필요한 지표를 먼저 추가하세요.
+            </div>
+          </div>
+
+          <button id="openIndicatorBtnSide" class="chart-indicator-add-mini" type="button">지표추가</button>
+        </div>
+
+        <div class="indicator-compat-hidden" aria-hidden="true">
+          <input
+            id="indicatorQuickSearchInput"
+            type="text"
+            placeholder="이동평균, EMA, RSI, MACD"
+            autocomplete="off"
+            tabindex="-1"
+          >
+          <button id="indicatorQuickSearchBtn" type="button" aria-label="지표 검색" tabindex="-1">⌕</button>
         </div>
 
         <div id="chartWrap" class="chart-wrap chart-wrap-v5">
@@ -334,44 +362,6 @@
             </div>
 
             <div id="selectedSymbolList" class="selected-symbol-list"></div>
-          </div>
-        </div>
-      </section>
-
-      <section class="right-dock-section indicator-dock-section">
-        <div class="right-dock-head">
-          <div class="right-dock-title">
-            <strong>지표 관리</strong>
-            <span>추가된 지표를 수정하거나 삭제합니다.</span>
-          </div>
-
-          <div class="indicator-panel-actions">
-            <button id="openIndicatorBtnSide" class="indicator-mini-btn primary" type="button">지표추가</button>
-          </div>
-        </div>
-
-        <div class="right-dock-body">
-          <div class="indicator-search-mini">
-            <input
-              id="indicatorQuickSearchInput"
-              type="text"
-              placeholder="이동평균, EMA, RSI, MACD"
-              autocomplete="off"
-            >
-            <button id="indicatorQuickSearchBtn" type="button" aria-label="지표 검색">⌕</button>
-          </div>
-
-          <div class="indicator-list-box">
-            <div class="indicator-list-head">
-              <strong>적용 지표</strong>
-              <span id="activeIndicatorCount" class="indicator-count">0</span>
-            </div>
-
-            <div id="rightIndicatorList" class="indicator-list-scroll">
-              <div class="indicator-empty">
-                아직 추가된 지표가 없습니다. 위 검색창 또는 [지표추가] 버튼으로 지표를 추가하세요.
-              </div>
-            </div>
           </div>
         </div>
       </section>
@@ -730,7 +720,7 @@
     <div class="indicator-panel-head">
       <div>
         <h2 id="indicatorModalTitle">지표 검색</h2>
-        <p>차트에 추가할 지표를 검색하세요. 추가된 지표는 오른쪽 지표 관리 영역에 표시됩니다.</p>
+        <p>차트에 추가할 지표를 검색하세요. 추가된 지표는 차트 상단 [적용 지표] 줄에서 바로 숨김/수정/삭제할 수 있습니다.</p>
       </div>
       <button class="modal-close" type="button" data-close-indicator>×</button>
     </div>
@@ -757,12 +747,12 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="{% static 'stocks/js/bitgak_access_guard.js' %}?v=20260523-drawing-pane-vertical-lock-v3"></script>
+<script src="{% static 'stocks/js/bitgak_access_guard.js' %}?v=20260531-watchlist-indicator-strip-v1"></script>
 <script src="https://unpkg.com/lightweight-charts@5.0.8/dist/lightweight-charts.standalone.production.js"></script>
 
-<script src="{% static 'stocks/js/bitgak_chart_core.js' %}?v=20260523-drawing-pane-vertical-lock-v3"></script>
-<script src="{% static 'stocks/js/bitgak_groups.js' %}?v=20260523-drawing-pane-vertical-lock-v3"></script>
-<script src="{% static 'stocks/js/bitgak_portfolio.js' %}?v=20260523-drawing-pane-vertical-lock-v3"></script>
-<script src="{% static 'stocks/js/bitgak_indicators.js' %}?v=20260523-drawing-pane-vertical-lock-v3"></script>
-<script src="{% static 'stocks/js/bitgak_search.js' %}?v=20260523-drawing-pane-vertical-lock-v3"></script>
+<script src="{% static 'stocks/js/bitgak_chart_core.js' %}?v=20260531-watchlist-indicator-strip-v1"></script>
+<script src="{% static 'stocks/js/bitgak_groups.js' %}?v=20260531-watchlist-indicator-strip-v1"></script>
+<script src="{% static 'stocks/js/bitgak_portfolio.js' %}?v=20260531-watchlist-indicator-strip-v1"></script>
+<script src="{% static 'stocks/js/bitgak_indicators.js' %}?v=20260531-watchlist-indicator-strip-v1"></script>
+<script src="{% static 'stocks/js/bitgak_search.js' %}?v=20260531-watchlist-indicator-strip-v1"></script>
 {% endblock %}

@@ -131,7 +131,13 @@
     requestToken: 0,
     activePaneTypes: [],
     mainPaneHeight: 0,
+    insightSnapshotMode: false,
+    insightSnapshot: null,
+    insightEditorMode: false,
   };
+
+  const insightUrlParams = new URLSearchParams(window.location.search || "");
+  state.insightEditorMode = app.dataset.insightEditor === "1" || insightUrlParams.get("insight_editor") === "1" || insightUrlParams.get("insight_mode") === "editor";
 
   const chartTimeToRow = new Map();
   const paneLabelEls = new Map();
@@ -546,6 +552,12 @@
     const activeTypes = uniquePaneTypes(state.activePaneTypes);
     const paneCount = Math.max(0, activeTypes.length);
 
+    if (chartWrap) {
+      chartWrap.classList.toggle("bitgak-has-subpanes", activeTypes.length > 0);
+      chartWrap.classList.toggle("bitgak-no-subpanes", activeTypes.length === 0);
+      chartWrap.dataset.activePaneCount = String(activeTypes.length);
+    }
+
     const preferredHeights = activeTypes.map(function (type) {
       const base = paneBaseType(type);
       if (base === "volume") return 118;
@@ -576,6 +588,7 @@
       }
     } catch (e) {}
 
+    syncDrawingLayerBounds();
     updatePaneLabels();
   }
 
@@ -583,14 +596,26 @@
     state.activePaneTypes = uniquePaneTypes(types);
     rebuildPaneIndexMap(state.activePaneTypes);
 
+    if (chartWrap) {
+      chartWrap.classList.toggle("bitgak-has-subpanes", state.activePaneTypes.length > 0);
+      chartWrap.classList.toggle("bitgak-no-subpanes", state.activePaneTypes.length === 0);
+      chartWrap.dataset.activePaneCount = String(state.activePaneTypes.length);
+    }
+
     state.activePaneTypes.forEach(function (type) {
       ensurePaneLabel(type, paneDefaultLabel(type));
     });
 
-    setTimeout(function () {
+    const refresh = function () {
       layoutPanes();
+      syncDrawingLayerBounds();
+      renderDrawings();
       fitOrKeepVisibleRange(false);
-    }, 0);
+    };
+
+    setTimeout(refresh, 0);
+    requestAnimationFrame(refresh);
+    setTimeout(refresh, 120);
   }
 
   function ensureIndicatorPane(type, label) {
@@ -693,9 +718,30 @@
     };
   }
 
+  function getBitgakBaseUrl() {
+    if (window.location.origin && window.location.origin !== "null") return window.location.origin;
+
+    if (app && app.dataset && app.dataset.parentOrigin) return app.dataset.parentOrigin;
+
+    try {
+      if (document.referrer) return new URL(document.referrer).origin;
+    } catch (e) {}
+
+    try {
+      if (window.parent && window.parent.location && window.parent.location.origin) return window.parent.location.origin;
+    } catch (e) {}
+
+    return window.location.protocol && window.location.host ? (window.location.protocol + "//" + window.location.host) : "http://127.0.0.1:8000";
+  }
+
+  function resolveBitgakUrl(url) {
+    try { return new URL(String(url || ""), getBitgakBaseUrl()).toString(); }
+    catch (e) { return String(url || ""); }
+  }
+
   function buildApiUrl() {
     const candidate = getRequestCandidate();
-    const url = new URL(apiUrl, window.location.origin);
+    const url = new URL(apiUrl, getBitgakBaseUrl());
 
     url.searchParams.set("interval", candidate.interval);
     url.searchParams.set("range", candidate.range);
@@ -960,8 +1006,19 @@
 
       layoutPanes();
       fitOrKeepVisibleRange(true);
-      await loadDrawingsFromStorage();
-      renderDrawings();
+
+      if (state.insightSnapshotMode && state.insightSnapshot) {
+        applyInsightSnapshotPayload(state.insightSnapshot, false);
+      } else if (state.insightEditorMode) {
+        // 빗각관점 글쓰기 iframe에서는 계정/브라우저에 저장된 드로잉을 섞지 않는다.
+        // 이 페이지에서 그린 드로잉은 부모 글쓰기 화면이 스냅샷으로만 저장한다.
+        state.drawings = [];
+        state.tempDrawing = null;
+        renderDrawings();
+      } else {
+        await loadDrawingsFromStorage();
+        renderDrawings();
+      }
 
       document.dispatchEvent(new CustomEvent("bitgak:chart-data-loaded", {
         bubbles: true,
@@ -972,6 +1029,8 @@
           interval: state.interval,
         },
       }));
+
+      if (state.insightEditorMode) notifyInsightChartDirty("data-loaded");
 
       setTimeout(function () {
         layoutPanes();
@@ -1285,7 +1344,7 @@
       if (csrfToken) opts.headers["X-CSRFToken"] = csrfToken;
     }
 
-    const response = await fetch(url, opts);
+    const response = await fetch(resolveBitgakUrl(url), opts);
     let data = null;
 
     try {
@@ -1521,7 +1580,33 @@
     writeLocalJsonValue(drawingStorageKey(), drawings || []);
   }
 
+  let insightDirtyNotifyTimer = null;
+
+  function notifyInsightChartDirty(reason) {
+    if (!state.insightEditorMode) return;
+    clearTimeout(insightDirtyNotifyTimer);
+    insightDirtyNotifyTimer = setTimeout(function () {
+      try {
+        if (window.parent && window.parent !== window) {
+          window.parent.postMessage({
+            type: "bitgak:insight-chart-dirty",
+            code: code,
+            interval: state.interval || "1d",
+            reason: reason || "changed"
+          }, "*");
+        }
+      } catch (e) {}
+    }, reason === "data-loaded" ? 250 : 120);
+  }
+
   function saveDrawingsToStorage() {
+    // 빗각관점 상세에 삽입된 스냅샷 차트는 방문자가 움직여볼 수 있지만 저장하지 않는다.
+    // 글쓰기 iframe에서는 localStorage가 아니라 부모 글쓰기 화면을 통해 서버 draft에 저장한다.
+    if (state.insightSnapshotMode) return;
+    if (state.insightEditorMode) {
+      notifyInsightChartDirty("drawings");
+      return;
+    }
     persistDrawingsLocal(state.drawings || []);
     scheduleDrawingsServerSave();
   }
@@ -2046,33 +2131,36 @@
     return Math.max(210, Math.min(chartHeight - 86, estimated));
   }
 
+  function clampMainPaneHeight(value, chartHeight) {
+    const n = Number(value);
+    const h = Math.max(1, Number(chartHeight) || chartEl.clientHeight || chartWrap.clientHeight || 1);
+    if (!Number.isFinite(n) || n <= 0) return null;
+    return Math.max(1, Math.min(h, Math.round(n)));
+  }
+
   function getMainPaneHeight() {
     const chartHeight = Math.max(1, chartEl.clientHeight || chartWrap.clientHeight || 1);
-    const candidates = [];
 
-    const domMeasured = measureMainPaneHeightFromDom(chartHeight);
-    if (Number.isFinite(Number(domMeasured)) && domMeasured > 0) candidates.push(Number(domMeasured));
-
-    const estimated = estimateMainPaneHeightFromActivePanes(chartHeight);
-    if (Number.isFinite(Number(estimated)) && estimated > 0) candidates.push(Number(estimated));
-
-    const saved = Number(state.mainPaneHeight || 0);
-    if (Number.isFinite(saved) && saved > 0 && saved < chartHeight - 24) candidates.push(saved);
-
+    // Lightweight Charts v5 pane API가 가장 정확하다. 기존처럼 여러 후보의 최소값을 쓰면
+    // 보조지표를 켰다 끈 뒤 저장된 old height/추정값 때문에 드로잉 레이어가 잘리거나
+    // 이평선/드로잉이 깨져 보일 수 있다.
     try {
       const panes = chart && chart.panes ? chart.panes() : null;
       const firstPane = panes && panes[0] ? panes[0] : null;
       if (firstPane && typeof firstPane.getHeight === "function") {
-        const paneHeight = Number(firstPane.getHeight());
-        if (Number.isFinite(paneHeight) && paneHeight > 0 && paneHeight < chartHeight - 24) candidates.push(paneHeight);
+        const paneHeight = clampMainPaneHeight(firstPane.getHeight(), chartHeight);
+        if (paneHeight && paneHeight > 24) return paneHeight;
       }
     } catch (e) {}
 
-    if (candidates.length) {
-      // 드로잉은 보조지표를 절대 침범하면 안 되므로 후보 중 가장 보수적인 값을 사용한다.
-      const strict = Math.min.apply(Math, candidates);
-      return Math.max(1, Math.min(chartHeight, Math.round(strict)));
-    }
+    const domMeasured = clampMainPaneHeight(measureMainPaneHeightFromDom(chartHeight), chartHeight);
+    if (domMeasured && domMeasured > 24) return domMeasured;
+
+    const saved = clampMainPaneHeight(state.mainPaneHeight || 0, chartHeight);
+    if (saved && saved > 24) return saved;
+
+    const estimated = clampMainPaneHeight(estimateMainPaneHeightFromActivePanes(chartHeight), chartHeight);
+    if (estimated && estimated > 24) return estimated;
 
     return chartHeight;
   }
@@ -5534,6 +5622,256 @@
     update();
   }
 
+
+  /* =========================================================
+     Insight snapshot API
+     - 상세 글 iframe에서 작성자가 저장한 드로잉/화면 범위를 임시 적용
+     - 방문자가 움직여도 서버/localStorage에 저장하지 않음
+     ========================================================= */
+  function cloneInsightValue(value) {
+    try { return JSON.parse(JSON.stringify(value || null)); } catch (e) { return null; }
+  }
+
+
+  function getStoredInsightIndicators() {
+    try {
+      if (window.BitgakIndicators && typeof window.BitgakIndicators.getIndicators === "function") {
+        return window.BitgakIndicators.getIndicators() || [];
+      }
+    } catch (e) {}
+
+    try {
+      const saved = JSON.parse(localStorage.getItem("bitgak_chart_indicators_v5_tv") || "[]");
+      return Array.isArray(saved) ? saved : [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  function applyStoredInsightIndicators(indicators) {
+    if (!Array.isArray(indicators)) return;
+
+    try {
+      if (window.BitgakIndicators && typeof window.BitgakIndicators.setIndicators === "function") {
+        window.BitgakIndicators.setIndicators(indicators);
+        return;
+      }
+    } catch (e) {}
+
+    // 인사이트 iframe에서는 stock_detail의 개인 localStorage 지표 설정을 건드리지 않는다.
+    // 지표 스크립트가 이미 로드되어 있으면 API로 바로 적용하고, 아니면 이벤트로만 전달한다.
+    if (state.insightEditorMode || state.insightSnapshotMode) {
+      try {
+        document.dispatchEvent(new CustomEvent("bitgak:apply-insight-indicators", { detail: { indicators: indicators || [] } }));
+      } catch (e) {}
+      return;
+    }
+
+    try {
+      localStorage.setItem("bitgak_chart_indicators_v5_tv", JSON.stringify(indicators || []));
+    } catch (e) {}
+
+    try {
+      document.dispatchEvent(new CustomEvent("bitgak:apply-insight-indicators", { detail: { indicators: indicators || [] } }));
+    } catch (e) {}
+  }
+
+  function serializeSvgToDataUrl(svg, width, height) {
+    if (!svg || !svg.children || !svg.children.length) return "";
+    try {
+      const clone = svg.cloneNode(true);
+      clone.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+      clone.setAttribute("width", String(width));
+      clone.setAttribute("height", String(height));
+      clone.setAttribute("viewBox", "0 0 " + width + " " + height);
+      const xml = new XMLSerializer().serializeToString(clone);
+      return "data:image/svg+xml;charset=utf-8," + encodeURIComponent(xml);
+    } catch (e) {
+      return "";
+    }
+  }
+
+  function captureInsightThumbnail() {
+    return new Promise(function (resolve) {
+      try {
+        const target = chartWrap || chartEl;
+        if (!target) { resolve(""); return; }
+
+        const rect = target.getBoundingClientRect();
+        const sourceWidth = Math.max(1, Math.round(rect.width || target.clientWidth || 900));
+        const sourceHeight = Math.max(1, Math.round(rect.height || target.clientHeight || 520));
+        const maxWidth = 1280;
+        const maxHeight = 720;
+        const scale = Math.min(1.35, maxWidth / sourceWidth, maxHeight / sourceHeight);
+        const width = Math.max(320, Math.round(sourceWidth * scale));
+        const height = Math.max(180, Math.round(sourceHeight * scale));
+
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) { resolve(""); return; }
+
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, width, height);
+
+        const canvases = Array.from(target.querySelectorAll("canvas"));
+        canvases.forEach(function (item) {
+          try {
+            const itemRect = item.getBoundingClientRect();
+            const x = (itemRect.left - rect.left) * scale;
+            const y = (itemRect.top - rect.top) * scale;
+            const w = itemRect.width * scale;
+            const h = itemRect.height * scale;
+            if (w > 0 && h > 0) ctx.drawImage(item, x, y, w, h);
+          } catch (e) {}
+        });
+
+        const svgUrl = serializeSvgToDataUrl(drawingLayer, sourceWidth, sourceHeight);
+        if (!svgUrl) {
+          resolve(canvas.toDataURL("image/jpeg", 0.88));
+          return;
+        }
+
+        const img = new Image();
+        img.onload = function () {
+          try { ctx.drawImage(img, 0, 0, width, height); } catch (e) {}
+          resolve(canvas.toDataURL("image/jpeg", 0.88));
+        };
+        img.onerror = function () {
+          resolve(canvas.toDataURL("image/jpeg", 0.88));
+        };
+        img.src = svgUrl;
+      } catch (e) {
+        resolve("");
+      }
+    });
+  }
+
+  function captureInsightSnapshot() {
+    let visibleLogicalRange = null;
+    try {
+      if (chart.timeScale && chart.timeScale().getVisibleLogicalRange) {
+        visibleLogicalRange = chart.timeScale().getVisibleLogicalRange();
+      }
+    } catch (e) {}
+
+    return {
+      version: 1,
+      source: "bitgakview",
+      code: code,
+      name: state.payload && state.payload.name ? state.payload.name : (app.dataset.name || ""),
+      interval: state.interval || "1d",
+      apiUrl: app.dataset.apiUrl || "",
+      chartUrl: app.dataset.chartUrl || window.location.pathname,
+      capturedAt: new Date().toISOString(),
+      visibleLogicalRange: visibleLogicalRange,
+      drawings: cloneInsightValue(state.drawings || []) || [],
+      indicators: cloneInsightValue(getStoredInsightIndicators() || []) || []
+    };
+  }
+
+  function applyInsightVisibleRange(snapshot) {
+    if (!snapshot) return;
+    const range = snapshot.visibleLogicalRange || snapshot.logicalRange || null;
+    if (!range) return;
+
+    const from = Number(range.from);
+    const to = Number(range.to);
+    if (!Number.isFinite(from) || !Number.isFinite(to)) return;
+
+    try {
+      chart.timeScale().setVisibleLogicalRange({ from: from, to: to });
+    } catch (e) {}
+  }
+
+  function applyInsightSnapshotPayload(snapshot, shouldRender) {
+    const source = snapshot || {};
+    const drawings = Array.isArray(source.drawings) ? source.drawings : [];
+
+    state.drawings = drawings.map(normalizeDrawing).filter(Boolean);
+    if (Array.isArray(source.indicators)) applyStoredInsightIndicators(source.indicators);
+    state.tempDrawing = null;
+    state.selectedDrawingId = null;
+    state.isDrawing = false;
+    state.fiboStage = 0;
+
+    applyInsightVisibleRange(source);
+    if (shouldRender !== false) renderDrawings();
+
+    setTimeout(function () {
+      applyInsightVisibleRange(source);
+      renderDrawings();
+    }, 120);
+  }
+
+  function applyInsightSnapshot(snapshot) {
+    if (!snapshot || typeof snapshot !== "object") return false;
+
+    state.insightSnapshotMode = true;
+    state.insightSnapshot = cloneInsightValue(snapshot) || snapshot;
+
+    const nextInterval = normalizeIntervalValue(snapshot.interval || state.interval || "1d");
+    if (nextInterval && nextInterval !== state.interval && ["1h", "2h", "3h", "4h", "1d", "1w", "1mo"].includes(nextInterval)) {
+      state.interval = nextInterval;
+      applyIntervalChartOptions();
+      if (intervalDropdown) {
+        intervalDropdown.querySelectorAll("[data-interval]").forEach(function (node) {
+          node.classList.toggle("active", normalizeIntervalValue(node.dataset.interval) === state.interval);
+        });
+      }
+      if (currentIntervalText) currentIntervalText.textContent = getIntervalMeta(state.interval).label || state.interval;
+      loadChartData();
+      return true;
+    }
+
+    applyInsightSnapshotPayload(state.insightSnapshot, true);
+    return true;
+  }
+
+  function isTrustedInsightMessage(event) {
+    if (event.source && event.source === window.parent) return true;
+
+    const origin = String(event.origin || "");
+    const here = String(window.location.origin || "");
+    if (origin && here && here !== "null" && origin === here) return true;
+
+    const base = getBitgakBaseUrl();
+    if (origin && base && origin === base) return true;
+
+    return false;
+  }
+
+  window.addEventListener("message", function (event) {
+    if (!isTrustedInsightMessage(event)) return;
+    const data = event.data || {};
+    if (!data || data.type !== "bitgak:capture-insight-snapshot-request") return;
+
+    const snapshot = captureInsightSnapshot();
+    function sendSnapshot(thumbnailDataUrl) {
+      if (thumbnailDataUrl) snapshot.thumbnailDataUrl = thumbnailDataUrl;
+      try {
+        event.source.postMessage({
+          type: "bitgak:insight-snapshot-response",
+          requestId: data.requestId || "",
+          snapshot: snapshot,
+        }, event.origin && event.origin !== "null" ? event.origin : "*");
+      } catch (e) {}
+    }
+    if (data.noThumbnail) {
+      sendSnapshot("");
+      return;
+    }
+    captureInsightThumbnail().then(sendSnapshot);
+  });
+
+  window.addEventListener("message", function (event) {
+    if (!isTrustedInsightMessage(event)) return;
+    const data = event.data || {};
+    if (!data || data.type !== "bitgak:apply-insight-snapshot") return;
+    applyInsightSnapshot(data.snapshot || {});
+  });
+
   window.BitgakChart = {
     app,
     code,
@@ -5546,6 +5884,8 @@
     normalizeIntervalValue,
     getRows: function () { return state.rows; },
     getBaseRows: function () { return state.baseRows; },
+    getChartContainer: function () { return chartWrap || chartEl; },
+    resize: resizeChart,
     getIntervalMeta,
     configureIndicatorPanes,
     ensureIndicatorPane,
@@ -5566,6 +5906,16 @@
       }, 0);
     },
     setVolumeVisible: function () {},
+    getDrawings: function () { return cloneInsightValue(state.drawings || []) || []; },
+    setDrawings: function (drawings) {
+      state.drawings = (Array.isArray(drawings) ? drawings : []).map(normalizeDrawing).filter(Boolean);
+      renderDrawings();
+    },
+    getVisibleLogicalRange: function () {
+      try { return chart.timeScale().getVisibleLogicalRange(); } catch (e) { return null; }
+    },
+    captureInsightSnapshot,
+    applyInsightSnapshot,
     loadChartData,
   };
 
@@ -5579,6 +5929,17 @@
     if (currentIntervalText) {
       currentIntervalText.textContent = initialIntervalBtn.dataset.label || getIntervalMeta(state.interval).label || initialIntervalBtn.textContent.trim();
     }
+  }
+
+  const queryInterval = normalizeIntervalValue(insightUrlParams.get("interval") || "");
+  if (["1h", "2h", "3h", "4h", "1d", "1w", "1mo"].includes(queryInterval)) {
+    state.interval = queryInterval;
+    if (intervalDropdown) {
+      intervalDropdown.querySelectorAll("[data-interval]").forEach(function (node) {
+        node.classList.toggle("active", normalizeIntervalValue(node.dataset.interval) === state.interval);
+      });
+    }
+    if (currentIntervalText) currentIntervalText.textContent = getIntervalMeta(state.interval).label || state.interval;
   }
 
   applyIntervalChartOptions();
