@@ -47,6 +47,114 @@
   ];
   const FAVORITE_KEY = "bitgak_indicator_favorites_v1";
 
+  // v7 서버 저장 모드: stock_detail의 지표 상태는 localStorage가 아니라
+  // 로그인 사용자 + 종목코드 기준 서버 API에 저장한다.
+  // 인사이트 iframe은 부모 페이지의 chart_snapshot 서버 저장 흐름을 사용한다.
+  const INDICATOR_SERVER_URL = app && app.dataset
+    ? (app.dataset.indicatorApiUrl || app.dataset.indicatorsApiUrl || ("/stocks/api/indicators/" + encodeURIComponent(CURRENT_STOCK_CODE) + "/"))
+    : ("/stocks/api/indicators/" + encodeURIComponent(CURRENT_STOCK_CODE) + "/");
+
+  let indicatorServerLoading = false;
+  let indicatorServerSaveTimer = null;
+  let indicatorServerAvailable = false;
+  let suppressIndicatorServerSave = false;
+
+  function getCookie(name) {
+    const value = `; ${document.cookie || ""}`;
+    const parts = value.split(`; ${name}=`);
+    if (parts.length === 2) return decodeURIComponent(parts.pop().split(";").shift());
+    return "";
+  }
+
+  function isAuthenticatedForIndicatorServer() {
+    if (IS_INSIGHT_EMBED) return false;
+    if (window.BITGAK_ACCESS && window.BITGAK_ACCESS.is_authenticated) return true;
+    return !!document.getElementById("bitgak-access-data") && !document.body.classList.contains("is-guest");
+  }
+
+  function normalizeServerIndicatorsPayload(data) {
+    data = data || {};
+    const raw = Array.isArray(data.indicators)
+      ? data.indicators
+      : (data.data && Array.isArray(data.data.indicators) ? data.data.indicators : []);
+    return raw.map(normalizeIndicator).filter(Boolean);
+  }
+
+  async function fetchServerIndicators() {
+    if (!INDICATOR_SERVER_URL || !isAuthenticatedForIndicatorServer() || indicatorServerLoading) return false;
+
+    indicatorServerLoading = true;
+    try {
+      const res = await fetch(INDICATOR_SERVER_URL, {
+        method: "GET",
+        headers: {
+          "Accept": "application/json",
+          "X-Requested-With": "XMLHttpRequest",
+        },
+        credentials: "same-origin",
+        cache: "no-store",
+      });
+
+      const data = await res.json().catch(function () { return {}; });
+      if (!res.ok || data.ok === false || data.authenticated === false) {
+        indicatorServerAvailable = false;
+        return false;
+      }
+
+      indicatorServerAvailable = true;
+      suppressIndicatorServerSave = true;
+      indicators = normalizeServerIndicatorsPayload(data);
+      suppressIndicatorServerSave = false;
+      rebuildAll();
+      renderCatalog();
+      renderFavoritePanel();
+      renderRightList();
+      schedulePaneLabelRefresh();
+      scheduleChartRelayout();
+      return true;
+    } catch (e) {
+      indicatorServerAvailable = false;
+      suppressIndicatorServerSave = false;
+      return false;
+    } finally {
+      indicatorServerLoading = false;
+    }
+  }
+
+  function scheduleServerIndicatorSave() {
+    if (IS_INSIGHT_EMBED) return;
+    if (suppressIndicatorServerSave) return;
+    if (!INDICATOR_SERVER_URL || !isAuthenticatedForIndicatorServer()) return;
+
+    clearTimeout(indicatorServerSaveTimer);
+    indicatorServerSaveTimer = setTimeout(saveIndicatorsToServer, 220);
+  }
+
+  async function saveIndicatorsToServer() {
+    if (!INDICATOR_SERVER_URL || !isAuthenticatedForIndicatorServer()) return;
+
+    try {
+      const res = await fetch(INDICATOR_SERVER_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Accept": "application/json",
+          "X-Requested-With": "XMLHttpRequest",
+          "X-CSRFToken": getCookie("csrftoken"),
+        },
+        credentials: "same-origin",
+        body: JSON.stringify({
+          stockCode: CURRENT_STOCK_CODE,
+          indicators: getPlainIndicators(),
+        }),
+      });
+      const data = await res.json().catch(function () { return {}; });
+      indicatorServerAvailable = !!(res.ok && data.ok !== false && data.authenticated !== false);
+    } catch (e) {
+      indicatorServerAvailable = false;
+    }
+  }
+
   const PALETTE_COLORS = [
     "#ff4568", "#ff9f1c", "#55d400", "#19aeca", "#3b82f6", "#7c64d8",
     "#ec4899", "#ff6b2c", "#2db84d", "#3aa0cf", "#466bd3", "#9b5de5",
@@ -523,63 +631,25 @@
   }
 
   function readStoredIndicators() {
-    // 인사이트 글쓰기/상세 iframe에서는 일반 stock_detail에서 저장해둔
-    // 이동평균·거래량·RSI 같은 개인 지표 설정을 가져오지 않는다.
-    // 처음 차트를 열면 진짜 기본 캔들 차트만 보이고, 저장된 글의 경우에만
-    // chart_snapshot 안의 indicators 값을 아래 setIndicatorsFromSnapshot에서 복원한다.
-    if (IS_INSIGHT_EMBED) return [];
-
-    const keys = [STORAGE_KEY].concat(LEGACY_KEYS);
-    const seen = new Set();
-
-    for (const key of keys) {
-      if (!key || seen.has(key)) continue;
-      seen.add(key);
-      try {
-        const saved = JSON.parse(localStorage.getItem(key));
-        if (Array.isArray(saved)) return saved;
-      } catch (e) {}
-    }
-
-    // v6부터는 전역 지표 key를 자동 마이그레이션하지 않는다.
-    // 그래야 종목 검색/이동 시 이전 종목의 거래량·이평선·RSI가 따라오지 않는다.
+    // v7부터 stock_detail 지표는 서버 저장만 사용한다.
+    // localStorage의 과거 지표가 서버 화면에 섞이면 종목 이동/상세글 표시에서
+    // 이전 지표가 다시 살아나는 문제가 생기므로 초기값은 항상 빈 배열로 둔다.
     return [];
   }
 
   function loadIndicators() {
     indicators = readStoredIndicators().map(normalizeIndicator).filter(Boolean);
-    saveIndicators();
   }
 
   function saveIndicators() {
-    const plain = indicators.map(function (item) {
-      if (item.type === "ma_pack") {
-        return {
-          id: item.id,
-          type: item.type,
-          visible: item.visible,
-          lines: (item.lines || []).map(function (line) {
-            return {
-              id: line.id,
-              visible: line.visible,
-              period: line.period,
-              width: line.width,
-              source: line.source,
-              method: line.method,
-              color: line.color,
-            };
-          }),
-        };
-      }
-      const copy = { ...item };
-      delete copy.series;
-      return copy;
-    });
     if (IS_INSIGHT_EMBED) {
       notifyInsightIndicatorsChanged();
       return;
     }
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(plain));
+
+    // 서버 저장만 수행한다. 404/비로그인/권한 없음이면 저장하지 않는다.
+    // 기존 localStorage key에는 더 이상 쓰지 않는다.
+    scheduleServerIndicatorSave();
   }
 
   function getSourceValue(row, source) {
@@ -3171,6 +3241,7 @@
   };
 
   loadIndicators();
+  fetchServerIndicators();
   startPaneLabelResizeSync();
   startPaneLegendCrosshairSync();
   ensureCatalogLayout();

@@ -89,7 +89,7 @@ pd = _LazyPandas()
 krx_stock = _LazyKrxStock()
 yf = _LazyYFinance()
 
-from .models import ChartDrawingState, StockSymbol, UserStockStorage
+from .models import ChartDrawingState, ChartIndicatorState, StockSymbol, UserStockStorage
 
 
 DERIVATIVE_KEYWORDS = [
@@ -2037,3 +2037,156 @@ def pricing_view(request):
     return render(request, "stocks/pricing.html", {
         "active_nav": "pricing",
     })
+
+# -----------------------------------------------------------------------------
+# 로그인 사용자별 차트 지표 서버 저장 API
+# -----------------------------------------------------------------------------
+# 기존 지표는 브라우저 localStorage 중심으로 저장되어 서버/브라우저/인사이트 iframe마다
+# 하이드·수정·삭제 상태가 어긋날 수 있었습니다. 아래 API는 로그인 사용자 + 종목코드
+# 기준으로 지표 상태를 DB에 저장하고 다시 불러오기 위한 엔드포인트입니다.
+
+
+def _normalize_chart_indicators(indicators):
+    if not isinstance(indicators, list):
+        return []
+
+    allowed_types = {"ma_pack", "volume", "rsi", "macd", "stoch", "boll", "ichimoku"}
+    normalized = []
+
+    for index, raw in enumerate(indicators[:80]):
+        if not isinstance(raw, dict):
+            continue
+
+        item = dict(raw)
+        item["id"] = str(item.get("id") or f"indicator_{index + 1}")[:120]
+        item["type"] = str(item.get("type") or "ma_pack").strip().lower()[:40]
+
+        if item["type"] not in allowed_types:
+            continue
+
+        item["visible"] = item.get("visible") is not False
+
+        for key in [
+            "source", "color", "upperColor", "middleColor", "lowerColor", "maColor",
+            "dColor", "backgroundColor", "signalColor", "histUpColor", "histDownColor",
+            "levelColor", "conversionColor", "baseColor", "spanAColor", "spanBColor",
+            "laggingColor", "cloudUpColor", "cloudDownColor",
+        ]:
+            if key in item:
+                item[key] = str(item.get(key) or "")[:120]
+
+        for key in [
+            "period", "width", "fast", "slow", "signal", "maPeriod", "upper", "middle", "lower",
+            "rsiPeriod", "conversion", "base", "spanB", "displacement", "kSmoothing", "dSmoothing",
+        ]:
+            if key in item:
+                try:
+                    number_value = float(item[key])
+                    item[key] = int(number_value) if number_value.is_integer() else number_value
+                except (TypeError, ValueError):
+                    item.pop(key, None)
+
+        for key in [
+            "showRsi", "showRsiMa", "showUpper", "showMiddle", "showLower", "showK", "showD",
+            "showBackground", "showHistogram", "showMacd", "showSignal", "showLevels",
+            "showConversion", "showBase", "showSpanA", "showSpanB", "showLagging", "showCloudFill",
+        ]:
+            if key in item:
+                item[key] = bool(item[key])
+
+        if item["type"] == "ma_pack":
+            lines = item.get("lines") if isinstance(item.get("lines"), list) else []
+            fixed_lines = []
+
+            for line_index, line in enumerate(lines[:20]):
+                if not isinstance(line, dict):
+                    continue
+
+                fixed = {
+                    "id": str(line.get("id") or f"ma_line_{line_index + 1}")[:120],
+                    "visible": line.get("visible") is not False,
+                    "source": str(line.get("source") or "close")[:30],
+                    "method": str(line.get("method") or "ema")[:20],
+                    "color": str(line.get("color") or "#3b82f6")[:80],
+                }
+
+                for num_key, fallback in {"period": 20, "width": 2}.items():
+                    try:
+                        number_value = float(line.get(num_key, fallback))
+                        fixed[num_key] = int(number_value) if number_value.is_integer() else number_value
+                    except (TypeError, ValueError):
+                        fixed[num_key] = fallback
+
+                fixed_lines.append(fixed)
+
+            item["lines"] = fixed_lines
+
+        # LightweightCharts Series 객체 등 프론트 내부용 값은 DB에 저장하지 않습니다.
+        item.pop("series", None)
+        normalized.append(item)
+
+    return normalized
+
+
+@require_http_methods(["GET", "POST"])
+def chart_indicators_api(request, code):
+    stock_code = _clean_code(code)
+
+    if not request.user.is_authenticated:
+        if request.method == "GET":
+            return JsonResponse(
+                {
+                    "ok": True,
+                    "authenticated": False,
+                    "stockCode": stock_code,
+                    "indicators": [],
+                    "message": "로그인하지 않아 서버 지표 저장을 사용하지 않습니다.",
+                },
+                json_dumps_params={"ensure_ascii": False},
+            )
+
+        return JsonResponse(
+            {
+                "ok": False,
+                "authenticated": False,
+                "message": "로그인 후 서버 지표 저장을 사용할 수 있습니다.",
+            },
+            status=401,
+            json_dumps_params={"ensure_ascii": False},
+        )
+
+    state_obj, _ = ChartIndicatorState.objects.get_or_create(
+        user=request.user,
+        stock_code=stock_code,
+        defaults={"indicators": []},
+    )
+
+    if request.method == "GET":
+        indicators = _normalize_chart_indicators(state_obj.indicators)
+        return JsonResponse(
+            {
+                "ok": True,
+                "authenticated": True,
+                "stockCode": stock_code,
+                "indicators": indicators,
+                "updatedAt": state_obj.updated_at.isoformat() if state_obj.updated_at else None,
+            },
+            json_dumps_params={"ensure_ascii": False},
+        )
+
+    data = _json_body(request)
+    indicators = _normalize_chart_indicators(data.get("indicators", data))
+    state_obj.indicators = indicators
+    state_obj.save(update_fields=["indicators", "updated_at"])
+
+    return JsonResponse(
+        {
+            "ok": True,
+            "authenticated": True,
+            "stockCode": stock_code,
+            "indicators": state_obj.indicators,
+            "updatedAt": state_obj.updated_at.isoformat() if state_obj.updated_at else None,
+        },
+        json_dumps_params={"ensure_ascii": False},
+    )
+

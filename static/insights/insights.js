@@ -685,48 +685,88 @@
 
   var CHART_DIRTY_TIMERS = new WeakMap();
 
+  function findInsightFrameBySource(source) {
+    var frames = qsa(document, "[data-insight-stock-frame], [data-insight-stock-player-frame]");
+    for (var i = 0; i < frames.length; i += 1) {
+      if (frames[i].contentWindow && frames[i].contentWindow === source) return frames[i];
+    }
+    return null;
+  }
+
+  function getSnapshotInputForFrame(frame) {
+    if (!frame) return null;
+    var form = frame.closest("form");
+    if (form) return qs(form, "[data-insight-chart-snapshot-input]");
+    var root = frame.closest("[data-insight-chart-player]") || document;
+    return qs(root, "[data-chart-snapshot-json]");
+  }
+
+  function getSnapshotBaseForFrame(frame, fallbackCode) {
+    var input = getSnapshotInputForFrame(frame);
+    var current = parseSnapshot(input);
+    var code = onlyCode(fallbackCode || (frame && frame.dataset.currentCode) || (current && current.code) || "");
+    var name = (frame && frame.dataset.currentName) || (current && current.name) || code;
+    var interval = (frame && frame.dataset.currentInterval) || (current && current.interval) || "1d";
+    if (!current || !snapshotMatchesStock(current, code)) current = cleanSnapshotForStock(code, name, interval);
+    current.code = code;
+    current.name = current.name || name || code;
+    current.interval = current.interval || interval || "1d";
+    return current;
+  }
+
+  function writeSnapshotForFrame(frame, snapshot) {
+    var input = getSnapshotInputForFrame(frame);
+    if (input) input.value = toJson(snapshot || {});
+    if (frame) frame.dataset.userChanged = "1";
+  }
+
+  function saveSnapshotForFrame(frame, snapshot, options) {
+    options = options || {};
+    var form = frame && frame.closest("form");
+    if (form) return saveChartDraftToServerForForm(form, snapshot, options);
+
+    // 상세 플레이어는 서버에서 내려준 chart_snapshot을 기준으로 동작한다.
+    // 템플릿에서 data-chart-save-url 또는 data-chart-draft-url을 제공하면 해당 URL로 저장한다.
+    // 없으면 화면의 hidden snapshot만 갱신하고 원격 저장은 건너뛴다.
+    var root = frame ? frame.closest("[data-insight-chart-player]") : null;
+    var url = root && (root.dataset.chartSaveUrl || root.dataset.chartDraftUrl || root.dataset.chartSnapshotUrl);
+    if (!url) return Promise.resolve(null);
+    return jsonFetch(url, {
+      method: "POST",
+      body: JSON.stringify({ chart_snapshot: snapshot, snapshot: snapshot })
+    }).catch(function () { return null; });
+  }
+
   window.addEventListener("message", function (event) {
     if (event.origin && event.origin !== window.location.origin && event.origin !== "null") return;
     var data = event.data || {};
 
     if (data.type === "bitgak:insight-indicators-changed") {
-      qsa(document, "[data-insight-stock-frame]").forEach(function (frame) {
-        if (!frame.contentWindow || frame.contentWindow !== event.source) return;
-        var form = frame.closest("form");
-        if (!form) return;
-        var snapshotInput = qs(form, "[data-insight-chart-snapshot-input]");
-        var codeInput = qs(form, "[data-insight-chart-code-input]");
-        var nameInput = qs(form, "[data-insight-chart-name-input]");
-        var intervalInput = qs(form, "[data-insight-chart-interval-input]");
-        var code = onlyCode((data.code || frame.dataset.currentCode || (codeInput && codeInput.value) || ""));
-        var base = parseSnapshot(snapshotInput) || cleanSnapshotForStock(code, (nameInput && nameInput.value) || frame.dataset.currentName || code, (intervalInput && intervalInput.value) || frame.dataset.currentInterval || "1d");
-        if (!snapshotMatchesStock(base, code)) base = cleanSnapshotForStock(code, (nameInput && nameInput.value) || frame.dataset.currentName || code, (intervalInput && intervalInput.value) || frame.dataset.currentInterval || "1d");
-        base.indicators = Array.isArray(data.indicators) ? data.indicators : [];
-        base.code = code;
-        base.name = base.name || (nameInput && nameInput.value) || frame.dataset.currentName || code;
-        base.interval = base.interval || (intervalInput && intervalInput.value) || frame.dataset.currentInterval || "1d";
-        if (snapshotInput) snapshotInput.value = toJson(base);
-        saveChartDraftToServerForForm(form, base, { silent: true });
-      });
+      var indicatorFrame = findInsightFrameBySource(event.source);
+      if (!indicatorFrame) return;
+      var code = onlyCode(data.code || indicatorFrame.dataset.currentCode || "");
+      var base = getSnapshotBaseForFrame(indicatorFrame, code);
+      base.indicators = Array.isArray(data.indicators) ? data.indicators : [];
+      base.code = code || base.code;
+      base.interval = base.interval || indicatorFrame.dataset.currentInterval || "1d";
+      writeSnapshotForFrame(indicatorFrame, base);
+      saveSnapshotForFrame(indicatorFrame, base, { silent: true });
       return;
     }
 
     if (data.type === "bitgak:insight-chart-dirty") {
-      qsa(document, "[data-insight-stock-frame]").forEach(function (frame) {
-        if (!frame.contentWindow || frame.contentWindow !== event.source) return;
-        var form = frame.closest("form");
-        if (!form) return;
-        clearTimeout(CHART_DIRTY_TIMERS.get(frame));
-        var timer = setTimeout(function () {
-          requestFrameSnapshot(frame, 1600, { noThumbnail: true }).then(function (snapshot) {
-            if (!snapshot) return;
-            var snapshotInput = qs(form, "[data-insight-chart-snapshot-input]");
-            if (snapshotInput) snapshotInput.value = toJson(snapshot);
-            saveChartDraftToServerForForm(form, snapshot, { silent: true });
-          });
-        }, data.reason === "data-loaded" ? 900 : 520);
-        CHART_DIRTY_TIMERS.set(frame, timer);
-      });
+      var dirtyFrame = findInsightFrameBySource(event.source);
+      if (!dirtyFrame) return;
+      dirtyFrame.dataset.userChanged = "1";
+      clearTimeout(CHART_DIRTY_TIMERS.get(dirtyFrame));
+      var timer = setTimeout(function () {
+        requestFrameSnapshot(dirtyFrame, 1600, { noThumbnail: true }).then(function (snapshot) {
+          if (!snapshot) return;
+          writeSnapshotForFrame(dirtyFrame, snapshot);
+          saveSnapshotForFrame(dirtyFrame, snapshot, { silent: true });
+        });
+      }, data.reason === "data-loaded" ? 900 : 520);
+      CHART_DIRTY_TIMERS.set(dirtyFrame, timer);
       return;
     }
 
@@ -1214,8 +1254,12 @@
         var storedSnapshot = parseSnapshot(snapshotInput);
         var snap = snapshotForLoadedStock || (snapshotMatchesStock(storedSnapshot, code) ? storedSnapshot : null);
         if (snap && (snap.drawings || snap.visibleLogicalRange || snap.interval || snap.indicators)) {
-          setTimeout(function () { postSnapshotToFrame(frame, snap); }, 320);
-          setTimeout(function () { postSnapshotToFrame(frame, snap); }, 950);
+          [320, 950].forEach(function (delay) {
+            setTimeout(function () {
+              if (frame.dataset.userChanged === "1") return;
+              postSnapshotToFrame(frame, snap);
+            }, delay);
+          });
         } else if (interval && interval !== "1d") {
           setTimeout(function () { postSnapshotToFrame(frame, { code: code, name: name, interval: interval, drawings: [], indicators: [] }); }, 320);
         } else {
@@ -1325,10 +1369,15 @@
       }
       frame.onload = function () {
         setHidden(empty, true);
+        frame.dataset.userChanged = "";
         if (snapshot) {
-          setTimeout(function () { postSnapshotToFrame(frame, snapshot); }, 320);
-          setTimeout(function () { postSnapshotToFrame(frame, snapshot); }, 950);
-          setTimeout(function () { postSnapshotToFrame(frame, snapshot); }, 1600);
+          [320, 950, 1600].forEach(function (delay) {
+            setTimeout(function () {
+              // 사용자가 하이드/삭제/수정한 뒤에는 초기 서버 스냅샷을 다시 덮어쓰지 않는다.
+              if (frame.dataset.userChanged === "1") return;
+              postSnapshotToFrame(frame, snapshot);
+            }, delay);
+          });
         }
       };
       frame.removeAttribute("src");

@@ -76,3 +76,37 @@ class ChartDrawingState(models.Model):
 
     def __str__(self):
         return f"{self.user} drawing {self.stock_code}"
+
+
+class ChartIndicatorState(models.Model):
+    """사용자·종목별 차트 지표 서버 저장 데이터.
+
+    이동평균, 거래량, RSI, MACD, 스토캐스틱, 볼린저밴드, 일목구름 등
+    차트에 적용한 지표 설정을 로그인 사용자 + 종목코드 기준으로 DB에 저장합니다.
+    """
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="bitgak_chart_indicators",
+        verbose_name="사용자",
+    )
+    stock_code = models.CharField("종목코드", max_length=20, db_index=True)
+    indicators = models.JSONField("지표 데이터", default=list, blank=True)
+    updated_at = models.DateTimeField("수정일", auto_now=True)
+
+    class Meta:
+        verbose_name = "빗각뷰 차트 지표"
+        verbose_name_plural = "빗각뷰 차트 지표"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["user", "stock_code"],
+                name="uniq_bitgak_chart_indicator_user_stock",
+            )
+        ]
+        indexes = [
+            models.Index(fields=["user", "stock_code"]),
+        ]
+
+    def __str__(self):
+        return f"{self.user} indicators {self.stock_code}"

@@ -1583,7 +1583,9 @@
   let insightDirtyNotifyTimer = null;
 
   function notifyInsightChartDirty(reason) {
-    if (!state.insightEditorMode) return;
+    // 인사이트 글쓰기 iframe과 저장 차트 iframe 모두 부모 페이지에 snapshot 변경을 알린다.
+    // 부모 페이지가 서버 draft/snapshot 저장을 담당하므로 localStorage에 의존하지 않는다.
+    if (!(state.insightEditorMode || state.insightSnapshotMode)) return;
     clearTimeout(insightDirtyNotifyTimer);
     insightDirtyNotifyTimer = setTimeout(function () {
       try {
@@ -1600,10 +1602,8 @@
   }
 
   function saveDrawingsToStorage() {
-    // 빗각관점 상세에 삽입된 스냅샷 차트는 방문자가 움직여볼 수 있지만 저장하지 않는다.
-    // 글쓰기 iframe에서는 localStorage가 아니라 부모 글쓰기 화면을 통해 서버 draft에 저장한다.
-    if (state.insightSnapshotMode) return;
-    if (state.insightEditorMode) {
+    // 인사이트 iframe은 localStorage를 쓰지 않는다. 부모 페이지가 snapshot을 받아 서버에 저장한다.
+    if (state.insightSnapshotMode || state.insightEditorMode) {
       notifyInsightChartDirty("drawings");
       return;
     }

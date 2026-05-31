@@ -20,6 +20,7 @@ urlpatterns = [
     path("api/user-groups/", views.user_groups_api, name="user_groups_api"),
     path("api/portfolio/", views.portfolio_api, name="portfolio_api"),
     path("api/drawings/<str:code>/", views.chart_drawings_api, name="chart_drawings_api"),
+    path("api/indicators/<str:code>/", views.chart_indicators_api, name="chart_indicators_api"),
     path("api/drawing-tool-settings/", views.drawing_tool_settings_api, name="drawing_tool_settings_api"),
 
     # features/pricing/api 경로보다 아래에 있어야 한다.
