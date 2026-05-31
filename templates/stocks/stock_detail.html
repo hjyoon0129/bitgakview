@@ -9,6 +9,7 @@
 <link rel="preconnect" href="https://unpkg.com" crossorigin>
 <link rel="dns-prefetch" href="//unpkg.com">
 <link rel="stylesheet" href="{% static 'stocks/css/bitgak_chart.css' %}?v=20260531-watchlist-indicator-strip-v1">
+<link rel="stylesheet" href="{% static 'stocks/css/piramid.css' %}?v=20260601-piramid-v14">
 {% endblock %}
 
 {% block content %}
@@ -21,6 +22,7 @@
   data-sector="{{ stock.sector|default_if_none:'' }}"
   data-api-url="{% url 'stocks:api_ohlcv' stock.code %}"
   data-search-url="{% url 'stocks:search' %}"
+  data-piramid-api-url="/stocks/api/piramid/{{ stock.code }}/"
 >
   <header class="bv-header">
     <div class="bv-logo-area">
@@ -44,6 +46,7 @@
     <div class="bv-drawer-actions" aria-label="투자 도구">
       <button id="openAvgDrawerBtn" class="bv-drawer-action-btn" type="button" data-drawer-open="avg">평단가 계산기</button>
       <button id="openPortfolioDrawerBtn" class="bv-drawer-action-btn" type="button" data-drawer-open="portfolio">포트폴리오</button>
+      <button id="openPiramidDrawerBtn" class="bv-drawer-action-btn piramid-open-btn" type="button" data-piramid-open="1">분할매수</button>
     </div>
 
     <div class="bv-mobile-watch-actions" aria-label="모바일 관심지표">
@@ -75,6 +78,7 @@
       <div class="bv-tool-drawer-tabs" role="tablist" aria-label="투자 도구 전환">
         <button id="avgDrawerTab" class="bv-tool-tab active" type="button" data-drawer-tab="avg">평단가</button>
         <button id="portfolioDrawerTab" class="bv-tool-tab" type="button" data-drawer-tab="portfolio">포트폴리오</button>
+        <button id="piramidDrawerTab" class="bv-tool-tab piramid-tab" type="button" data-piramid-tab="piramid">분할매수</button>
       </div>
 
       <div id="avgDrawerView" class="bv-drawer-view active" data-drawer-view="avg">
@@ -194,6 +198,98 @@
             </div>
           </div>
           <div id="portfolioHoldingList" class="portfolio-holding-list"></div>
+        </div>
+      </section>
+
+      <section id="piramidDrawerView" class="bv-drawer-view piramid-panel" data-drawer-view="piramid" aria-label="분할매수 전략">
+        <div class="piramid-card">
+          <div class="piramid-card-head">
+            <div>
+              <strong>분할매수 전략 계산기</strong>
+              <span>시작가격과 a 금액을 넣으면 15% 하락 기준 1차~5차 매수가·수량·평단을 자동 계산합니다.</span>
+            </div>
+            <em class="piramid-badge">탈출형 기본</em>
+          </div>
+
+          <div class="piramid-form-grid">
+            <label class="piramid-field full">
+              <span>전략</span>
+              <select id="piramidStrategySelect">
+                <option value="exit">빠른탈출형 · 0.5a + 0.5a + 1a + 2a + 4a</option>
+                <option value="balanced">균형형 · 1a + 1a + 1.5a + 2a + 2.5a</option>
+                <option value="classic">기존 4분할 · 1a + 1a + 2a + 4a</option>
+              </select>
+            </label>
+
+            <label class="piramid-field">
+              <span>a 금액</span>
+              <input id="piramidUnitInput" type="number" min="0" step="10000" value="500000" placeholder="500000">
+            </label>
+
+            <label class="piramid-field">
+              <span>시작가격</span>
+              <input id="piramidStartPriceInput" type="number" min="0" step="1" placeholder="현재가 또는 1차 가격">
+            </label>
+
+            <label class="piramid-field">
+              <span>하락 간격</span>
+              <input id="piramidDropRateInput" type="number" min="1" max="80" step="0.5" value="15">
+            </label>
+
+            <div class="piramid-inline-actions">
+              <button id="piramidUseCurrentPriceBtn" class="piramid-btn" type="button">현재가 입력</button>
+              <button id="piramidApplyChartBtn" class="piramid-btn primary" type="button">차트표기</button>
+            </div>
+
+            <div class="piramid-inline-actions">
+              <button id="piramidClearChartBtn" class="piramid-btn danger" type="button">차트삭제</button>
+              <button id="piramidResetBtn" class="piramid-btn" type="button">초기화</button>
+            </div>
+          </div>
+
+          <div class="piramid-hint">
+            기본값은 a=500,000원입니다. 빠른탈출형은 초반 투입을 줄이고 5차에 4a를 남겨 최악 구간에서 평단을 빠르게 낮추는 구조입니다. 계산값은 투자 판단 참고용입니다.
+          </div>
+
+          <div class="piramid-summary-grid">
+            <div class="piramid-summary-item"><span>계획 총금액</span><strong id="piramidTotalPlan">-</strong></div>
+            <div class="piramid-summary-item"><span>실제 총매수금</span><strong id="piramidTotalActual">-</strong></div>
+            <div class="piramid-summary-item"><span>총 수량</span><strong id="piramidTotalQty">-</strong></div>
+            <div class="piramid-summary-item accent"><span>최종 평단가</span><strong id="piramidFinalAvg">-</strong></div>
+            <div class="piramid-summary-item warn"><span>5차가격 기준 손실률</span><strong id="piramidFinalLoss">-</strong></div>
+            <div class="piramid-summary-item"><span>평단회복 필요 상승률</span><strong id="piramidReboundRate">-</strong></div>
+          </div>
+
+          <p id="piramidStatus" class="piramid-status">시작가격을 입력하면 계산됩니다.</p>
+        </div>
+
+        <div class="piramid-card piramid-table-card">
+          <div class="piramid-card-head">
+            <div>
+              <strong>1차~5차 분할 계획표</strong>
+              <span>각 차수별 매수가, 수량, 누적 평단가를 확인합니다.</span>
+            </div>
+          </div>
+
+          <div class="piramid-table-wrap">
+            <table class="piramid-table">
+              <thead>
+                <tr>
+                  <th>차수</th>
+                  <th>매수가</th>
+                  <th><span class="piramid-desktop-text">하락률</span><span class="piramid-mobile-text">하락</span></th>
+                  <th>수량</th>
+                  <th><span class="piramid-desktop-text">실투입</span><span class="piramid-mobile-text">투입</span></th>
+                  <th><span class="piramid-desktop-text">누적평단</span><span class="piramid-mobile-text">평단</span></th>
+                </tr>
+              </thead>
+              <tbody id="piramidTableBody">
+                <tr>
+                  <td colspan="6">시작가격과 a 금액을 입력하면 자동 계산됩니다.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </div>
       </section>
     </aside>
@@ -753,6 +849,7 @@
 <script src="{% static 'stocks/js/bitgak_chart_core.js' %}?v=20260531-watchlist-indicator-strip-v1"></script>
 <script src="{% static 'stocks/js/bitgak_groups.js' %}?v=20260531-watchlist-indicator-strip-v1"></script>
 <script src="{% static 'stocks/js/bitgak_portfolio.js' %}?v=20260531-watchlist-indicator-strip-v1"></script>
+<script src="{% static 'stocks/js/piramid.js' %}?v=20260601-piramid-v14"></script>
 <script src="{% static 'stocks/js/bitgak_indicators.js' %}?v=20260531-watchlist-indicator-strip-v1"></script>
 <script src="{% static 'stocks/js/bitgak_search.js' %}?v=20260531-watchlist-indicator-strip-v1"></script>
 {% endblock %}

@@ -1,0 +1,1135 @@
+/* =========================================================
+   BitgakView Piramid / 분할매수 전략 패널 v15
+   - 중복/충돌 CSS를 제거하고 drawer, 계획표, 모바일 표를 안정화
+   - PC/모바일 모두 6열 표가 잘리지 않도록 숫자/폭/스크롤 재정리
+   ========================================================= */
+
+.bitgak-chart-body {
+  --piramid-drawer-width: 430px;
+  --piramid-drawer-gap: 12px;
+  --piramid-mobile-top: 192px;
+  --piramid-mobile-bottom: 8px;
+  --piramid-panel-bg: #07101f;
+  --piramid-card-bg: rgba(9, 17, 31, 0.96);
+  --piramid-line: rgba(96, 165, 250, 0.22);
+  --piramid-text: #eaf2ff;
+  --piramid-muted: #8aa3c3;
+  --piramid-cyan: #67e8f9;
+}
+
+.bitgak-chart-body .piramid-mobile-text { display: none; }
+.bitgak-chart-body .piramid-desktop-text { display: inline; }
+
+/* 차트 상단에 남아 있을 수 있는 보조 분할매수 버튼은 숨김. 상단 헤더 버튼만 사용 */
+.bitgak-chart-body .chart-card-top .piramid-chart-top-btn,
+.bitgak-chart-body .chart-card-top [data-piramid-open].piramid-chart-top-btn {
+  display: none !important;
+}
+
+.bitgak-chart-body .piramid-open-btn.active,
+.bitgak-chart-body .bv-drawer-action-btn.piramid-open-btn.active,
+.bitgak-chart-body .bv-tool-tab.piramid-tab.active {
+  border-color: rgba(45, 212, 191, 0.58) !important;
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.96), rgba(20, 184, 166, 0.92)) !important;
+  color: #ffffff !important;
+  box-shadow: 0 10px 24px rgba(14, 165, 233, 0.20) !important;
+}
+
+/* drawer 내부 중복 탭 완전 차단: 헤더의 평단/포트폴리오/분할매수만 사용 */
+.bitgak-chart-body .bv-left-panel.bv-tool-drawer .bv-tool-drawer-tabs,
+.bitgak-chart-body .bv-left-panel.bv-tool-drawer .bv-tool-tab,
+.bitgak-chart-body .bv-left-panel.bv-tool-drawer [role="tablist"],
+.bitgak-chart-body .bv-tool-drawer > .bv-tool-drawer-tabs {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  height: 0 !important;
+  min-height: 0 !important;
+  max-height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  overflow: hidden !important;
+  pointer-events: none !important;
+}
+
+/* =========================================================
+   Drawer layout
+   ========================================================= */
+.bitgak-chart-body .bv-left-panel.bv-tool-drawer {
+  min-width: 0 !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  background:
+    radial-gradient(circle at 18% 0%, rgba(59, 130, 246, 0.14), transparent 34%),
+    linear-gradient(180deg, #0f1b31, #06101f) !important;
+  border: 1px solid rgba(96, 165, 250, 0.24) !important;
+  color: #ffffff !important;
+}
+
+.bitgak-chart-body .bv-tool-drawer-head {
+  flex: 0 0 auto !important;
+  min-height: 56px !important;
+  padding: 12px 14px 10px !important;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.13) !important;
+}
+
+.bitgak-chart-body .bv-tool-drawer-head strong {
+  font-size: 17px !important;
+  line-height: 1.15 !important;
+  letter-spacing: -0.05em !important;
+}
+
+.bitgak-chart-body .bv-tool-drawer-head span {
+  margin-top: 4px !important;
+  font-size: 11px !important;
+  line-height: 1.25 !important;
+  color: #9fb4d1 !important;
+}
+
+.bitgak-chart-body .bv-tool-drawer-close {
+  flex: 0 0 auto !important;
+  width: 36px !important;
+  height: 36px !important;
+  border-radius: 12px !important;
+}
+
+.bitgak-chart-body .bv-left-panel.bv-tool-drawer .bv-drawer-view,
+.bitgak-chart-body .bv-left-panel.bv-tool-drawer .bv-drawer-view.active {
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  height: auto !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  overscroll-behavior: contain !important;
+  -webkit-overflow-scrolling: touch !important;
+  scrollbar-gutter: stable !important;
+}
+
+.bitgak-chart-body .bv-left-panel.bv-tool-drawer .bv-drawer-view::-webkit-scrollbar,
+.bitgak-chart-body .piramid-panel::-webkit-scrollbar {
+  width: 8px;
+}
+.bitgak-chart-body .bv-left-panel.bv-tool-drawer .bv-drawer-view::-webkit-scrollbar-thumb,
+.bitgak-chart-body .piramid-panel::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.38);
+}
+
+@media (min-width: 1121px) {
+  .bitgak-chart-body .bv-layout,
+  .bitgak-chart-body .bv-layout-full {
+    position: relative !important;
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) 320px !important;
+    grid-template-rows: minmax(0, 1fr) !important;
+    column-gap: 12px !important;
+    overflow: hidden !important;
+  }
+
+  .bitgak-chart-body .bv-layout.bv-drawer-open,
+  .bitgak-chart-body .bv-layout-full.bv-drawer-open {
+    grid-template-columns: minmax(0, 1fr) !important;
+    column-gap: 0 !important;
+  }
+
+  .bitgak-chart-body .bv-layout > .bv-left-panel.bv-tool-drawer,
+  .bitgak-chart-body .bv-layout-full > .bv-left-panel.bv-tool-drawer {
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    bottom: 0 !important;
+    z-index: 120 !important;
+    width: var(--piramid-drawer-width) !important;
+    max-width: var(--piramid-drawer-width) !important;
+    height: 100% !important;
+    display: flex !important;
+    flex-direction: column !important;
+    opacity: 0 !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+    transform: translateX(calc(-100% - 16px)) !important;
+    transition: transform 520ms cubic-bezier(.22,.72,.18,1), opacity 320ms ease, visibility 0s linear 520ms !important;
+  }
+
+  .bitgak-chart-body .bv-layout.bv-drawer-open > .bv-left-panel.bv-tool-drawer,
+  .bitgak-chart-body .bv-layout-full.bv-drawer-open > .bv-left-panel.bv-tool-drawer,
+  .bitgak-chart-body .bv-left-panel.bv-tool-drawer.open {
+    opacity: 1 !important;
+    visibility: visible !important;
+    pointer-events: auto !important;
+    transform: translateX(0) !important;
+    transition: transform 520ms cubic-bezier(.22,.72,.18,1), opacity 320ms ease, visibility 0s !important;
+  }
+
+  .bitgak-chart-body .bv-layout > .bv-main,
+  .bitgak-chart-body .bv-layout-full > .bv-main,
+  .bitgak-chart-body .bv-layout.bv-drawer-open > .bv-main,
+  .bitgak-chart-body .bv-layout-full.bv-drawer-open > .bv-main {
+    grid-column: 1 / 2 !important;
+    grid-row: 1 / 2 !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    height: 100% !important;
+    padding: 14px 8px 14px 14px !important;
+    transition: padding-left 520ms cubic-bezier(.22,.72,.18,1) !important;
+  }
+
+  .bitgak-chart-body .bv-layout.bv-drawer-open > .bv-main,
+  .bitgak-chart-body .bv-layout-full.bv-drawer-open > .bv-main {
+    padding-left: calc(var(--piramid-drawer-width) + var(--piramid-drawer-gap)) !important;
+    padding-right: 12px !important;
+  }
+
+  .bitgak-chart-body .bv-layout.bv-drawer-open > .bv-symbol-panel,
+  .bitgak-chart-body .bv-layout-full.bv-drawer-open > .bv-symbol-panel {
+    display: none !important;
+  }
+}
+
+@media (max-width: 1120px) {
+  .bitgak-chart-body .bv-layout,
+  .bitgak-chart-body .bv-layout-full,
+  .bitgak-chart-body .bv-layout.bv-drawer-open,
+  .bitgak-chart-body .bv-layout-full.bv-drawer-open {
+    grid-template-columns: minmax(0, 1fr) !important;
+    grid-template-rows: minmax(0, 1fr) !important;
+    overflow: hidden !important;
+  }
+
+  .bitgak-chart-body .bv-symbol-panel,
+  .bitgak-chart-body .bv-layout > .bv-symbol-panel,
+  .bitgak-chart-body .bv-layout-full > .bv-symbol-panel {
+    display: none !important;
+  }
+}
+
+/* =========================================================
+   Piramid panel/card/form
+   ========================================================= */
+.bitgak-chart-body .piramid-panel,
+.bitgak-chart-body .piramid-panel.active {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 8px !important;
+  color: var(--piramid-text) !important;
+  padding: 12px !important;
+}
+
+.bitgak-chart-body .piramid-card {
+  flex: 0 0 auto !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  border-radius: 17px !important;
+  border: 1px solid rgba(96, 165, 250, 0.22) !important;
+  background:
+    radial-gradient(circle at top right, rgba(45, 212, 191, 0.08), transparent 36%),
+    linear-gradient(180deg, rgba(15, 23, 42, 0.96), rgba(8, 15, 28, 0.98)) !important;
+  box-shadow: 0 16px 36px rgba(0,0,0,0.22), inset 0 1px 0 rgba(255,255,255,0.04) !important;
+  overflow: hidden !important;
+}
+
+.bitgak-chart-body .piramid-card-head {
+  display: flex !important;
+  align-items: flex-start !important;
+  justify-content: space-between !important;
+  gap: 10px !important;
+  padding: 12px 13px 10px !important;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.12) !important;
+}
+
+.bitgak-chart-body .piramid-card-head strong {
+  display: block !important;
+  color: #fff !important;
+  font-size: 14px !important;
+  font-weight: 1000 !important;
+  line-height: 1.2 !important;
+  letter-spacing: -0.04em !important;
+}
+
+.bitgak-chart-body .piramid-card-head span {
+  display: block !important;
+  margin-top: 4px !important;
+  color: #9fb0c8 !important;
+  font-size: 10px !important;
+  font-weight: 850 !important;
+  line-height: 1.35 !important;
+}
+
+.bitgak-chart-body .piramid-badge {
+  flex: 0 0 auto !important;
+  height: 27px !important;
+  padding: 0 9px !important;
+  border-radius: 999px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border: 1px solid rgba(45, 212, 191, 0.25) !important;
+  background: rgba(45, 212, 191, 0.10) !important;
+  color: #67e8f9 !important;
+  font-size: 10px !important;
+  font-style: normal !important;
+  font-weight: 1000 !important;
+  white-space: nowrap !important;
+}
+
+.bitgak-chart-body .piramid-form-grid {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 8px !important;
+  padding: 12px 12px 10px !important;
+}
+
+.bitgak-chart-body .piramid-field {
+  min-width: 0 !important;
+  display: grid !important;
+  gap: 5px !important;
+}
+.bitgak-chart-body .piramid-field.full { grid-column: 1 / -1 !important; }
+
+.bitgak-chart-body .piramid-field span {
+  color: var(--piramid-muted) !important;
+  font-size: 9.5px !important;
+  font-weight: 1000 !important;
+}
+
+.bitgak-chart-body .piramid-field input,
+.bitgak-chart-body .piramid-field select {
+  width: 100% !important;
+  height: 36px !important;
+  min-width: 0 !important;
+  border: 1px solid rgba(148, 163, 184, 0.22) !important;
+  border-radius: 12px !important;
+  background: rgba(2, 6, 23, 0.74) !important;
+  color: #ffffff !important;
+  padding: 0 10px !important;
+  outline: none !important;
+  font-size: 12px !important;
+  font-weight: 950 !important;
+}
+
+.bitgak-chart-body .piramid-field select {
+  appearance: none !important;
+  background-image:
+    linear-gradient(45deg, transparent 50%, #8ecbff 50%),
+    linear-gradient(135deg, #8ecbff 50%, transparent 50%) !important;
+  background-position: calc(100% - 13px) 15px, calc(100% - 8px) 15px !important;
+  background-size: 5px 5px, 5px 5px !important;
+  background-repeat: no-repeat !important;
+  padding-right: 28px !important;
+}
+
+.bitgak-chart-body .piramid-field input:focus,
+.bitgak-chart-body .piramid-field select:focus {
+  border-color: rgba(56, 189, 248, 0.78) !important;
+  box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.12) !important;
+}
+
+.bitgak-chart-body .piramid-inline-actions {
+  grid-column: 1 / -1 !important;
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 8px !important;
+}
+
+.bitgak-chart-body .piramid-btn {
+  height: 35px !important;
+  min-width: 0 !important;
+  border-radius: 12px !important;
+  border: 1px solid rgba(96, 165, 250, 0.26) !important;
+  background: rgba(37, 99, 235, 0.13) !important;
+  color: #bfdbfe !important;
+  font-size: 12px !important;
+  font-weight: 1000 !important;
+  white-space: nowrap !important;
+}
+.bitgak-chart-body .piramid-btn:hover { background: rgba(37,99,235,0.20) !important; color:#fff !important; }
+.bitgak-chart-body .piramid-btn.primary { border-color: rgba(45,212,191,0.42) !important; background: linear-gradient(135deg,#2563eb,#0ea5e9) !important; color:#fff !important; }
+.bitgak-chart-body .piramid-btn.danger { border-color: rgba(248,113,113,0.24) !important; background: rgba(239,68,68,0.12) !important; color:#fecaca !important; }
+
+.bitgak-chart-body .piramid-hint {
+  padding: 0 12px 10px !important;
+  color: var(--piramid-muted) !important;
+  font-size: 9.5px !important;
+  font-weight: 850 !important;
+  line-height: 1.42 !important;
+}
+
+.bitgak-chart-body .piramid-status {
+  min-height: 22px !important;
+  padding: 0 12px 11px !important;
+  color: var(--piramid-muted) !important;
+  font-size: 10px !important;
+  font-weight: 850 !important;
+  line-height: 1.35 !important;
+}
+.bitgak-chart-body .piramid-status.ok { color: #67e8f9 !important; }
+.bitgak-chart-body .piramid-status.warn { color: #fbbf24 !important; }
+.bitgak-chart-body .piramid-status.error { color: #fecaca !important; }
+
+/* Summary: 예전 6개 요약 카드 복구 */
+.bitgak-chart-body .piramid-summary-grid {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 8px !important;
+  padding: 11px 12px 10px !important;
+  border-top: 1px solid rgba(148, 163, 184, 0.12) !important;
+}
+
+.bitgak-chart-body .piramid-summary-item {
+  min-width: 0 !important;
+  padding: 9px 10px !important;
+  border-radius: 13px !important;
+  background: rgba(2, 6, 23, 0.42) !important;
+  border: 1px solid rgba(148, 163, 184, 0.12) !important;
+}
+
+.bitgak-chart-body .piramid-summary-item span {
+  display: block !important;
+  color: var(--piramid-muted) !important;
+  font-size: 9.5px !important;
+  font-weight: 1000 !important;
+}
+
+.bitgak-chart-body .piramid-summary-item strong {
+  display: block !important;
+  margin-top: 5px !important;
+  color: #ffffff !important;
+  font-size: 13.5px !important;
+  font-weight: 1000 !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+  letter-spacing: -0.035em !important;
+}
+
+.bitgak-chart-body .piramid-summary-item.accent strong { color: #67e8f9 !important; font-size: 15px !important; }
+.bitgak-chart-body .piramid-summary-item.warn strong { color: #fbbf24 !important; }
+
+/* =========================================================
+   Plan table: no horizontal cut
+   ========================================================= */
+.bitgak-chart-body .piramid-table-card {
+  margin-top: 8px !important;
+}
+
+.bitgak-chart-body .piramid-table-card .piramid-card-head {
+  padding: 11px 12px 9px !important;
+}
+
+.bitgak-chart-body .piramid-table-wrap {
+  width: 100% !important;
+  max-width: 100% !important;
+  overflow-x: hidden !important;
+  overflow-y: visible !important;
+  max-height: none !important;
+  border-top: 1px solid rgba(148, 163, 184, 0.12) !important;
+}
+
+.bitgak-chart-body .piramid-table {
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  table-layout: fixed !important;
+  border-collapse: collapse !important;
+}
+
+.bitgak-chart-body .piramid-table th,
+.bitgak-chart-body .piramid-table td {
+  height: 34px !important;
+  padding: 7px 2px !important;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.10) !important;
+  color: #dbeafe !important;
+  font-size: 9.5px !important;
+  font-weight: 900 !important;
+  line-height: 1.08 !important;
+  letter-spacing: -0.06em !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: clip !important;
+  font-variant-numeric: tabular-nums !important;
+  box-sizing: border-box !important;
+}
+
+.bitgak-chart-body .piramid-table th {
+  height: 31px !important;
+  color: #8aa3c3 !important;
+  background: rgba(15, 23, 42, 0.98) !important;
+  font-size: 8.7px !important;
+  font-weight: 1000 !important;
+}
+
+.bitgak-chart-body .piramid-table tr:last-child td { border-bottom: 0 !important; }
+
+.bitgak-chart-body .piramid-table th:nth-child(1),
+.bitgak-chart-body .piramid-table td:nth-child(1) { width: 13% !important; text-align: left !important; }
+.bitgak-chart-body .piramid-table th:nth-child(2),
+.bitgak-chart-body .piramid-table td:nth-child(2) { width: 19% !important; text-align: right !important; }
+.bitgak-chart-body .piramid-table th:nth-child(3),
+.bitgak-chart-body .piramid-table td:nth-child(3) { width: 16% !important; text-align: right !important; color: #67e8f9 !important; font-weight: 1000 !important; }
+.bitgak-chart-body .piramid-table th:nth-child(4),
+.bitgak-chart-body .piramid-table td:nth-child(4) { width: 8% !important; text-align: center !important; }
+.bitgak-chart-body .piramid-table th:nth-child(5),
+.bitgak-chart-body .piramid-table td:nth-child(5) { width: 20% !important; text-align: right !important; }
+.bitgak-chart-body .piramid-table th:nth-child(6),
+.bitgak-chart-body .piramid-table td:nth-child(6) { width: 24% !important; text-align: right !important; color: #67e8f9 !important; font-weight: 1000 !important; }
+
+.bitgak-chart-body .piramid-step-pill {
+  height: 21px !important;
+  min-width: 44px !important;
+  max-width: 100% !important;
+  padding: 0 5px !important;
+  border-radius: 999px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  background: rgba(56, 189, 248, 0.10) !important;
+  border: 1px solid rgba(56, 189, 248, 0.22) !important;
+  color: #93c5fd !important;
+  font-size: 8.6px !important;
+  font-weight: 1000 !important;
+  line-height: 1 !important;
+  letter-spacing: -0.065em !important;
+}
+
+/* =========================================================
+   Chart overlay labels
+   ========================================================= */
+.bitgak-chart-body .piramid-chart-overlay {
+  position: absolute !important;
+  inset: 0 !important;
+  z-index: 36 !important;
+  pointer-events: none !important;
+  overflow: hidden !important;
+}
+
+.bitgak-chart-body .piramid-chart-label {
+  position: absolute !important;
+  right: clamp(92px, 7.8vw, 122px) !important;
+  height: 26px !important;
+  min-width: 142px !important;
+  padding: 0 10px !important;
+  border-radius: 999px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 8px !important;
+  background: rgba(15, 23, 42, 0.84) !important;
+  border: 1px solid rgba(96, 165, 250, 0.26) !important;
+  color: #ffffff !important;
+  box-shadow: 0 10px 22px rgba(15, 23, 42, 0.20) !important;
+  backdrop-filter: blur(8px) !important;
+  transform: translateY(-50%) !important;
+  font-size: 10px !important;
+  font-weight: 1000 !important;
+  line-height: 1 !important;
+}
+.bitgak-chart-body .piramid-chart-label::before {
+  content: "" !important;
+  width: 8px !important;
+  height: 8px !important;
+  flex: 0 0 8px !important;
+  border-radius: 999px !important;
+  background: var(--piramid-line-color, #2563eb) !important;
+  box-shadow: 0 0 10px var(--piramid-line-color, #2563eb) !important;
+}
+.bitgak-chart-body .piramid-chart-label b { color: #fff !important; font-weight: 1000 !important; }
+.bitgak-chart-body .piramid-chart-label span { color: #cfe2ff !important; font-weight: 900 !important; }
+.bitgak-chart-body .piramid-chart-label.avg {
+  min-width: 165px !important;
+  border-color: rgba(239, 68, 68, 0.32) !important;
+  background: rgba(127, 29, 29, 0.82) !important;
+}
+.bitgak-chart-body .piramid-chart-label.avg::before { background: #ef4444 !important; box-shadow: 0 0 10px #ef4444 !important; }
+
+.bitgak-chart-body .piramid-chart-summary-badge {
+  position: absolute !important;
+  left: 12px !important;
+  bottom: 12px !important;
+  max-width: min(390px, calc(100% - 136px)) !important;
+  padding: 10px 12px !important;
+  border-radius: 15px !important;
+  background: rgba(15, 23, 42, 0.86) !important;
+  border: 1px solid rgba(45, 212, 191, 0.30) !important;
+  color: #eaf2ff !important;
+  box-shadow: 0 14px 32px rgba(15, 23, 42, 0.22) !important;
+  backdrop-filter: blur(10px) !important;
+  font-size: 11px !important;
+  font-weight: 900 !important;
+  line-height: 1.55 !important;
+}
+.bitgak-chart-body .piramid-chart-summary-badge strong { color: #fff !important; font-size: 12px !important; font-weight: 1000 !important; }
+.bitgak-chart-body .piramid-chart-summary-badge b { color: #67e8f9 !important; font-weight: 1000 !important; }
+
+/* =========================================================
+   Tablet / Mobile
+   ========================================================= */
+@media (max-width: 1120px) {
+  .bitgak-chart-body .bv-left-panel.bv-tool-drawer,
+  .bitgak-chart-body .bv-layout > .bv-left-panel.bv-tool-drawer,
+  .bitgak-chart-body .bv-layout-full > .bv-left-panel.bv-tool-drawer,
+  .bitgak-chart-body .bv-layout.bv-drawer-open > .bv-left-panel.bv-tool-drawer,
+  .bitgak-chart-body .bv-layout-full.bv-drawer-open > .bv-left-panel.bv-tool-drawer {
+    position: fixed !important;
+    left: 50% !important;
+    right: auto !important;
+    top: calc(env(safe-area-inset-top, 0px) + var(--piramid-mobile-top)) !important;
+    bottom: calc(env(safe-area-inset-bottom, 0px) + var(--piramid-mobile-bottom)) !important;
+    width: min(420px, calc(100vw - 14px)) !important;
+    max-width: min(420px, calc(100vw - 14px)) !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: calc(100dvh - var(--piramid-mobile-top) - var(--piramid-mobile-bottom)) !important;
+    display: flex !important;
+    flex-direction: column !important;
+    z-index: 9000 !important;
+    opacity: 0 !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+    transform: translate3d(-50%, 8px, 0) scale(0.992) !important;
+    transform-origin: top center !important;
+    border-radius: 18px !important;
+    transition: transform 260ms ease, opacity 180ms ease, visibility 0s linear 260ms !important;
+  }
+
+  .bitgak-chart-body .bv-layout.bv-drawer-open > .bv-left-panel.bv-tool-drawer,
+  .bitgak-chart-body .bv-layout-full.bv-drawer-open > .bv-left-panel.bv-tool-drawer,
+  .bitgak-chart-body .bv-left-panel.bv-tool-drawer.open {
+    opacity: 1 !important;
+    visibility: visible !important;
+    pointer-events: auto !important;
+    transform: translate3d(-50%, 0, 0) scale(1) !important;
+    transition: transform 260ms ease, opacity 180ms ease, visibility 0s !important;
+  }
+
+  .bitgak-chart-body .bv-tool-drawer-head {
+    min-height: 48px !important;
+    padding: 8px 10px 7px !important;
+  }
+  .bitgak-chart-body .bv-tool-drawer-head strong { font-size: 14px !important; }
+  .bitgak-chart-body .bv-tool-drawer-head span { font-size: 9px !important; margin-top: 2px !important; }
+  .bitgak-chart-body .bv-tool-drawer-close { width: 31px !important; height: 31px !important; border-radius: 10px !important; }
+
+  .bitgak-chart-body .piramid-panel,
+  .bitgak-chart-body .piramid-panel.active {
+    padding: 8px !important;
+    padding-bottom: 14px !important;
+    gap: 7px !important;
+  }
+
+  .bitgak-chart-body .piramid-card { border-radius: 15px !important; }
+  .bitgak-chart-body .piramid-card-head { padding: 8px 9px 7px !important; gap: 8px !important; }
+  .bitgak-chart-body .piramid-card-head strong { font-size: 13px !important; }
+  .bitgak-chart-body .piramid-card-head span { font-size: 8.8px !important; line-height: 1.24 !important; }
+  .bitgak-chart-body .piramid-badge { height: 24px !important; padding: 0 7px !important; font-size: 8.6px !important; }
+
+  .bitgak-chart-body .piramid-form-grid { gap: 6px !important; padding: 8px 9px 8px !important; }
+  .bitgak-chart-body .piramid-field span { font-size: 8.3px !important; }
+  .bitgak-chart-body .piramid-field input,
+  .bitgak-chart-body .piramid-field select {
+    height: 31px !important;
+    padding: 0 7px !important;
+    font-size: 10px !important;
+    border-radius: 10px !important;
+  }
+  .bitgak-chart-body .piramid-field select {
+    background-position: calc(100% - 12px) 13px, calc(100% - 7px) 13px !important;
+    padding-right: 24px !important;
+  }
+  .bitgak-chart-body .piramid-inline-actions { gap: 6px !important; }
+  .bitgak-chart-body .piramid-btn { height: 31px !important; font-size: 10px !important; border-radius: 10px !important; }
+  .bitgak-chart-body .piramid-hint { padding: 0 9px 8px !important; font-size: 8.2px !important; line-height: 1.26 !important; }
+  .bitgak-chart-body .piramid-status { min-height: 18px !important; padding: 0 9px 8px !important; font-size: 8.6px !important; }
+
+  .bitgak-chart-body .piramid-summary-grid { gap: 6px !important; padding: 8px 9px !important; }
+  .bitgak-chart-body .piramid-summary-item { padding: 7px 8px !important; border-radius: 12px !important; }
+  .bitgak-chart-body .piramid-summary-item span { font-size: 8.2px !important; }
+  .bitgak-chart-body .piramid-summary-item strong,
+  .bitgak-chart-body .piramid-summary-item.accent strong { font-size: 12px !important; }
+
+  .bitgak-chart-body .piramid-table-card { margin-top: 7px !important; }
+  .bitgak-chart-body .piramid-table-card .piramid-card-head { padding: 8px 9px 6px !important; }
+  .bitgak-chart-body .piramid-table-card .piramid-card-head span { font-size: 8.2px !important; }
+  .bitgak-chart-body .piramid-mobile-text { display: inline !important; }
+  .bitgak-chart-body .piramid-desktop-text { display: none !important; }
+
+  .bitgak-chart-body .piramid-table th,
+  .bitgak-chart-body .piramid-table td {
+    height: 30px !important;
+    padding: 5px 1px !important;
+    font-size: 7.9px !important;
+    line-height: 1.04 !important;
+    letter-spacing: -0.11em !important;
+  }
+  .bitgak-chart-body .piramid-table th { height: 27px !important; font-size: 7.1px !important; }
+  .bitgak-chart-body .piramid-step-pill {
+    height: 18px !important;
+    min-width: 27px !important;
+    max-width: 30px !important;
+    padding: 0 2px !important;
+    font-size: 6.9px !important;
+    letter-spacing: -0.12em !important;
+  }
+}
+
+@media (max-width: 420px) {
+  .bitgak-chart-body {
+    --piramid-mobile-top: 190px;
+    --piramid-mobile-bottom: 7px;
+  }
+
+  .bitgak-chart-body .piramid-panel,
+  .bitgak-chart-body .piramid-panel.active {
+    padding: 7px !important;
+    padding-bottom: 13px !important;
+  }
+
+  .bitgak-chart-body .piramid-table th,
+  .bitgak-chart-body .piramid-table td {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    font-size: 7.45px !important;
+    letter-spacing: -0.13em !important;
+  }
+  .bitgak-chart-body .piramid-table th { font-size: 6.8px !important; }
+
+  .bitgak-chart-body .piramid-table th:nth-child(1),
+  .bitgak-chart-body .piramid-table td:nth-child(1) { width: 12% !important; }
+  .bitgak-chart-body .piramid-table th:nth-child(2),
+  .bitgak-chart-body .piramid-table td:nth-child(2) { width: 19% !important; }
+  .bitgak-chart-body .piramid-table th:nth-child(3),
+  .bitgak-chart-body .piramid-table td:nth-child(3) { width: 16% !important; }
+  .bitgak-chart-body .piramid-table th:nth-child(4),
+  .bitgak-chart-body .piramid-table td:nth-child(4) { width: 8% !important; }
+  .bitgak-chart-body .piramid-table th:nth-child(5),
+  .bitgak-chart-body .piramid-table td:nth-child(5) { width: 20% !important; }
+  .bitgak-chart-body .piramid-table th:nth-child(6),
+  .bitgak-chart-body .piramid-table td:nth-child(6) { width: 25% !important; }
+}
+
+/* =========================================================
+   v14 final layout repair
+   - 평단가/포트폴리오 화면에 분할매수 패널이 같이 보이던 문제 차단
+   - 모바일 헤더 버튼 3분할 고정
+   - 배경 블러/흐림 제거
+   - 계획표 6열 균일 정렬 및 누적평단 잘림 방지
+   ========================================================= */
+
+/* drawer view는 active 하나만 보이게 강제한다. 이전 v13의 .piramid-panel display:flex 충돌 복구 */
+.bitgak-chart-body .bv-left-panel.bv-tool-drawer .bv-drawer-view:not(.active),
+.bitgak-chart-body .bv-left-panel.bv-tool-drawer #piramidDrawerView:not(.active),
+.bitgak-chart-body .bv-left-panel.bv-tool-drawer #avgDrawerView:not(.active),
+.bitgak-chart-body .bv-left-panel.bv-tool-drawer #portfolioDrawerView:not(.active) {
+  display: none !important;
+  visibility: hidden !important;
+  height: 0 !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  pointer-events: none !important;
+}
+
+.bitgak-chart-body .bv-left-panel.bv-tool-drawer #piramidDrawerView.active {
+  display: flex !important;
+  visibility: visible !important;
+  height: auto !important;
+  min-height: 0 !important;
+  pointer-events: auto !important;
+}
+
+/* drawer가 열려도 배경 차트/포트폴리오가 흐려지지 않도록 고정 */
+.bitgak-chart-body .bv-layout.bv-drawer-open,
+.bitgak-chart-body .bv-layout-full.bv-drawer-open,
+.bitgak-chart-body .bv-layout.bv-drawer-open > .bv-main,
+.bitgak-chart-body .bv-layout-full.bv-drawer-open > .bv-main,
+.bitgak-chart-body .bv-layout.bv-drawer-open .chart-card,
+.bitgak-chart-body .bv-layout-full.bv-drawer-open .chart-card {
+  filter: none !important;
+  backdrop-filter: none !important;
+  opacity: 1 !important;
+}
+
+.bitgak-chart-body .bv-layout.bv-drawer-open::before,
+.bitgak-chart-body .bv-layout.bv-drawer-open::after,
+.bitgak-chart-body .bv-layout-full.bv-drawer-open::before,
+.bitgak-chart-body .bv-layout-full.bv-drawer-open::after {
+  display: none !important;
+  content: none !important;
+  filter: none !important;
+  backdrop-filter: none !important;
+}
+
+/* 테이블 공통: 6열이 한 박스 안에서 정확히 균일하게 맞도록 재정렬 */
+.bitgak-chart-body .piramid-table-wrap {
+  overflow-x: hidden !important;
+  overflow-y: visible !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  padding: 0 !important;
+}
+
+.bitgak-chart-body .piramid-table {
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  table-layout: fixed !important;
+  border-collapse: collapse !important;
+}
+
+.bitgak-chart-body .piramid-table th,
+.bitgak-chart-body .piramid-table td {
+  text-align: center !important;
+  vertical-align: middle !important;
+  overflow: hidden !important;
+  text-overflow: clip !important;
+  white-space: nowrap !important;
+  box-sizing: border-box !important;
+}
+
+.bitgak-chart-body .piramid-table th:nth-child(1),
+.bitgak-chart-body .piramid-table td:nth-child(1) { width: 14% !important; text-align: center !important; }
+.bitgak-chart-body .piramid-table th:nth-child(2),
+.bitgak-chart-body .piramid-table td:nth-child(2) { width: 18% !important; text-align: center !important; }
+.bitgak-chart-body .piramid-table th:nth-child(3),
+.bitgak-chart-body .piramid-table td:nth-child(3) { width: 15% !important; text-align: center !important; color: #67e8f9 !important; }
+.bitgak-chart-body .piramid-table th:nth-child(4),
+.bitgak-chart-body .piramid-table td:nth-child(4) { width: 9% !important; text-align: center !important; }
+.bitgak-chart-body .piramid-table th:nth-child(5),
+.bitgak-chart-body .piramid-table td:nth-child(5) { width: 20% !important; text-align: center !important; }
+.bitgak-chart-body .piramid-table th:nth-child(6),
+.bitgak-chart-body .piramid-table td:nth-child(6) { width: 24% !important; text-align: center !important; color: #67e8f9 !important; }
+
+.bitgak-chart-body .piramid-step-pill {
+  margin: 0 auto !important;
+  min-width: 42px !important;
+  max-width: 54px !important;
+  justify-content: center !important;
+}
+
+/* PC에서는 가로 스크롤 없이도 숫자가 보이게 살짝 넓히고, 표는 중앙정렬 */
+@media (min-width: 1121px) {
+  .bitgak-chart-body { --piramid-drawer-width: 450px; }
+
+  .bitgak-chart-body .piramid-table th,
+  .bitgak-chart-body .piramid-table td {
+    height: 34px !important;
+    padding: 7px 3px !important;
+    font-size: 9.7px !important;
+    letter-spacing: -0.055em !important;
+    line-height: 1.08 !important;
+  }
+
+  .bitgak-chart-body .piramid-table th {
+    font-size: 8.8px !important;
+  }
+}
+
+/* 모바일 헤더의 상단 3버튼은 반드시 한 줄 3분할 */
+@media (max-width: 1120px) {
+  .bitgak-chart-body .bv-drawer-actions {
+    display: grid !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 7px !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    order: initial !important;
+  }
+
+  .bitgak-chart-body .bv-drawer-actions .bv-drawer-action-btn {
+    width: 100% !important;
+    min-width: 0 !important;
+    height: 40px !important;
+    padding: 0 6px !important;
+    border-radius: 14px !important;
+    font-size: 11px !important;
+    letter-spacing: -0.055em !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+  }
+
+  .bitgak-chart-body .piramid-table-card {
+    margin-top: 6px !important;
+  }
+
+  .bitgak-chart-body .piramid-table th,
+  .bitgak-chart-body .piramid-table td {
+    height: 30px !important;
+    padding: 5px 1px !important;
+    font-size: 8.25px !important;
+    letter-spacing: -0.09em !important;
+    line-height: 1.05 !important;
+  }
+
+  .bitgak-chart-body .piramid-table th {
+    height: 26px !important;
+    font-size: 7.2px !important;
+    letter-spacing: -0.08em !important;
+  }
+
+  .bitgak-chart-body .piramid-step-pill {
+    height: 18px !important;
+    min-width: 28px !important;
+    max-width: 32px !important;
+    padding: 0 2px !important;
+    font-size: 7px !important;
+    letter-spacing: -0.12em !important;
+  }
+
+  .bitgak-chart-body .piramid-mobile-text { display: inline !important; }
+  .bitgak-chart-body .piramid-desktop-text { display: none !important; }
+}
+
+@media (max-width: 420px) {
+  .bitgak-chart-body .bv-drawer-actions .bv-drawer-action-btn {
+    height: 38px !important;
+    font-size: 10.5px !important;
+    padding: 0 4px !important;
+  }
+
+  .bitgak-chart-body .piramid-table th:nth-child(1),
+  .bitgak-chart-body .piramid-table td:nth-child(1) { width: 13% !important; }
+  .bitgak-chart-body .piramid-table th:nth-child(2),
+  .bitgak-chart-body .piramid-table td:nth-child(2) { width: 18% !important; }
+  .bitgak-chart-body .piramid-table th:nth-child(3),
+  .bitgak-chart-body .piramid-table td:nth-child(3) { width: 15% !important; }
+  .bitgak-chart-body .piramid-table th:nth-child(4),
+  .bitgak-chart-body .piramid-table td:nth-child(4) { width: 9% !important; }
+  .bitgak-chart-body .piramid-table th:nth-child(5),
+  .bitgak-chart-body .piramid-table td:nth-child(5) { width: 20% !important; }
+  .bitgak-chart-body .piramid-table th:nth-child(6),
+  .bitgak-chart-body .piramid-table td:nth-child(6) { width: 25% !important; }
+
+  .bitgak-chart-body .piramid-table th,
+  .bitgak-chart-body .piramid-table td {
+    font-size: 7.8px !important;
+    letter-spacing: -0.11em !important;
+  }
+
+  .bitgak-chart-body .piramid-table th {
+    font-size: 6.8px !important;
+  }
+}
+
+/* =========================================================
+   v15 mobile readability polish
+   - 모바일에서 흐릿하게 보이는 blur/filter를 강제로 제거
+   - 분할 계획표 글자 크기를 키우고 6열 폭을 재정렬
+   - 모바일에서도 표가 카드 안에서 균일하게 가운데 정렬되도록 보정
+   ========================================================= */
+
+/* 화면/차트/패널 뒤쪽 흐림 제거: drawer open 시에도 배경을 블러 처리하지 않음 */
+.bitgak-chart-body .bv-layout.bv-drawer-open,
+.bitgak-chart-body .bv-layout-full.bv-drawer-open,
+.bitgak-chart-body .bv-layout.bv-drawer-open *,
+.bitgak-chart-body .bv-layout-full.bv-drawer-open *,
+.bitgak-chart-body .bv-left-panel.bv-tool-drawer,
+.bitgak-chart-body .bv-left-panel.bv-tool-drawer *,
+.bitgak-chart-body .piramid-card,
+.bitgak-chart-body .piramid-card * {
+  filter: none !important;
+  -webkit-filter: none !important;
+  text-shadow: none;
+}
+
+.bitgak-chart-body .bv-layout.bv-drawer-open::before,
+.bitgak-chart-body .bv-layout.bv-drawer-open::after,
+.bitgak-chart-body .bv-layout-full.bv-drawer-open::before,
+.bitgak-chart-body .bv-layout-full.bv-drawer-open::after {
+  display: none !important;
+  content: none !important;
+  filter: none !important;
+  -webkit-filter: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+/* 텍스트 선명도 보강 */
+.bitgak-chart-body .piramid-panel,
+.bitgak-chart-body .piramid-panel *,
+.bitgak-chart-body .bv-tool-drawer,
+.bitgak-chart-body .bv-tool-drawer * {
+  -webkit-font-smoothing: antialiased;
+  text-rendering: geometricPrecision;
+}
+
+/* 모바일에서는 패널 자체 배경을 조금 더 진하게 해서 흐릿한 느낌을 줄임 */
+@media (max-width: 1120px) {
+  .bitgak-chart-body .bv-left-panel.bv-tool-drawer {
+    background:
+      radial-gradient(circle at 18% 0%, rgba(59, 130, 246, 0.12), transparent 34%),
+      linear-gradient(180deg, #0d172b 0%, #07101f 48%, #050b16 100%) !important;
+    box-shadow:
+      0 20px 46px rgba(0, 0, 0, 0.48),
+      0 0 0 1px rgba(96, 165, 250, 0.18) !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+
+  .bitgak-chart-body .piramid-card {
+    background:
+      radial-gradient(circle at top right, rgba(45, 212, 191, 0.07), transparent 35%),
+      linear-gradient(180deg, rgba(13, 24, 43, 0.985), rgba(5, 12, 24, 0.99)) !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+
+  .bitgak-chart-body .piramid-table-card {
+    margin-top: 8px !important;
+  }
+
+  .bitgak-chart-body .piramid-table-wrap {
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow-x: hidden !important;
+    overflow-y: visible !important;
+    padding: 0 !important;
+    border-radius: 0 0 14px 14px !important;
+  }
+
+  .bitgak-chart-body .piramid-table {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    table-layout: fixed !important;
+    border-collapse: collapse !important;
+  }
+
+  /* 6열: 차수 / 매수가 / 하락률 / 수량 / 투입 / 평단 */
+  .bitgak-chart-body .piramid-table th:nth-child(1),
+  .bitgak-chart-body .piramid-table td:nth-child(1) {
+    width: 13% !important;
+    text-align: center !important;
+  }
+
+  .bitgak-chart-body .piramid-table th:nth-child(2),
+  .bitgak-chart-body .piramid-table td:nth-child(2) {
+    width: 18% !important;
+    text-align: center !important;
+  }
+
+  .bitgak-chart-body .piramid-table th:nth-child(3),
+  .bitgak-chart-body .piramid-table td:nth-child(3) {
+    width: 16% !important;
+    text-align: center !important;
+    color: #67e8f9 !important;
+    font-weight: 1000 !important;
+  }
+
+  .bitgak-chart-body .piramid-table th:nth-child(4),
+  .bitgak-chart-body .piramid-table td:nth-child(4) {
+    width: 8% !important;
+    text-align: center !important;
+  }
+
+  .bitgak-chart-body .piramid-table th:nth-child(5),
+  .bitgak-chart-body .piramid-table td:nth-child(5) {
+    width: 20% !important;
+    text-align: center !important;
+  }
+
+  .bitgak-chart-body .piramid-table th:nth-child(6),
+  .bitgak-chart-body .piramid-table td:nth-child(6) {
+    width: 25% !important;
+    text-align: center !important;
+    color: #67e8f9 !important;
+    font-weight: 1000 !important;
+  }
+
+  .bitgak-chart-body .piramid-table th,
+  .bitgak-chart-body .piramid-table td {
+    height: 33px !important;
+    padding: 6px 1px !important;
+    font-size: 8.9px !important;
+    line-height: 1.12 !important;
+    letter-spacing: -0.075em !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: clip !important;
+    vertical-align: middle !important;
+    color: #eaf2ff !important;
+  }
+
+  .bitgak-chart-body .piramid-table th {
+    height: 28px !important;
+    padding-top: 5px !important;
+    padding-bottom: 5px !important;
+    font-size: 7.8px !important;
+    line-height: 1.05 !important;
+    letter-spacing: -0.08em !important;
+    color: #9fb4d1 !important;
+  }
+
+  .bitgak-chart-body .piramid-table td:nth-child(3),
+  .bitgak-chart-body .piramid-table td:nth-child(6) {
+    color: #67e8f9 !important;
+  }
+
+  .bitgak-chart-body .piramid-step-pill {
+    height: 19px !important;
+    min-width: 31px !important;
+    max-width: 35px !important;
+    padding: 0 3px !important;
+    margin: 0 auto !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    font-size: 7.6px !important;
+    line-height: 1 !important;
+    letter-spacing: -0.09em !important;
+    border-radius: 999px !important;
+  }
+}
+
+/* Galaxy S20/S24 Ultra DevTools 412px 폭 기준 보정 */
+@media (max-width: 430px) {
+  .bitgak-chart-body .piramid-table-card .piramid-card-head {
+    padding: 9px 10px 7px !important;
+  }
+
+  .bitgak-chart-body .piramid-table-card .piramid-card-head strong {
+    font-size: 13.4px !important;
+  }
+
+  .bitgak-chart-body .piramid-table-card .piramid-card-head span {
+    font-size: 8.6px !important;
+  }
+
+  .bitgak-chart-body .piramid-table th,
+  .bitgak-chart-body .piramid-table td {
+    font-size: 8.45px !important;
+    letter-spacing: -0.085em !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+  }
+
+  .bitgak-chart-body .piramid-table th {
+    font-size: 7.35px !important;
+  }
+
+  .bitgak-chart-body .piramid-step-pill {
+    min-width: 29px !important;
+    max-width: 33px !important;
+    font-size: 7.25px !important;
+  }
+}
+
+@media (max-width: 380px) {
+  .bitgak-chart-body .piramid-table th,
+  .bitgak-chart-body .piramid-table td {
+    font-size: 8px !important;
+    letter-spacing: -0.095em !important;
+  }
+
+  .bitgak-chart-body .piramid-table th {
+    font-size: 7px !important;
+  }
+
+  .bitgak-chart-body .piramid-step-pill {
+    min-width: 27px !important;
+    max-width: 31px !important;
+    font-size: 6.9px !important;
+  }
+}
+

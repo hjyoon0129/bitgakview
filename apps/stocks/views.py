@@ -89,7 +89,7 @@ pd = _LazyPandas()
 krx_stock = _LazyKrxStock()
 yf = _LazyYFinance()
 
-from .models import ChartDrawingState, ChartIndicatorState, StockSymbol, UserStockStorage
+from .models import ChartDrawingState, ChartIndicatorState, ChartPiramidState, StockSymbol, UserStockStorage
 
 
 DERIVATIVE_KEYWORDS = [
@@ -2185,6 +2185,126 @@ def chart_indicators_api(request, code):
             "authenticated": True,
             "stockCode": stock_code,
             "indicators": state_obj.indicators,
+            "updatedAt": state_obj.updated_at.isoformat() if state_obj.updated_at else None,
+        },
+        json_dumps_params={"ensure_ascii": False},
+    )
+
+# -----------------------------------------------------------------------------
+# 로그인 사용자별 분할매수 전략 서버 저장 API
+# -----------------------------------------------------------------------------
+# piramid.js는 이 API를 통해 로그인 사용자 + 종목코드 기준으로
+# 분할매수 전략값을 DB에 저장하고 다시 불러옵니다.
+# 저장 항목: 전략, a 금액, 시작가격, 하락 간격.
+
+
+def _default_piramid_plan():
+    return {
+        "strategy": "exit",
+        "unit": 500000,
+        "startPrice": 0,
+        "dropRate": 15,
+    }
+
+
+def _positive_number(value, default=0):
+    try:
+        number = float(str(value).replace(",", "").strip())
+    except (TypeError, ValueError):
+        return default
+
+    return number if number > 0 else default
+
+
+def _bounded_number(value, default, min_value, max_value):
+    try:
+        number = float(str(value).replace(",", "").strip())
+    except (TypeError, ValueError):
+        number = default
+
+    return max(min_value, min(max_value, number))
+
+
+def _normalize_piramid_plan(raw):
+    if not isinstance(raw, dict):
+        raw = {}
+
+    payload = raw.get("piramid") if isinstance(raw.get("piramid"), dict) else raw
+    allowed_strategies = {"exit", "balanced", "classic"}
+
+    strategy = str(payload.get("strategy") or "exit").strip().lower()
+    if strategy not in allowed_strategies:
+        strategy = "exit"
+
+    unit = int(round(_positive_number(payload.get("unit"), 500000)))
+    start_price = int(round(_positive_number(payload.get("startPrice", payload.get("start_price")), 0)))
+    drop_rate = _bounded_number(payload.get("dropRate", payload.get("drop_rate", 15)), 15, 1, 80)
+
+    return {
+        "strategy": strategy,
+        "unit": unit if unit > 0 else 500000,
+        "startPrice": start_price if start_price > 0 else 0,
+        "dropRate": int(drop_rate) if float(drop_rate).is_integer() else drop_rate,
+    }
+
+
+@require_http_methods(["GET", "POST"])
+def chart_piramid_api(request, code):
+    stock_code = _clean_code(code)
+
+    if not request.user.is_authenticated:
+        if request.method == "GET":
+            return JsonResponse(
+                {
+                    "ok": True,
+                    "authenticated": False,
+                    "stockCode": stock_code,
+                    "piramid": _default_piramid_plan(),
+                    "message": "로그인하지 않아 서버 분할매수 저장을 사용하지 않습니다.",
+                },
+                json_dumps_params={"ensure_ascii": False},
+            )
+
+        return JsonResponse(
+            {
+                "ok": False,
+                "authenticated": False,
+                "message": "로그인 후 서버 분할매수 저장을 사용할 수 있습니다.",
+            },
+            status=401,
+            json_dumps_params={"ensure_ascii": False},
+        )
+
+    state_obj, _ = ChartPiramidState.objects.get_or_create(
+        user=request.user,
+        stock_code=stock_code,
+        defaults={"piramid": _default_piramid_plan()},
+    )
+
+    if request.method == "GET":
+        piramid = _normalize_piramid_plan(state_obj.piramid)
+        return JsonResponse(
+            {
+                "ok": True,
+                "authenticated": True,
+                "stockCode": stock_code,
+                "piramid": piramid,
+                "updatedAt": state_obj.updated_at.isoformat() if state_obj.updated_at else None,
+            },
+            json_dumps_params={"ensure_ascii": False},
+        )
+
+    data = _json_body(request)
+    piramid = _normalize_piramid_plan(data.get("piramid", data))
+    state_obj.piramid = piramid
+    state_obj.save(update_fields=["piramid", "updated_at"])
+
+    return JsonResponse(
+        {
+            "ok": True,
+            "authenticated": True,
+            "stockCode": stock_code,
+            "piramid": state_obj.piramid,
             "updatedAt": state_obj.updated_at.isoformat() if state_obj.updated_at else None,
         },
         json_dumps_params={"ensure_ascii": False},
