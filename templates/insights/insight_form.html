@@ -152,9 +152,9 @@
           data-initial-name="{{ initial_chart_name|default:'' }}"
           data-initial-interval="{{ initial_chart_interval|default:'1d' }}"
           data-has-snapshot="{% if initial_chart_snapshot %}1{% else %}0{% endif %}"
-          data-stock-css-url="{% static 'stocks/css/bitgak_chart.css' %}?v=20260531-stock-srcdoc-v15-server-draft"
-          data-stock-core-url="{% static 'stocks/js/bitgak_chart_core.js' %}?v=20260531-stock-srcdoc-v15-server-draft"
-          data-stock-indicators-url="{% static 'stocks/js/bitgak_indicators.js' %}?v=20260531-stock-srcdoc-v15-server-draft"
+          data-stock-css-url="{% static 'stocks/css/bitgak_chart.css' %}?v=20260604-v14-insight-static-cache-bust"
+          data-stock-core-url="{% static 'stocks/js/bitgak_chart_core.js' %}?v=20260604-v14-insight-static-cache-bust"
+          data-stock-indicators-url="{% static 'stocks/js/bitgak_indicators.js' %}?v=20260604-v14-insight-static-cache-bust"
           data-stock-lw-url="https://unpkg.com/lightweight-charts@5.0.8/dist/lightweight-charts.standalone.production.js"
           loading="lazy"
         ></iframe>
