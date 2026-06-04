@@ -367,10 +367,19 @@
   }
 
   function scheduleChartRelayout() {
+    const preservedRange = api && api.getVisibleLogicalRangeSafe ? api.getVisibleLogicalRangeSafe() : null;
+
     const run = function () {
       try { if (api.syncPaneTimeScales) api.syncPaneTimeScales(); } catch (e) {}
       try { if (api.refreshPaneLabels) api.refreshPaneLabels(); } catch (e) {}
       try { window.dispatchEvent(new Event("resize")); } catch (e) {}
+      try {
+        if (preservedRange && api.setVisibleLogicalRangeSafe) api.setVisibleLogicalRangeSafe(preservedRange);
+      } catch (e) {}
+      try {
+        if (api.forceDrawingRelayout) api.forceDrawingRelayout();
+        else if (api.refreshDrawingLayer) api.refreshDrawingLayer();
+      } catch (e) {}
       try { normalizePaneLabelDom(); } catch (e) {}
     };
 

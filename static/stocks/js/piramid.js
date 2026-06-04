@@ -99,6 +99,45 @@
     return !!getAccessInfo().is_authenticated;
   }
 
+  function isPremium() {
+    return !!getAccessInfo().is_premium;
+  }
+
+  function openAccessLock(kind, options) {
+    if (window.BitgakAccessLock && typeof window.BitgakAccessLock.open === "function") {
+      window.BitgakAccessLock.open(kind, options || {});
+      return;
+    }
+
+    if (kind === "login") {
+      const next = encodeURIComponent(window.location.pathname + window.location.search);
+      window.location.href = "/accounts/login/?next=" + next;
+      return;
+    }
+
+    window.location.href = "/stocks/pricing/";
+  }
+
+  function requirePiramidPremium() {
+    if (!isAuthenticated()) {
+      openAccessLock("login", {
+        title: "로그인 후 사용할 수 있습니다",
+        message: "분할매수 전략 계산기는 로그인 후 이용할 수 있습니다."
+      });
+      return false;
+    }
+
+    if (!isPremium()) {
+      openAccessLock("premium", {
+        title: "프리미엄 전용 기능입니다",
+        message: "분할매수 전략 계산기는 프리미엄 회원 또는 쿠폰 이용자만 사용할 수 있습니다."
+      });
+      return false;
+    }
+
+    return true;
+  }
+
   function api() {
     return window.BitgakChart || null;
   }
@@ -502,6 +541,7 @@
   }
 
   function openDrawer() {
+    if (!requirePiramidPremium()) return;
     if (!layout || !drawer) return;
 
     drawer.style.removeProperty("display");

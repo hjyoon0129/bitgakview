@@ -738,6 +738,8 @@
     return Boolean(
       target.closest("#openAvgDrawerBtn") ||
       target.closest("#openPortfolioDrawerBtn") ||
+      target.closest("#piramidDrawerTab") ||
+      target.closest("[data-piramid-open]") ||
       target.closest("#avgSavePortfolioBtn") ||
       target.closest("#openMyStockBtn") ||
       target.closest("#portfolioSaveCapitalBtn") ||
@@ -800,7 +802,7 @@
       if (!isPremium()) {
         return blockEvent(event, "premium", {
           title: "프리미엄 전용 기능입니다",
-          message: "평단가 계산기와 포트폴리오는 프리미엄 회원 또는 쿠폰 이용자만 사용할 수 있습니다."
+          message: "평단가 계산기, 포트폴리오, 분할매수 전략은 프리미엄 회원 또는 쿠폰 이용자만 사용할 수 있습니다."
         });
       }
     }

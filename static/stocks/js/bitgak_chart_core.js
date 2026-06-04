@@ -593,6 +593,10 @@
   }
 
   function configureIndicatorPanes(types) {
+    // 지표 추가/삭제 시에도 사용자가 보고 있던 시간 범위와 드로잉 좌표계를 유지한다.
+    // 기존에는 pane 재배치 후 fitOrKeepVisibleRange가 실행되면서 피보나치 채널의 화면 위치가 밀려 보일 수 있었다.
+    const keepRange = getVisibleLogicalRangeSafe();
+
     state.activePaneTypes = uniquePaneTypes(types);
     rebuildPaneIndexMap(state.activePaneTypes);
 
@@ -608,14 +612,15 @@
 
     const refresh = function () {
       layoutPanes();
+      if (keepRange) setVisibleLogicalRangeSafe(keepRange);
       syncDrawingLayerBounds();
       renderDrawings();
-      fitOrKeepVisibleRange(false);
     };
 
     setTimeout(refresh, 0);
     requestAnimationFrame(refresh);
-    setTimeout(refresh, 120);
+    setTimeout(refresh, 80);
+    setTimeout(refresh, 180);
   }
 
   function ensureIndicatorPane(type, label) {
@@ -1010,10 +1015,11 @@
       if (state.insightSnapshotMode && state.insightSnapshot) {
         applyInsightSnapshotPayload(state.insightSnapshot, false);
       } else if (state.insightEditorMode) {
-        // 빗각관점 글쓰기 iframe에서는 계정/브라우저에 저장된 드로잉을 섞지 않는다.
-        // 이 페이지에서 그린 드로잉은 부모 글쓰기 화면이 스냅샷으로만 저장한다.
-        state.drawings = [];
-        state.tempDrawing = null;
+        // 빗각관점 글쓰기 iframe에서는 계정/브라우저 저장 드로잉을 섞지 않는다.
+        // 단, 같은 iframe 안에서 일봉→주봉처럼 기간만 바꿀 때는 방금 그린 드로잉을 절대 초기화하지 않는다.
+        // 부모 페이지가 snapshot으로 저장하기 전이어도 state.drawings를 유지해야 드로잉이 사라지지 않는다.
+        state.drawings = Array.isArray(state.drawings) ? state.drawings.map(normalizeDrawing).filter(Boolean) : [];
+        state.tempDrawing = state.tempDrawing ? normalizeDrawing(state.tempDrawing) : null;
         renderDrawings();
       } else {
         await loadDrawingsFromStorage();
@@ -1126,8 +1132,9 @@
 
         closeIntervalDropdown();
 
-        state.drawings = [];
-        state.tempDrawing = null;
+        // 기간 변경은 종목 변경이 아니므로 기존 드로잉을 지우지 않는다.
+        // valueToPoint가 date_key/source_time 기준으로 새 interval row에 다시 매핑한다.
+        state.tempDrawing = state.tempDrawing ? normalizeDrawing(state.tempDrawing) : null;
 
         loadChartData();
       });
@@ -1728,9 +1735,23 @@
   }
 
   function getLocalPoint(event) {
-    const rect = chartEl.getBoundingClientRect();
+    // 보조지표 pane이 생기면 chartEl 전체 높이와 실제 드로잉 SVG 높이가 달라진다.
+    // 이때 chartEl 기준 clientY를 그대로 쓰면 피보나치 채널/십자선 좌표가 마우스보다 아래로 밀린다.
+    // 항상 실제 drawingLayer의 화면 rect -> SVG viewBox 좌표로 변환해서 좌표계를 하나로 고정한다.
+    syncDrawingLayerBounds();
+
+    const layerRect = drawingLayer.getBoundingClientRect();
+    const fallbackRect = chartEl.getBoundingClientRect();
+    const rect = (layerRect && layerRect.width > 0 && layerRect.height > 0) ? layerRect : fallbackRect;
     const client = getEventClientPoint(event) || { x: rect.left, y: rect.top };
-    return { x: client.x - rect.left, y: client.y - rect.top };
+    const size = getLayerSize();
+    const scaleX = rect.width ? (size.width / rect.width) : 1;
+    const scaleY = rect.height ? (size.height / rect.height) : 1;
+
+    return {
+      x: (client.x - rect.left) * scaleX,
+      y: (client.y - rect.top) * scaleY,
+    };
   }
 
   function clampNumber(value, min, max) {
@@ -2174,16 +2195,21 @@
     drawingLayer.setAttribute("width", width);
     drawingLayer.setAttribute("height", height);
     drawingLayer.setAttribute("viewBox", "0 0 " + width + " " + height);
+    drawingLayer.setAttribute("preserveAspectRatio", "none");
 
-    drawingLayer.style.left = "0px";
-    drawingLayer.style.top = "0px";
-    drawingLayer.style.right = "auto";
-    drawingLayer.style.bottom = "auto";
-    drawingLayer.style.width = width + "px";
-    drawingLayer.style.height = height + "px";
-    drawingLayer.style.maxHeight = height + "px";
-    drawingLayer.style.overflow = "hidden";
-    drawingLayer.style.clipPath = "inset(0 0 0 0)";
+    // CSS 파일이나 insight srcdoc에서 .drawing-layer { height:100% } 류가 잡혀 있어도
+    // 실제 메인 캔들 pane 높이만 덮도록 !important로 고정한다.
+    drawingLayer.style.setProperty("position", "absolute", "important");
+    drawingLayer.style.setProperty("left", "0px", "important");
+    drawingLayer.style.setProperty("top", "0px", "important");
+    drawingLayer.style.setProperty("right", "auto", "important");
+    drawingLayer.style.setProperty("bottom", "auto", "important");
+    drawingLayer.style.setProperty("width", width + "px", "important");
+    drawingLayer.style.setProperty("height", height + "px", "important");
+    drawingLayer.style.setProperty("max-height", height + "px", "important");
+    drawingLayer.style.setProperty("overflow", "hidden", "important");
+    drawingLayer.style.setProperty("clip-path", "inset(0 0 0 0)", "important");
+    drawingLayer.style.setProperty("transform", "none", "important");
   }
 
   function getLayerSize() {
@@ -2576,6 +2602,7 @@
 
     drawingRenderDeferred = false;
     syncDrawingLayerBounds();
+    drawingLayer.style.setProperty("transform", "none", "important");
     drawingLayer.classList.toggle("has-drawings", !!((state.drawings || []).length || state.tempDrawing));
     clearSvg();
     (state.drawings || []).forEach(function (drawing) { renderOneDrawing(drawing, false); });
@@ -4631,14 +4658,22 @@
   installDrawingUiSkin();
 
   chart.subscribeCrosshairMove(function (param) {
-    if (shouldDrawManualCrosshair() && param && param.time && param.point && Number.isFinite(param.point.x) && Number.isFinite(param.point.y) && isLocalPointInsideMainPane(param.point)) {
+    // 드로잉 도구가 켜진 상태에서는 drawingLayer의 pointer 좌표가 기준이다.
+    // LightweightCharts native crosshair param.point는 보조 pane 구성 직후 한 프레임 동안 전체 chart 기준으로 들어올 수 있어
+    // 피보나치 채널 preview가 마우스와 어긋나는 원인이 된다.
+    const allowNativeManualCrosshair = shouldDrawManualCrosshair() &&
+      normalizeDrawingTool(state.activeTool) === "cursor" &&
+      !state.tempDrawing &&
+      !drawingDrag;
+
+    if (allowNativeManualCrosshair && param && param.time && param.point && Number.isFinite(param.point.x) && Number.isFinite(param.point.y) && isLocalPointInsideMainPane(param.point)) {
       const price = candleSeries.coordinateToPrice(param.point.y);
       if (price !== null && price !== undefined && !Number.isNaN(Number(price))) {
         state.crosshairPoint = { x: param.point.x, y: param.point.y };
         state.crosshairValue = { time: normalizeTime(param.time), price: Number(price) };
         scheduleDrawingCrosshairRender();
       }
-    } else if (!state.tempDrawing && !drawingDrag && state.crosshairValue) {
+    } else if (!state.tempDrawing && !drawingDrag && state.crosshairValue && normalizeDrawingTool(state.activeTool) === "cursor") {
       state.crosshairPoint = null;
       state.crosshairValue = null;
       scheduleDrawingCrosshairRender(true);
@@ -5748,6 +5783,24 @@
     });
   }
 
+  function getInsightVisibleDateRange(visibleLogicalRange) {
+    try {
+      const rows = state.rows || [];
+      if (!rows.length || !visibleLogicalRange) return null;
+      const fromIndex = Math.max(0, Math.min(rows.length - 1, Math.floor(Number(visibleLogicalRange.from))));
+      const toIndex = Math.max(0, Math.min(rows.length - 1, Math.ceil(Number(visibleLogicalRange.to))));
+      const fromRow = rows[fromIndex];
+      const toRow = rows[toIndex];
+      if (!fromRow || !toRow) return null;
+      return {
+        from: fromRow.source_time || fromRow.display_time || fromRow.time,
+        to: toRow.source_time || toRow.display_time || toRow.time,
+      };
+    } catch (e) {
+      return null;
+    }
+  }
+
   function captureInsightSnapshot() {
     let visibleLogicalRange = null;
     try {
@@ -5756,9 +5809,13 @@
       }
     } catch (e) {}
 
+    const mainPriceRange = getCurrentVisiblePriceRange();
+    const visibleDateRange = getInsightVisibleDateRange(visibleLogicalRange);
+
     return {
       version: 1,
       source: "bitgakview",
+      sourceInterval: state.interval || "1d",
       code: code,
       name: state.payload && state.payload.name ? state.payload.name : (app.dataset.name || ""),
       interval: state.interval || "1d",
@@ -5766,6 +5823,8 @@
       chartUrl: app.dataset.chartUrl || window.location.pathname,
       capturedAt: new Date().toISOString(),
       visibleLogicalRange: visibleLogicalRange,
+      visibleDateRange: visibleDateRange,
+      mainPriceRange: mainPriceRange,
       drawings: cloneInsightValue(state.drawings || []) || [],
       indicators: cloneInsightValue(getStoredInsightIndicators() || []) || []
     };
@@ -5773,6 +5832,16 @@
 
   function applyInsightVisibleRange(snapshot) {
     if (!snapshot) return;
+    if (snapshot.preserveVisibleRange === false || snapshot.resetViewportOnLoad === true) return;
+
+    const sourceInterval = normalizeIntervalValue(snapshot.sourceInterval || snapshot.capturedInterval || snapshot.interval || state.interval || "1d");
+    const sameInterval = !sourceInterval || sourceInterval === state.interval;
+
+    // 다른 시간단위로 바뀔 때는 이전 interval의 logical/date range를 복원하지 않는다.
+    // 인사이트 srcdoc iframe에서는 이 값이 주봉/월봉에서 2015년대처럼 엉뚱한 구간을 가리키는 문제가 있었다.
+    // 드로잉 자체는 source_time/date_key/price 기준으로 다시 매핑되므로 화면 범위는 기본 최신 구간을 사용한다.
+    if (!sameInterval) return;
+
     const range = snapshot.visibleLogicalRange || snapshot.logicalRange || null;
     if (!range) return;
 
@@ -5782,6 +5851,18 @@
 
     try {
       chart.timeScale().setVisibleLogicalRange({ from: from, to: to });
+    } catch (e) {}
+  }
+
+  function applyInsightPriceRange(snapshot) {
+    if (!snapshot || snapshot.preservePriceRange === false) return;
+    const range = snapshot.mainPriceRange || snapshot.priceRange || snapshot.visiblePriceRange || null;
+    if (!range) return;
+    const from = Number(range.from);
+    const to = Number(range.to);
+    if (!Number.isFinite(from) || !Number.isFinite(to) || to <= from) return;
+    try {
+      applyPriceAxisVisibleRange({ from: from, to: to }, getVisibleLogicalRangeSafe(), { keepX: false, render: false });
     } catch (e) {}
   }
 
@@ -5797,10 +5878,12 @@
     state.fiboStage = 0;
 
     applyInsightVisibleRange(source);
+    applyInsightPriceRange(source);
     if (shouldRender !== false) renderDrawings();
 
     setTimeout(function () {
       applyInsightVisibleRange(source);
+      applyInsightPriceRange(source);
       renderDrawings();
     }, 120);
   }
@@ -5893,6 +5976,19 @@
     addPaneHistogramSeries,
     syncPaneTimeScales,
     refreshPaneLabels: updatePaneLabels,
+    refreshDrawingLayer: function () {
+      syncDrawingLayerBounds();
+      renderDrawings();
+    },
+    forceDrawingRelayout: function () {
+      const range = getVisibleLogicalRangeSafe();
+      layoutPanes();
+      if (range) setVisibleLogicalRangeSafe(range);
+      syncDrawingLayerBounds();
+      renderDrawings();
+    },
+    getVisibleLogicalRangeSafe,
+    setVisibleLogicalRangeSafe,
     setMainIndicatorLabels,
     setPaneLabel,
     addLineSeries,

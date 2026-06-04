@@ -392,6 +392,315 @@
     return '<button class="tv-interval-item ' + (active ? 'active' : '') + '" type="button" data-interval="' + value + '" data-label="' + escapeAttr(label) + '" role="menuitem"><span>' + escapeHtml(label) + '</span><span class="tv-interval-sub">' + escapeHtml(sub || value.toUpperCase()) + '</span></button>';
   }
 
+
+  function insightFrameIntervalPreserveScript() {
+    return `(function(){
+      "use strict";
+      if (window.__BITGAK_INSIGHT_FRAME_BRIDGE_V10__) return;
+      window.__BITGAK_INSIGHT_FRAME_BRIDGE_V10__ = true;
+
+      var finalSaveTimer = null;
+      var userDirtyTimer = null;
+
+      function norm(value) {
+        value = String(value || "1d").trim();
+        var map = {
+          "일": "1d", "주": "1w", "월": "1mo",
+          "D": "1d", "W": "1w", "M": "1mo",
+          "1D": "1d", "1W": "1w", "1M": "1mo",
+          "day": "1d", "week": "1w", "month": "1mo",
+          "Day": "1d", "Week": "1w", "Month": "1mo",
+          "60m": "1h", "60M": "1h"
+        };
+        return map[value] || map[value.toUpperCase && value.toUpperCase()] || value || "1d";
+      }
+
+      function clone(value) {
+        try { return JSON.parse(JSON.stringify(value || null)); }
+        catch (e) { return null; }
+      }
+
+      function api() { return window.BitgakChart || null; }
+      function app() { return document.querySelector(".bv-app"); }
+
+      function currentInterval() {
+        var a = api();
+        return norm((a && a.state && a.state.interval) || "1d");
+      }
+
+      function getCodeName(snapshot) {
+        var a = api();
+        var el = app();
+        var payload = a && a.state && a.state.payload ? a.state.payload : {};
+        var code = (snapshot && snapshot.code) || payload.code || (el && el.dataset && el.dataset.code) || "";
+        var name = (snapshot && snapshot.name) || payload.name || (el && el.dataset && el.dataset.name) || code || "";
+        return { code: code, name: name };
+      }
+
+      function stripViewport(snapshot) {
+        if (!snapshot || typeof snapshot !== "object") return snapshot;
+        var fixed = Object.assign({}, snapshot);
+        delete fixed.visibleLogicalRange;
+        delete fixed.logicalRange;
+        delete fixed.visibleDateRange;
+        delete fixed.mainPriceRange;
+        delete fixed.priceRange;
+        delete fixed.visiblePriceRange;
+        fixed.preserveVisibleRange = false;
+        fixed.preservePriceRange = false;
+        fixed.resetViewportOnLoad = true;
+        fixed.viewportStrippedReason = "insight-frame-bridge-v10";
+        return fixed;
+      }
+
+      function captureSnapshot(intervalOverride) {
+        var a = api();
+        var current = currentInterval();
+        var snapshot = null;
+
+        try {
+          if (a && typeof a.captureInsightSnapshot === "function") {
+            snapshot = a.captureInsightSnapshot();
+          }
+        } catch (e) {}
+
+        if (!snapshot || typeof snapshot !== "object") snapshot = {};
+
+        if (!Array.isArray(snapshot.drawings)) {
+          try {
+            snapshot.drawings = a && typeof a.getDrawings === "function" ? (a.getDrawings() || []) : [];
+          } catch (e) { snapshot.drawings = []; }
+        }
+
+        if (!Array.isArray(snapshot.indicators)) {
+          try {
+            snapshot.indicators = window.BitgakIndicators && typeof window.BitgakIndicators.getIndicators === "function" ? (window.BitgakIndicators.getIndicators() || []) : [];
+          } catch (e) { snapshot.indicators = []; }
+        }
+
+        var meta = getCodeName(snapshot);
+        snapshot.version = snapshot.version || 3;
+        snapshot.source = "bitgakview-insight-frame-bridge-v10";
+        snapshot.sourceInterval = norm(snapshot.interval || current);
+        snapshot.interval = norm(intervalOverride || snapshot.interval || current);
+        snapshot.code = snapshot.code || meta.code;
+        snapshot.name = snapshot.name || meta.name;
+        snapshot.capturedAt = (new Date()).toISOString();
+        delete snapshot.thumbnailDataUrl;
+
+        return stripViewport(clone(snapshot) || snapshot);
+      }
+
+      function postDirty(reason, snapshot) {
+        try {
+          var snap = stripViewport(clone(snapshot) || snapshot || captureSnapshot());
+          if (window.parent && window.parent !== window) {
+            window.parent.postMessage({
+              type: "bitgak:insight-chart-dirty",
+              reason: reason || "changed",
+              interval: snap && snap.interval,
+              code: snap && snap.code,
+              snapshot: snap
+            }, "*");
+          }
+        } catch (e) {}
+      }
+
+      function closeIntervalDropdownSoon() {
+        setTimeout(function () {
+          try {
+            var dropdown = document.getElementById("intervalDropdown");
+            var button = document.getElementById("intervalDropdownBtn");
+            if (dropdown) dropdown.classList.remove("open");
+            if (button) button.setAttribute("aria-expanded", "false");
+          } catch (e) {}
+        }, 0);
+      }
+
+      function closeIntervalDropdownNow() {
+        try {
+          var dropdown = document.getElementById("intervalDropdown");
+          var button = document.getElementById("intervalDropdownBtn");
+          if (dropdown) dropdown.classList.remove("open");
+          if (button) button.setAttribute("aria-expanded", "false");
+        } catch (e) {}
+      }
+
+      function updateCoreSnapshotBeforeInterval(nextInterval) {
+        var a = api();
+        if (!a || !a.state) return null;
+
+        var current = currentInterval();
+        var snapshot = captureSnapshot(current);
+        snapshot.sourceInterval = current;
+        snapshot.interval = current;
+        snapshot = stripViewport(snapshot);
+
+        // 중요: 여기서 a.state.insightSnapshotMode / insightSnapshot을 다시 세팅하지 않는다.
+        // 일반 차트가 정상인 이유는 interval 변경 시 state.drawings를 메모리 그대로 유지하기 때문이다.
+        // 인사이트에서 이 값을 강제로 넣으면 거래량 pane 재배치 + 주봉 로드 타이밍에
+        // 예전 daily snapshot이 weekly 차트 위에 다시 적용되어 피보나치 채널이 깨질 수 있다.
+        // 그래서 서버 저장용 snapshot만 부모로 보내고, 실제 차트 전환은 core의 기본 로직에 맡긴다.
+        try {
+          if (a.state) {
+            a.state.insightSnapshotMode = false;
+            a.state.insightSnapshot = null;
+          }
+        } catch (e) {}
+
+        var saveSnapshot = clone(snapshot) || snapshot;
+        saveSnapshot.interval = norm(nextInterval || current);
+        saveSnapshot.sourceInterval = current;
+        saveSnapshot = stripViewport(saveSnapshot);
+        return saveSnapshot;
+      }
+
+      function scheduleFinalSave(reason, nextInterval, delay) {
+        clearTimeout(finalSaveTimer);
+        finalSaveTimer = setTimeout(function () {
+          postDirty(reason || "interval-after-switch", captureSnapshot(nextInterval || currentInterval()));
+        }, delay == null ? 900 : delay);
+      }
+
+      function prepareNativeIntervalSwitch(nextInterval, reason) {
+        nextInterval = norm(nextInterval || "1d");
+        if (!nextInterval) return;
+        var saveSnapshot = updateCoreSnapshotBeforeInterval(nextInterval);
+        if (saveSnapshot) postDirty((reason || "interval") + "-before", saveSnapshot);
+        closeIntervalDropdownSoon();
+        scheduleFinalSave((reason || "interval") + "-after", nextInterval, 1200);
+      }
+
+      function closestIntervalButton(target) {
+        return target && target.closest ? target.closest("[data-interval]") : null;
+      }
+
+      document.addEventListener("click", function (event) {
+        var button = closestIntervalButton(event.target);
+        if (!button) return;
+        var next = norm(button.getAttribute("data-interval") || (button.dataset && button.dataset.interval) || "");
+        if (!next) return;
+
+        // 여기서는 preventDefault/stopPropagation을 절대 하지 않는다.
+        // 실제 일봉/주봉 변경은 메인 차트의 기존 interval handler가 그대로 처리하게 둔다.
+        // 인사이트는 변경 직전 최신 드로잉을 core snapshot에 반영하고, 변경 후 서버 저장만 담당한다.
+        prepareNativeIntervalSwitch(next, "interval-click");
+      }, true);
+
+      document.addEventListener("keydown", function (event) {
+        if (event.key !== "Enter" && event.key !== " ") return;
+        var button = closestIntervalButton(event.target);
+        if (!button) return;
+        var next = norm(button.getAttribute("data-interval") || (button.dataset && button.dataset.interval) || "");
+        if (!next) return;
+        prepareNativeIntervalSwitch(next, "interval-key");
+      }, true);
+
+      function triggerNativeIntervalSwitch(nextInterval, reason) {
+        nextInterval = norm(nextInterval || "1d");
+        var button = document.querySelector('[data-interval="' + nextInterval + '"]');
+        if (button) {
+          try {
+            button.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true, view: window }));
+            return true;
+          } catch (e) {
+            try { button.click(); return true; } catch (ignored) {}
+          }
+        }
+
+        // 버튼을 못 찾는 비상 상황에서만 core API로 직접 변경한다.
+        var a = api();
+        if (!a || !a.state) return false;
+        prepareNativeIntervalSwitch(nextInterval, reason || "parent-interval");
+        try {
+          a.state.interval = nextInterval;
+          if (typeof a.loadChartData === "function") a.loadChartData();
+          return true;
+        } catch (e) {
+          return false;
+        }
+      }
+
+      function scheduleUserDirty(reason) {
+        clearTimeout(userDirtyTimer);
+        userDirtyTimer = setTimeout(function () {
+          postDirty(reason || "user-action", captureSnapshot(currentInterval()));
+        }, 650);
+      }
+
+      document.addEventListener("pointerup", function (event) {
+        var target = event.target;
+        if (target && target.closest && target.closest("#drawingLayer, .bv-drawing-toolbar, .bv-drawing-settings-modal, .bv-drawing-color-palette")) {
+          scheduleUserDirty("drawing-action");
+        }
+      }, true);
+
+      document.addEventListener("click", function (event) {
+        var target = event.target;
+        if (target && target.closest && target.closest(".bv-drawing-toolbar, .bv-drawing-settings-modal, .bv-drawing-color-palette, #openIndicatorBtn, #indicatorModal")) {
+          scheduleUserDirty("toolbar-action");
+        }
+      }, true);
+
+      document.addEventListener("change", function (event) {
+        var target = event.target;
+        if (target && target.closest && target.closest(".bv-drawing-settings-modal, #indicatorModal")) {
+          scheduleUserDirty("settings-change");
+        }
+      }, true);
+
+      document.addEventListener("bitgak:chart-data-loaded", function () {
+        closeIntervalDropdownSoon();
+        try {
+          var a0 = api();
+          if (a0 && a0.state) {
+            // interval 전환 직후에는 저장 snapshot을 차트에 다시 덮지 않는다.
+            // 특히 거래량 pane이 있는 상태에서 재적용되면 메인 pane 높이 계산 전후가 섞여 드로잉이 틀어진다.
+            a0.state.insightSnapshotMode = false;
+            a0.state.insightSnapshot = null;
+          }
+        } catch (e) {}
+        scheduleFinalSave("data-loaded", currentInterval(), 520);
+        [40, 120, 260, 520, 900].forEach(function (delay) {
+          setTimeout(function () {
+            try {
+              var a = api();
+              if (a && typeof a.forceDrawingRelayout === "function") a.forceDrawingRelayout();
+              else if (a && typeof a.refreshDrawingLayer === "function") a.refreshDrawingLayer();
+            } catch (e) {}
+          }, delay);
+        });
+      });
+
+      window.addEventListener("message", function (event) {
+        var data = event.data || {};
+        if (!data || typeof data !== "object") return;
+
+        if (data.type === "bitgak:apply-insight-snapshot" && data.snapshot) {
+          var snapshot = stripViewport(clone(data.snapshot) || data.snapshot);
+          var a = api();
+          try {
+            if (a && a.state) {
+              a.state.insightSnapshotMode = true;
+              a.state.insightSnapshot = clone(snapshot) || snapshot;
+            }
+          } catch (e) {}
+          return;
+        }
+
+        if (data.type === "bitgak:switch-insight-interval") {
+          triggerNativeIntervalSwitch(data.interval || "1d", "parent-interval");
+        }
+      });
+
+      window.__BITGAK_INSIGHT_FRAME_BRIDGE__ = {
+        version: "v10",
+        switchInterval: triggerNativeIntervalSwitch,
+        capture: function () { return captureSnapshot(currentInterval()); }
+      };
+    })();`;
+  }
+
   function buildStockFrameSrcdoc(frame, code, name, interval, mode) {
     var fixedCode = onlyCode(code);
     var fixedName = String(name || fixedCode || "").trim();
@@ -479,6 +788,7 @@
       '<div id="indicatorModal" class="indicator-modal" aria-hidden="true"><div class="indicator-panel"><div class="indicator-panel-head"><div><h2 id="indicatorModalTitle">지표 검색</h2><p id="indicatorModalSubtitle">차트에 추가할 지표를 검색하세요.</p></div><button class="modal-close" type="button" data-close-indicator>×</button></div><input id="indicatorSearchInput" class="indicator-search-input" type="search" placeholder="이동평균, 거래량, RSI, MACD 검색"><div class="indicator-search-layout"><div class="indicator-search-results"><div id="indicatorCatalog" class="indicator-catalog"></div></div></div><div id="indicatorSettingsBox" class="indicator-settings-box"><div class="indicator-settings-head"><h3 id="indicatorSettingsTitle">지표 설정</h3><button class="modal-close" type="button" data-close-indicator>×</button></div><div id="activeIndicatorList" class="active-indicator-list"></div><div class="indicator-settings-actions"><button id="applyIndicatorSettings" class="indicator-add-btn" type="button">적용</button></div></div></div></div>' +
       '</section></section></main></section>' +
       '<script src="' + escapeAttr(lwUrl) + '"><\/script><script src="' + escapeAttr(coreUrl) + '"><\/script><script src="' + escapeAttr(indicatorsUrl) + '"><\/script>' +
+      '<script>' + insightFrameIntervalPreserveScript() + '<\/script>' +
       '<script>window.addEventListener("load",function(){try{parent.postMessage({type:"bitgak:stock-srcdoc-ready",code:"' + escapeAttr(fixedCode) + '"},"*");}catch(e){}});<\/script>' +
       '</body></html>';
   }
@@ -498,6 +808,29 @@
     var target = onlyCode(code || "");
     var snapCode = snapshotCode(snapshot);
     return !!target && !!snapCode && target === snapCode;
+  }
+
+
+  function stripInsightViewportOnly(snapshot, reason) {
+    if (!snapshot || typeof snapshot !== "object") return snapshot;
+    var fixed = Object.assign({}, snapshot);
+    if (fixed.interval) fixed.interval = normalizeIntervalForEmbed(fixed.interval);
+    if (fixed.sourceInterval) fixed.sourceInterval = normalizeIntervalForEmbed(fixed.sourceInterval);
+
+    // 인사이트 iframe에서는 일봉/주봉 전환 때 기존 logical range가 재사용되면
+    // 화면이 2015년대처럼 엉뚱한 구간으로 튀거나 드로잉이 깨져 보일 수 있다.
+    // 드로잉 자체의 anchor 값은 건드리지 않고, 화면 범위 정보만 제거한다.
+    delete fixed.visibleLogicalRange;
+    delete fixed.logicalRange;
+    delete fixed.visibleDateRange;
+    delete fixed.mainPriceRange;
+    delete fixed.priceRange;
+    delete fixed.visiblePriceRange;
+    fixed.preserveVisibleRange = false;
+    fixed.preservePriceRange = false;
+    fixed.resetViewportOnLoad = true;
+    fixed.viewportStrippedReason = reason || "insight-viewport-only-v8";
+    return fixed;
   }
 
   function cleanSnapshotForStock(code, name, interval) {
@@ -533,8 +866,9 @@
 
   function postSnapshotToFrame(frame, snapshot) {
     if (!frame || !frame.contentWindow || !snapshot) return;
+    var fixed = stripInsightViewportOnly(snapshot, "post-to-frame-v9");
     try {
-      frame.contentWindow.postMessage({ type: "bitgak:apply-insight-snapshot", snapshot: snapshot }, "*");
+      frame.contentWindow.postMessage({ type: "bitgak:apply-insight-snapshot", snapshot: fixed }, "*");
     } catch (e) {}
   }
 
@@ -641,7 +975,7 @@
     var code = onlyCode((snapshot && snapshot.code) || (codeInput && codeInput.value) || "");
     var name = String((snapshot && snapshot.name) || (nameInput && nameInput.value) || code || "").trim();
     var interval = normalizeIntervalForEmbed((snapshot && snapshot.interval) || (intervalInput && intervalInput.value) || "1d");
-    var fixedSnapshot = Object.assign({}, snapshot || {}, { code: code, name: name, interval: interval });
+    var fixedSnapshot = stripInsightViewportOnly(Object.assign({}, snapshot || {}, { code: code, name: name, interval: interval }), "server-save-v9");
     return {
       media_type: mediaInput ? mediaInput.value || "chart" : "chart",
       chart_code: code,
@@ -716,14 +1050,16 @@
 
   function writeSnapshotForFrame(frame, snapshot) {
     var input = getSnapshotInputForFrame(frame);
-    if (input) input.value = toJson(snapshot || {});
+    var fixed = snapshot && typeof snapshot === "object" ? stripInsightViewportOnly(Object.assign({}, snapshot), "write-hidden-v9") : {};
+    if (input) input.value = toJson(fixed || {});
     if (frame) frame.dataset.userChanged = "1";
   }
 
   function saveSnapshotForFrame(frame, snapshot, options) {
     options = options || {};
+    var fixedSnapshot = snapshot && typeof snapshot === "object" ? stripInsightViewportOnly(Object.assign({}, snapshot), "save-frame-v9") : snapshot;
     var form = frame && frame.closest("form");
-    if (form) return saveChartDraftToServerForForm(form, snapshot, options);
+    if (form) return saveChartDraftToServerForForm(form, fixedSnapshot, options);
 
     // 상세 플레이어는 서버에서 내려준 chart_snapshot을 기준으로 동작한다.
     // 템플릿에서 data-chart-save-url 또는 data-chart-draft-url을 제공하면 해당 URL로 저장한다.
@@ -733,7 +1069,7 @@
     if (!url) return Promise.resolve(null);
     return jsonFetch(url, {
       method: "POST",
-      body: JSON.stringify({ chart_snapshot: snapshot, snapshot: snapshot })
+      body: JSON.stringify({ chart_snapshot: fixedSnapshot, snapshot: fixedSnapshot })
     }).catch(function () { return null; });
   }
 
@@ -758,14 +1094,27 @@
       var dirtyFrame = findInsightFrameBySource(event.source);
       if (!dirtyFrame) return;
       dirtyFrame.dataset.userChanged = "1";
+
+      var incomingSnapshot = data.snapshot && typeof data.snapshot === "object" ? data.snapshot : null;
+      if (data.interval) dirtyFrame.dataset.currentInterval = normalizeIntervalForEmbed(data.interval);
+      if (incomingSnapshot && snapshotMatchesStock(incomingSnapshot, dirtyFrame.dataset.currentCode || incomingSnapshot.code)) {
+        incomingSnapshot = stripInsightViewportOnly(Object.assign({}, incomingSnapshot, {
+          interval: normalizeIntervalForEmbed(incomingSnapshot.interval || data.interval || dirtyFrame.dataset.currentInterval || "1d")
+        }), "dirty-incoming-v9");
+        writeSnapshotForFrame(dirtyFrame, incomingSnapshot);
+        saveSnapshotForFrame(dirtyFrame, incomingSnapshot, { silent: true });
+      }
+
       clearTimeout(CHART_DIRTY_TIMERS.get(dirtyFrame));
+      var reason = String(data.reason || "");
+      var wait = reason.indexOf("interval") >= 0 || reason.indexOf("restored") >= 0 ? 1400 : (reason === "data-loaded" ? 1300 : 620);
       var timer = setTimeout(function () {
-        requestFrameSnapshot(dirtyFrame, 1600, { noThumbnail: true }).then(function (snapshot) {
+        requestFrameSnapshot(dirtyFrame, 1700, { noThumbnail: true }).then(function (snapshot) {
           if (!snapshot) return;
           writeSnapshotForFrame(dirtyFrame, snapshot);
           saveSnapshotForFrame(dirtyFrame, snapshot, { silent: true });
         });
-      }, data.reason === "data-loaded" ? 900 : 520);
+      }, wait);
       CHART_DIRTY_TIMERS.set(dirtyFrame, timer);
       return;
     }
@@ -1169,7 +1518,7 @@
         searchInput.dataset.selectedCode = code;
         searchInput.dataset.selectedName = name;
       }
-      if (snapshotInput) snapshotInput.value = toJson(Object.assign({}, finalSnapshot, { code: code, name: name, interval: interval }));
+      if (snapshotInput) snapshotInput.value = toJson(stripInsightViewportOnly(Object.assign({}, finalSnapshot, { code: code, name: name, interval: interval }), "sync-hidden-v9"));
       saveChartDefaults(code, name, interval);
       setText(frameTitle, name ? name + " · " + code : (code || "차트 미선택"));
       setState("차트상태 저장됨", "ok");
@@ -1232,7 +1581,7 @@
         return;
       }
       var previousFrameCode = onlyCode(frame.dataset.currentCode || "");
-      var snapshotForLoadedStock = snapshotMatchesStock(snapshot, code) ? snapshot : null;
+      var snapshotForLoadedStock = snapshotMatchesStock(snapshot, code) ? Object.assign({}, snapshot, { interval: interval }) : null;
       if (!snapshotForLoadedStock && previousFrameCode && previousFrameCode !== code && snapshotInput) {
         snapshotInput.value = toJson(cleanSnapshotForStock(code, name, interval));
       }
@@ -1327,11 +1676,21 @@
     if (captureBtn) captureBtn.addEventListener("click", function () { captureAndStore(true); });
 
     if (intervalSelect) intervalSelect.addEventListener("change", function () {
-      if (intervalInput) intervalInput.value = intervalSelect.value;
-      if (frame && currentCode()) {
-        var snap = parseSnapshot(snapshotInput);
-        loadFrame(currentCode(), currentName(), intervalSelect.value, snapshotMatchesStock(snap, currentCode()) ? snap : null);
+      var nextInterval = normalizeIntervalForEmbed(intervalSelect.value || "1d");
+      if (intervalInput) intervalInput.value = nextInterval;
+      if (!frame || !currentCode()) return;
+
+      if (frameLoaded && frame.contentWindow) {
+        setState("차트 기간 변경 중", "warn");
+        try {
+          frame.contentWindow.postMessage({ type: "bitgak:switch-insight-interval", interval: nextInterval }, "*");
+          return;
+        } catch (e) {}
       }
+
+      var snap = parseSnapshot(snapshotInput);
+      if (snapshotMatchesStock(snap, currentCode())) snap = Object.assign({}, snap, { interval: nextInterval });
+      loadFrame(currentCode(), currentName(), nextInterval, snapshotMatchesStock(snap, currentCode()) ? snap : null);
     });
 
     initStockSearch(form, applyStock);
