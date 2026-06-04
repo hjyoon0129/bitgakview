@@ -118,13 +118,142 @@ def _get_chart_draft(request, post=None):
     return draft if isinstance(draft, dict) else {}
 
 
+def _json_clone(value, fallback=None):
+    try:
+        return json.loads(json.dumps(value, ensure_ascii=False, separators=(",", ":")))
+    except Exception:
+        return fallback if fallback is not None else value
+
+
+def _snapshot_drawings(snapshot):
+    if not isinstance(snapshot, dict):
+        return []
+    drawings = snapshot.get("drawings")
+    return drawings if isinstance(drawings, list) else []
+
+
+def _snapshot_code(snapshot):
+    if not isinstance(snapshot, dict):
+        return ""
+    return _clean_code(snapshot.get("code") or snapshot.get("chart_code") or snapshot.get("stockCode"))
+
+
+def _snapshot_has_clear_drawings_flag(payload, snapshot):
+    if not isinstance(payload, dict):
+        payload = {}
+    if not isinstance(snapshot, dict):
+        snapshot = {}
+
+    truthy = {"1", "true", "yes", "y", "on"}
+    for key in ("clear_drawings", "clearDrawings", "drawings_cleared", "drawingsCleared", "allow_empty_drawings", "allowEmptyDrawings"):
+        value = payload.get(key)
+        if value is True:
+            return True
+        if isinstance(value, str) and value.strip().lower() in truthy:
+            return True
+
+        value = snapshot.get(key)
+        if value is True:
+            return True
+        if isinstance(value, str) and value.strip().lower() in truthy:
+            return True
+
+    return False
+
+
+def _existing_chart_snapshot(request, post=None):
+    # 1순위: 현재 사용자/세션의 인사이트 임시 저장값
+    draft = _get_chart_draft(request, post) if request else {}
+    snapshot = _safe_snapshot_obj(draft.get("chart_snapshot") if isinstance(draft, dict) else "")
+    if _snapshot_drawings(snapshot):
+        return snapshot
+
+    # 2순위: 수정 화면에서 기존 발행글에 저장된 값
+    if post and getattr(post, "chart_snapshot", ""):
+        snapshot = _safe_snapshot_obj(post.chart_snapshot)
+        if _snapshot_drawings(snapshot):
+            return snapshot
+
+    # 3순위: 글쓰기 create draft
+    if post is not None:
+        draft = _get_chart_draft(request, None) if request else {}
+        snapshot = _safe_snapshot_obj(draft.get("chart_snapshot") if isinstance(draft, dict) else "")
+        if _snapshot_drawings(snapshot):
+            return snapshot
+
+    return {}
+
+
+def _merge_snapshot_with_existing_drawings(snapshot, existing_snapshot, payload=None):
+    """
+    인사이트 chart_snapshot 자동저장 방어 로직.
+
+    일봉/주봉/월봉 전환 중 iframe 차트가 다시 그려지는 찰나에 drawings: [] 상태가
+    서버로 들어올 수 있다. 이 값이 세션 draft에 저장되면 정상 드로잉이 사라진다.
+    서버에서는 같은 종목의 기존 snapshot에 drawings가 있고, 새 snapshot만 비어 있으면
+    기존 drawings를 유지한다.
+
+    실제로 드로잉 전체 삭제를 허용해야 할 때는 프론트에서
+    clear_drawings=true 또는 allow_empty_drawings=true를 함께 보내면 된다.
+    """
+    if not isinstance(snapshot, dict):
+        snapshot = {}
+
+    if not isinstance(existing_snapshot, dict) or not existing_snapshot:
+        return snapshot
+
+    if _snapshot_has_clear_drawings_flag(payload or {}, snapshot):
+        return snapshot
+
+    existing_drawings = _snapshot_drawings(existing_snapshot)
+    incoming_drawings = _snapshot_drawings(snapshot)
+    if incoming_drawings or not existing_drawings:
+        return snapshot
+
+    incoming_code = _snapshot_code(snapshot)
+    existing_code = _snapshot_code(existing_snapshot)
+    if incoming_code and existing_code and incoming_code != existing_code:
+        return snapshot
+
+    snapshot["drawings"] = _json_clone(existing_drawings, [])
+    for key in ("drawingToolSettings", "drawingSettings", "activeDrawingToolSettings"):
+        if key not in snapshot and key in existing_snapshot:
+            snapshot[key] = _json_clone(existing_snapshot.get(key))
+
+    # 디버깅용 플래그. 차트 렌더링에는 영향 없다.
+    snapshot["_serverPreservedDrawings"] = True
+    snapshot["_serverPreservedAt"] = timezone.now().isoformat()
+    return snapshot
+
+
 def _set_chart_draft(request, payload, post=None):
     key = _chart_draft_key(request, post)
     snapshot = _safe_snapshot_obj(payload.get("chart_snapshot") or payload.get("snapshot"))
+    existing_snapshot = _existing_chart_snapshot(request, post)
 
-    chart_code = _clean_code(payload.get("chart_code") or payload.get("code") or snapshot.get("code"))
-    chart_name = _trim(payload.get("chart_name") or payload.get("name") or snapshot.get("name") or chart_code, 80)
-    chart_interval = _clean_interval(payload.get("chart_interval") or payload.get("interval") or snapshot.get("interval"))
+    chart_code = _clean_code(
+        payload.get("chart_code")
+        or payload.get("code")
+        or snapshot.get("code")
+        or existing_snapshot.get("code")
+        or existing_snapshot.get("chart_code")
+    )
+    chart_name = _trim(
+        payload.get("chart_name")
+        or payload.get("name")
+        or snapshot.get("name")
+        or existing_snapshot.get("name")
+        or existing_snapshot.get("chart_name")
+        or chart_code,
+        80,
+    )
+    chart_interval = _clean_interval(
+        payload.get("chart_interval")
+        or payload.get("interval")
+        or snapshot.get("interval")
+        or existing_snapshot.get("interval")
+        or existing_snapshot.get("chart_interval")
+    )
 
     if chart_code:
         snapshot["code"] = chart_code
@@ -132,12 +261,21 @@ def _set_chart_draft(request, payload, post=None):
         snapshot["name"] = chart_name
     snapshot["interval"] = chart_interval
 
+    snapshot = _merge_snapshot_with_existing_drawings(snapshot, existing_snapshot, payload)
+
     draft = {
         "media_type": _clean_media_type(payload.get("media_type") or "chart"),
         "chart_code": chart_code,
         "chart_name": chart_name,
         "chart_interval": chart_interval,
-        "chart_api_url": _trim(payload.get("chart_api_url") or payload.get("apiUrl") or snapshot.get("apiUrl"), 240),
+        "chart_api_url": _trim(
+            payload.get("chart_api_url")
+            or payload.get("apiUrl")
+            or snapshot.get("apiUrl")
+            or existing_snapshot.get("apiUrl")
+            or existing_snapshot.get("chart_api_url"),
+            240,
+        ),
         "chart_snapshot": _safe_snapshot_text(snapshot),
         "updated_at": timezone.now().isoformat(),
     }
@@ -159,7 +297,19 @@ def _apply_chart_fields(request, instance):
     chart_name = _trim(request.POST.get("chart_name"), 80)
     chart_interval = _clean_interval(request.POST.get("chart_interval"))
     chart_api_url = _trim(request.POST.get("chart_api_url"), 240)
-    chart_snapshot = _safe_snapshot_text(request.POST.get("chart_snapshot"))
+
+    snapshot = _safe_snapshot_obj(request.POST.get("chart_snapshot"))
+    if chart_code:
+        snapshot["code"] = chart_code
+    if chart_name:
+        snapshot["name"] = chart_name
+    if chart_interval:
+        snapshot["interval"] = chart_interval
+
+    existing_post = instance if getattr(instance, "pk", None) else None
+    existing_snapshot = _existing_chart_snapshot(request, existing_post)
+    snapshot = _merge_snapshot_with_existing_drawings(snapshot, existing_snapshot, request.POST)
+    chart_snapshot = _safe_snapshot_text(snapshot)
 
     instance.media_type = media_type
     instance.chart_code = chart_code
