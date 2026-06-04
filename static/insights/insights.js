@@ -396,11 +396,13 @@
   function insightFrameIntervalPreserveScript() {
     return `(function(){
       "use strict";
-      if (window.__BITGAK_INSIGHT_FRAME_BRIDGE_V10__) return;
-      window.__BITGAK_INSIGHT_FRAME_BRIDGE_V10__ = true;
+      if (window.__BITGAK_INSIGHT_FRAME_BRIDGE_V11__) return;
+      window.__BITGAK_INSIGHT_FRAME_BRIDGE_V11__ = true;
 
       var finalSaveTimer = null;
       var userDirtyTimer = null;
+      var lastStableDrawings = [];
+      var intervalSwitchingUntil = 0;
 
       function norm(value) {
         value = String(value || "1d").trim();
@@ -418,6 +420,62 @@
       function clone(value) {
         try { return JSON.parse(JSON.stringify(value || null)); }
         catch (e) { return null; }
+      }
+
+      function cloneDrawings(drawings) {
+        return clone(Array.isArray(drawings) ? drawings : []) || [];
+      }
+
+      function hasDrawings(snapshot) {
+        return !!(snapshot && Array.isArray(snapshot.drawings) && snapshot.drawings.length > 0);
+      }
+
+      function rememberStableDrawings(drawings) {
+        if (Array.isArray(drawings) && drawings.length > 0) {
+          lastStableDrawings = cloneDrawings(drawings);
+        }
+      }
+
+      function isIntervalSwitching() {
+        return Date.now() < intervalSwitchingUntil;
+      }
+
+      function markIntervalSwitching() {
+        intervalSwitchingUntil = Date.now() + 5200;
+      }
+
+      function getCoreStateDrawings() {
+        try {
+          var a = api();
+          if (a && a.state && Array.isArray(a.state.drawings)) return a.state.drawings;
+          if (a && typeof a.getDrawings === "function") return a.getDrawings() || [];
+        } catch (e) {}
+        return [];
+      }
+
+      function protectIntervalDrawings(snapshot, reason) {
+        if (!snapshot || typeof snapshot !== "object") return snapshot;
+        if (hasDrawings(snapshot)) {
+          rememberStableDrawings(snapshot.drawings);
+          return snapshot;
+        }
+
+        var stateDrawings = getCoreStateDrawings();
+        if (Array.isArray(stateDrawings) && stateDrawings.length > 0) {
+          snapshot.drawings = cloneDrawings(stateDrawings);
+          rememberStableDrawings(snapshot.drawings);
+          return snapshot;
+        }
+
+        // 일봉/주봉 전환 중에는 LightweightCharts pane 재배치가 먼저 끝나고
+        // SVG 드로잉 복원이 늦게 도착할 수 있다. 이때 빈 drawings snapshot을
+        // 부모 hidden input/서버에 저장하면 기존 빗각 드로잉이 사라진다.
+        if (isIntervalSwitching() && lastStableDrawings.length > 0) {
+          snapshot.drawings = cloneDrawings(lastStableDrawings);
+          snapshot.restoredDrawingsDuringIntervalSwitch = true;
+          snapshot.restoredDrawingsReason = reason || "interval-switch-protect";
+        }
+        return snapshot;
       }
 
       function api() { return window.BitgakChart || null; }
@@ -449,7 +507,7 @@
         fixed.preserveVisibleRange = false;
         fixed.preservePriceRange = false;
         fixed.resetViewportOnLoad = true;
-        fixed.viewportStrippedReason = "insight-frame-bridge-v10";
+        fixed.viewportStrippedReason = "insight-frame-bridge-v11";
         return fixed;
       }
 
@@ -472,6 +530,8 @@
           } catch (e) { snapshot.drawings = []; }
         }
 
+        snapshot = protectIntervalDrawings(snapshot, "capture");
+
         if (!Array.isArray(snapshot.indicators)) {
           try {
             snapshot.indicators = window.BitgakIndicators && typeof window.BitgakIndicators.getIndicators === "function" ? (window.BitgakIndicators.getIndicators() || []) : [];
@@ -480,7 +540,7 @@
 
         var meta = getCodeName(snapshot);
         snapshot.version = snapshot.version || 3;
-        snapshot.source = "bitgakview-insight-frame-bridge-v10";
+        snapshot.source = "bitgakview-insight-frame-bridge-v11";
         snapshot.sourceInterval = norm(snapshot.interval || current);
         snapshot.interval = norm(intervalOverride || snapshot.interval || current);
         snapshot.code = snapshot.code || meta.code;
@@ -493,7 +553,9 @@
 
       function postDirty(reason, snapshot) {
         try {
-          var snap = stripViewport(clone(snapshot) || snapshot || captureSnapshot());
+          var raw = clone(snapshot) || snapshot || captureSnapshot();
+          raw = protectIntervalDrawings(raw, reason || "post-dirty");
+          var snap = stripViewport(raw);
           if (window.parent && window.parent !== window) {
             window.parent.postMessage({
               type: "bitgak:insight-chart-dirty",
@@ -529,11 +591,14 @@
       function updateCoreSnapshotBeforeInterval(nextInterval) {
         var a = api();
         if (!a || !a.state) return null;
+        markIntervalSwitching();
 
         var current = currentInterval();
         var snapshot = captureSnapshot(current);
         snapshot.sourceInterval = current;
         snapshot.interval = current;
+        snapshot = protectIntervalDrawings(snapshot, "before-interval-switch");
+        if (hasDrawings(snapshot)) rememberStableDrawings(snapshot.drawings);
         snapshot = stripViewport(snapshot);
 
         // 중요: 여기서 a.state.insightSnapshotMode / insightSnapshot을 다시 세팅하지 않는다.
@@ -558,7 +623,10 @@
       function scheduleFinalSave(reason, nextInterval, delay) {
         clearTimeout(finalSaveTimer);
         finalSaveTimer = setTimeout(function () {
-          postDirty(reason || "interval-after-switch", captureSnapshot(nextInterval || currentInterval()));
+          var snap = captureSnapshot(nextInterval || currentInterval());
+          snap = protectIntervalDrawings(snap, reason || "interval-after-switch");
+          postDirty(reason || "interval-after-switch", snap);
+          setTimeout(function () { intervalSwitchingUntil = 0; }, 900);
         }, delay == null ? 900 : delay);
       }
 
@@ -660,7 +728,8 @@
             a0.state.insightSnapshot = null;
           }
         } catch (e) {}
-        scheduleFinalSave("data-loaded", currentInterval(), 520);
+        if (lastStableDrawings.length > 0) intervalSwitchingUntil = Math.max(intervalSwitchingUntil, Date.now() + 1800);
+        scheduleFinalSave("data-loaded", currentInterval(), 720);
         [40, 120, 260, 520, 900].forEach(function (delay) {
           setTimeout(function () {
             try {
@@ -677,7 +746,9 @@
         if (!data || typeof data !== "object") return;
 
         if (data.type === "bitgak:apply-insight-snapshot" && data.snapshot) {
-          var snapshot = stripViewport(clone(data.snapshot) || data.snapshot);
+          var rawSnapshot = clone(data.snapshot) || data.snapshot;
+          if (hasDrawings(rawSnapshot)) rememberStableDrawings(rawSnapshot.drawings);
+          var snapshot = stripViewport(rawSnapshot);
           var a = api();
           try {
             if (a && a.state) {
@@ -694,7 +765,7 @@
       });
 
       window.__BITGAK_INSIGHT_FRAME_BRIDGE__ = {
-        version: "v10",
+        version: "v11",
         switchInterval: triggerNativeIntervalSwitch,
         capture: function () { return captureSnapshot(currentInterval()); }
       };
@@ -1018,6 +1089,72 @@
   }
 
   var CHART_DIRTY_TIMERS = new WeakMap();
+  var FRAME_STABLE_DRAWINGS = new WeakMap();
+  var FRAME_INTERVAL_SWITCHING_UNTIL = new WeakMap();
+
+  function clonePlain(value) {
+    try { return JSON.parse(JSON.stringify(value || null)); }
+    catch (e) { return null; }
+  }
+
+  function snapshotHasDrawings(snapshot) {
+    return !!(snapshot && Array.isArray(snapshot.drawings) && snapshot.drawings.length > 0);
+  }
+
+  function rememberFrameStableDrawings(frame, snapshot) {
+    if (!frame || !snapshotHasDrawings(snapshot)) return;
+    FRAME_STABLE_DRAWINGS.set(frame, clonePlain(snapshot.drawings) || []);
+  }
+
+  function markFrameIntervalSwitching(frame) {
+    if (!frame) return;
+    FRAME_INTERVAL_SWITCHING_UNTIL.set(frame, Date.now() + 6200);
+  }
+
+  function isFrameIntervalSwitching(frame) {
+    return !!(frame && Date.now() < (FRAME_INTERVAL_SWITCHING_UNTIL.get(frame) || 0));
+  }
+
+  function intervalDirtyReason(reason) {
+    reason = String(reason || "");
+    return reason.indexOf("interval") >= 0 || reason.indexOf("data-loaded") >= 0 || reason.indexOf("restored") >= 0;
+  }
+
+  function snapshotLooksLikeManualClear(reason) {
+    reason = String(reason || "").toLowerCase();
+    return reason.indexOf("clear") >= 0 || reason.indexOf("delete") >= 0 || reason.indexOf("trash") >= 0 || reason.indexOf("remove") >= 0;
+  }
+
+  function protectFrameDrawings(frame, snapshot, reason) {
+    if (!frame || !snapshot || typeof snapshot !== "object") return snapshot;
+
+    if (snapshotHasDrawings(snapshot)) {
+      rememberFrameStableDrawings(frame, snapshot);
+      return snapshot;
+    }
+
+    if (snapshotLooksLikeManualClear(reason)) return snapshot;
+
+    var stored = FRAME_STABLE_DRAWINGS.get(frame);
+    if (!stored || !stored.length) {
+      var input = getSnapshotInputForFrame(frame);
+      var current = parseSnapshot(input);
+      if (snapshotMatchesStock(current, snapshot.code || frame.dataset.currentCode) && snapshotHasDrawings(current)) {
+        stored = clonePlain(current.drawings) || [];
+        FRAME_STABLE_DRAWINGS.set(frame, stored);
+      }
+    }
+
+    if (stored && stored.length && (isFrameIntervalSwitching(frame) || intervalDirtyReason(reason))) {
+      snapshot = Object.assign({}, snapshot, {
+        drawings: clonePlain(stored) || [],
+        restoredDrawingsDuringIntervalSwitch: true,
+        restoredDrawingsReason: reason || "parent-interval-protect"
+      });
+    }
+
+    return snapshot;
+  }
 
   function findInsightFrameBySource(source) {
     var frames = qsa(document, "[data-insight-stock-frame], [data-insight-stock-player-frame]");
@@ -1050,14 +1187,17 @@
 
   function writeSnapshotForFrame(frame, snapshot) {
     var input = getSnapshotInputForFrame(frame);
-    var fixed = snapshot && typeof snapshot === "object" ? stripInsightViewportOnly(Object.assign({}, snapshot), "write-hidden-v9") : {};
+    snapshot = protectFrameDrawings(frame, snapshot, "write-hidden");
+    var fixed = snapshot && typeof snapshot === "object" ? stripInsightViewportOnly(Object.assign({}, snapshot), "write-hidden-v11") : {};
+    rememberFrameStableDrawings(frame, fixed);
     if (input) input.value = toJson(fixed || {});
     if (frame) frame.dataset.userChanged = "1";
   }
 
   function saveSnapshotForFrame(frame, snapshot, options) {
     options = options || {};
-    var fixedSnapshot = snapshot && typeof snapshot === "object" ? stripInsightViewportOnly(Object.assign({}, snapshot), "save-frame-v9") : snapshot;
+    snapshot = protectFrameDrawings(frame, snapshot, "save-frame");
+    var fixedSnapshot = snapshot && typeof snapshot === "object" ? stripInsightViewportOnly(Object.assign({}, snapshot), "save-frame-v11") : snapshot;
     var form = frame && frame.closest("form");
     if (form) return saveChartDraftToServerForForm(form, fixedSnapshot, options);
 
@@ -1096,23 +1236,29 @@
       dirtyFrame.dataset.userChanged = "1";
 
       var incomingSnapshot = data.snapshot && typeof data.snapshot === "object" ? data.snapshot : null;
+      var reason = String(data.reason || "");
+      if (intervalDirtyReason(reason)) markFrameIntervalSwitching(dirtyFrame);
       if (data.interval) dirtyFrame.dataset.currentInterval = normalizeIntervalForEmbed(data.interval);
       if (incomingSnapshot && snapshotMatchesStock(incomingSnapshot, dirtyFrame.dataset.currentCode || incomingSnapshot.code)) {
-        incomingSnapshot = stripInsightViewportOnly(Object.assign({}, incomingSnapshot, {
+        incomingSnapshot = protectFrameDrawings(dirtyFrame, Object.assign({}, incomingSnapshot, {
           interval: normalizeIntervalForEmbed(incomingSnapshot.interval || data.interval || dirtyFrame.dataset.currentInterval || "1d")
-        }), "dirty-incoming-v9");
+        }), reason || "dirty-incoming");
+        incomingSnapshot = stripInsightViewportOnly(incomingSnapshot, "dirty-incoming-v11");
         writeSnapshotForFrame(dirtyFrame, incomingSnapshot);
         saveSnapshotForFrame(dirtyFrame, incomingSnapshot, { silent: true });
       }
 
       clearTimeout(CHART_DIRTY_TIMERS.get(dirtyFrame));
-      var reason = String(data.reason || "");
       var wait = reason.indexOf("interval") >= 0 || reason.indexOf("restored") >= 0 ? 1400 : (reason === "data-loaded" ? 1300 : 620);
       var timer = setTimeout(function () {
         requestFrameSnapshot(dirtyFrame, 1700, { noThumbnail: true }).then(function (snapshot) {
           if (!snapshot) return;
+          snapshot = protectFrameDrawings(dirtyFrame, snapshot, reason || "dirty-timer");
           writeSnapshotForFrame(dirtyFrame, snapshot);
           saveSnapshotForFrame(dirtyFrame, snapshot, { silent: true });
+          if (intervalDirtyReason(reason)) {
+            setTimeout(function () { FRAME_INTERVAL_SWITCHING_UNTIL.set(dirtyFrame, 0); }, 1200);
+          }
         });
       }, wait);
       CHART_DIRTY_TIMERS.set(dirtyFrame, timer);
