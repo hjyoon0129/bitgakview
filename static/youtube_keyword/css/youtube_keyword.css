@@ -1,0 +1,2605 @@
+:root {
+  --ytk-bg: #07101d;
+  --ytk-panel: rgba(9, 20, 36, 0.88);
+  --ytk-panel-strong: rgba(3, 10, 22, 0.72);
+  --ytk-line: rgba(74, 118, 176, 0.34);
+  --ytk-line-strong: rgba(70, 165, 255, 0.48);
+  --ytk-text: #eef7ff;
+  --ytk-muted: #94a9c7;
+  --ytk-blue: #38bdf8;
+  --ytk-cyan: #2dd4bf;
+  --ytk-radius-xl: 28px;
+  --ytk-radius-lg: 20px;
+  --ytk-shadow: 0 26px 80px rgba(0, 0, 0, 0.34);
+}
+
+.youtube-keyword-body {
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at top left, rgba(45, 212, 191, 0.13), transparent 30%),
+    radial-gradient(circle at top right, rgba(59, 130, 246, 0.16), transparent 34%),
+    linear-gradient(180deg, #06101b 0%, #07101d 45%, #091322 100%) !important;
+  color: var(--ytk-text);
+  overflow-x: hidden;
+}
+
+.youtube-keyword-body > header,
+.youtube-keyword-body .site-header,
+.youtube-keyword-body .global-header,
+.youtube-keyword-body .main-header,
+.youtube-keyword-body .top-navbar,
+.youtube-keyword-body .navbar,
+.youtube-keyword-body .app-header {
+  display: none !important;
+}
+
+.ytk-shell {
+  width: min(1480px, calc(100vw - 40px));
+  margin: 0 auto;
+  padding: 22px 0 72px;
+}
+
+.ytk-nav {
+  position: sticky;
+  top: 12px;
+  z-index: 9999;
+  min-height: 66px;
+  padding: 10px 12px;
+  margin-bottom: 22px;
+  border-radius: 24px;
+  border: 1px solid var(--ytk-line);
+  background:
+    linear-gradient(135deg, rgba(15, 46, 65, 0.94), rgba(10, 21, 38, 0.97) 44%, rgba(13, 26, 48, 0.95));
+  box-shadow: 0 20px 55px rgba(0, 0, 0, 0.24);
+  backdrop-filter: blur(16px);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 18px;
+}
+
+.ytk-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--ytk-text);
+  text-decoration: none;
+  min-width: 190px;
+}
+
+.ytk-logo {
+  width: 42px;
+  height: 42px;
+  border-radius: 14px;
+  display: grid;
+  place-items: center;
+  font-weight: 1000;
+  color: #062033;
+  background: linear-gradient(135deg, #2dd4bf, #60a5fa);
+  box-shadow: 0 14px 32px rgba(45, 212, 191, 0.22);
+}
+
+.ytk-brand strong {
+  display: block;
+  font-size: 18px;
+  font-weight: 1000;
+  letter-spacing: -0.04em;
+}
+
+.ytk-brand em {
+  display: block;
+  margin-top: 4px;
+  font-style: normal;
+  font-size: 11px;
+  font-weight: 900;
+  color: #7dd3fc;
+}
+
+.ytk-nav-links {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.ytk-nav-links::-webkit-scrollbar {
+  display: none;
+}
+
+.ytk-nav-links a {
+  min-height: 42px;
+  padding: 0 18px;
+  border-radius: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #dbeafe;
+  text-decoration: none;
+  font-size: 15px;
+  font-weight: 950;
+  white-space: nowrap;
+  border: 1px solid transparent;
+}
+
+.ytk-nav-links a:hover,
+.ytk-nav-links a.active {
+  color: #fff;
+  background: rgba(37, 99, 235, 0.20);
+  border-color: rgba(96, 165, 250, 0.28);
+}
+
+.ytk-hero {
+  border: 1px solid var(--ytk-line);
+  border-radius: var(--ytk-radius-xl);
+  background:
+    radial-gradient(circle at 82% 20%, rgba(45, 212, 239, 0.13), transparent 36%),
+    linear-gradient(135deg, rgba(10, 23, 42, 0.98), rgba(13, 38, 59, 0.88));
+  box-shadow: var(--ytk-shadow);
+  padding: 40px 40px 34px;
+  scroll-margin-top: 110px;
+}
+
+.ytk-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 0 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(45, 212, 239, 0.28);
+  background: rgba(14, 116, 144, 0.24);
+  color: #7dd3fc;
+  font-size: 12px;
+  font-weight: 950;
+  margin-bottom: 18px;
+}
+
+.ytk-hero h1 {
+  margin: 0;
+  font-size: clamp(40px, 5vw, 70px);
+  line-height: 1.02;
+  letter-spacing: -0.075em;
+  font-weight: 1000;
+}
+
+.ytk-hero p {
+  margin: 22px 0 28px;
+  max-width: 940px;
+  color: #c7d7ee;
+  font-size: 16px;
+  font-weight: 800;
+  line-height: 1.7;
+}
+
+.ytk-search-card {
+  max-width: 960px;
+  padding: 18px;
+  border-radius: 24px;
+  border: 1px solid rgba(96, 165, 250, 0.22);
+  background: rgba(3, 10, 22, 0.56);
+}
+
+.ytk-field {
+  min-width: 0;
+}
+
+.ytk-field label {
+  display: block;
+  margin-bottom: 8px;
+  color: #93c5fd;
+  font-size: 13px;
+  font-weight: 950;
+}
+
+.ytk-field input {
+  width: 100%;
+  height: 56px;
+  border-radius: 18px;
+  border: 1px solid rgba(96, 165, 250, 0.24);
+  background: rgba(2, 8, 23, 0.78);
+  color: #f8fbff;
+  padding: 0 18px;
+  outline: none;
+  font-size: 16px;
+  font-weight: 900;
+}
+
+.ytk-field input::placeholder {
+  color: rgba(203, 213, 225, 0.58);
+}
+
+.ytk-field input:focus {
+  border-color: rgba(45, 212, 239, 0.58);
+  box-shadow: 0 0 0 4px rgba(45, 212, 239, 0.10);
+}
+
+.ytk-options {
+  display: grid;
+  grid-template-columns: 220px 220px 140px;
+  gap: 12px;
+  align-items: end;
+  margin-top: 12px;
+}
+
+.ytk-select {
+  position: relative;
+}
+
+.ytk-select-btn {
+  width: 100%;
+  height: 56px;
+  padding: 0 15px 0 18px;
+  border-radius: 18px;
+  border: 1px solid rgba(96, 165, 250, 0.24);
+  background: linear-gradient(180deg, rgba(2, 8, 23, 0.94), rgba(4, 12, 26, 0.86));
+  color: #f8fbff;
+  font-size: 16px;
+  font-weight: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  cursor: pointer;
+}
+
+.ytk-select-btn i {
+  width: 9px;
+  height: 9px;
+  border-right: 2px solid #93c5fd;
+  border-bottom: 2px solid #93c5fd;
+  transform: rotate(45deg) translateY(-2px);
+  transition: transform .16s ease;
+}
+
+.ytk-select.open .ytk-select-btn {
+  border-color: rgba(45, 212, 239, 0.68);
+  box-shadow: 0 0 0 4px rgba(45, 212, 239, 0.10);
+}
+
+.ytk-select.open .ytk-select-btn i {
+  transform: rotate(225deg) translate(-2px, -2px);
+}
+
+.ytk-select-menu {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(100% + 8px);
+  z-index: 10020;
+  display: none;
+  padding: 8px;
+  border-radius: 18px;
+  border: 1px solid rgba(96, 165, 250, 0.28);
+  background: rgba(5, 13, 28, 0.985);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(18px);
+  max-height: 330px;
+  overflow-y: auto;
+}
+
+.ytk-select.open .ytk-select-menu {
+  display: grid;
+  gap: 6px;
+}
+
+.ytk-select-menu button {
+  width: 100%;
+  min-height: 56px;
+  padding: 10px 12px;
+  border: 1px solid transparent;
+  border-radius: 14px;
+  background: transparent;
+  color: #eaf2ff;
+  text-align: left;
+  cursor: pointer;
+}
+
+.ytk-select-menu button strong {
+  display: block;
+  font-size: 14px;
+  font-weight: 1000;
+}
+
+.ytk-select-menu button small {
+  display: block;
+  margin-top: 4px;
+  color: #94a9c7;
+  font-size: 11px;
+  font-weight: 850;
+}
+
+.ytk-select-menu button:hover,
+.ytk-select-menu button.selected {
+  background: rgba(14, 116, 144, 0.20);
+  border-color: rgba(45, 212, 239, 0.22);
+}
+
+.ytk-submit-btn {
+  height: 56px;
+  border: 0;
+  border-radius: 18px;
+  background: linear-gradient(135deg, #2dd4bf, #38bdf8);
+  color: #04111f;
+  font-size: 16px;
+  font-weight: 1000;
+  cursor: pointer;
+}
+
+.ytk-sticky-filter {
+  position: sticky;
+  top: 92px;
+  z-index: 9998;
+  margin: 16px 0 18px;
+  padding: 12px 14px;
+  border: 1px solid rgba(96, 165, 250, 0.26);
+  border-radius: 18px;
+  background: rgba(7, 16, 29, 0.96);
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.25);
+  backdrop-filter: blur(14px);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.ytk-sticky-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.ytk-sticky-left::-webkit-scrollbar {
+  display: none;
+}
+
+.ytk-sticky-left strong,
+.ytk-sticky-left span,
+.ytk-sticky-left em,
+.ytk-sticky-filter a {
+  min-height: 30px;
+  padding: 0 11px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap;
+  font-size: 12px;
+  font-weight: 950;
+  font-style: normal;
+}
+
+.ytk-sticky-left strong {
+  background: rgba(45, 212, 239, 0.14);
+  color: #e0f2fe;
+}
+
+.ytk-sticky-left span {
+  background: rgba(37, 99, 235, 0.14);
+  color: #bfdbfe;
+}
+
+.ytk-sticky-left em {
+  background: rgba(34, 197, 94, 0.14);
+  color: #bbf7d0;
+}
+
+.ytk-sticky-filter a {
+  background: linear-gradient(135deg, #2874f0, #16b8d9);
+  color: #fff;
+  text-decoration: none;
+  flex: 0 0 auto;
+}
+
+.ytk-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.ytk-summary-card,
+.ytk-notice-card {
+  border: 1px solid var(--ytk-line);
+  border-radius: 22px;
+  background: rgba(9, 20, 36, 0.84);
+  box-shadow: var(--ytk-shadow);
+  padding: 20px;
+}
+
+.ytk-summary-card span,
+.ytk-notice-card strong {
+  display: block;
+  color: #93c5fd;
+  font-size: 12px;
+  font-weight: 950;
+}
+
+.ytk-summary-card strong {
+  display: block;
+  margin-top: 8px;
+  font-size: 26px;
+  font-weight: 1000;
+  letter-spacing: -0.05em;
+  word-break: keep-all;
+}
+
+.ytk-notice-card {
+  margin-top: 14px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.ytk-notice-card span {
+  color: #c7d7ee;
+  font-size: 13px;
+  font-weight: 850;
+  line-height: 1.5;
+}
+
+.ytk-result-grid {
+  margin-top: 20px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 390px;
+  gap: 18px;
+  align-items: start;
+}
+
+.ytk-side {
+  display: grid;
+  gap: 18px;
+}
+
+.ytk-panel {
+  border: 1px solid var(--ytk-line);
+  border-radius: var(--ytk-radius-xl);
+  background: var(--ytk-panel);
+  box-shadow: var(--ytk-shadow);
+  overflow: hidden;
+}
+
+.ytk-panel-head {
+  padding: 22px 24px 16px;
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  align-items: flex-start;
+}
+
+.ytk-panel-head h2 {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 1000;
+  letter-spacing: -0.05em;
+}
+
+.ytk-panel-head p {
+  margin: 8px 0 0;
+  color: var(--ytk-muted);
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1.45;
+}
+
+.ytk-panel-actions {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.ytk-copy-btn,
+.ytk-row-btn,
+.ytk-excel-btn {
+  min-height: 36px;
+  padding: 0 13px;
+  border-radius: 13px;
+  border: 1px solid rgba(45, 212, 239, 0.28);
+  background: rgba(14, 116, 144, 0.20);
+  color: #67e8f9;
+  font-size: 12px;
+  font-weight: 950;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.ytk-copy-btn:hover,
+.ytk-row-btn:hover,
+.ytk-excel-btn:hover {
+  border-color: rgba(45, 212, 239, 0.55);
+  background: rgba(14, 116, 144, 0.30);
+}
+
+.ytk-excel-btn {
+  min-height: 36px;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-color: rgba(34, 197, 94, 0.28);
+  background: rgba(22, 101, 52, 0.22);
+  color: #bbf7d0;
+}
+
+.ytk-excel-btn:hover {
+  border-color: rgba(34, 197, 94, 0.55);
+  background: rgba(22, 101, 52, 0.34);
+}
+
+.ytk-table-wrap {
+  padding: 0 18px 22px;
+  overflow-x: auto;
+}
+
+.ytk-table {
+  width: 100%;
+  min-width: 1180px;
+  border-collapse: separate;
+  border-spacing: 0 8px;
+}
+
+.ytk-table th {
+  position: sticky;
+  top: 146px;
+  z-index: 5;
+  padding: 10px 12px;
+  color: #93c5fd;
+  font-size: 12px;
+  font-weight: 950;
+  text-align: right;
+  background: rgba(7, 16, 29, 0.96);
+  backdrop-filter: blur(12px);
+}
+
+.ytk-table th:first-child {
+  text-align: left;
+  border-radius: 12px 0 0 12px;
+}
+
+.ytk-table th:last-child {
+  border-radius: 0 12px 12px 0;
+}
+
+.ytk-table td {
+  padding: 14px 12px;
+  background: rgba(3, 10, 22, 0.64);
+  border-top: 1px solid rgba(96, 165, 250, 0.14);
+  border-bottom: 1px solid rgba(96, 165, 250, 0.14);
+  color: #eaf2ff;
+  font-size: 14px;
+  font-weight: 900;
+  text-align: right;
+}
+
+.ytk-table td:first-child {
+  border-left: 1px solid rgba(96, 165, 250, 0.14);
+  border-radius: 15px 0 0 15px;
+  text-align: left;
+}
+
+.ytk-table td:last-child {
+  border-right: 1px solid rgba(96, 165, 250, 0.14);
+  border-radius: 0 15px 15px 0;
+}
+
+.ytk-keyword-row {
+  cursor: pointer;
+}
+
+.ytk-keyword-row:hover td,
+.ytk-keyword-row.active td {
+  background: rgba(14, 116, 144, 0.20);
+  border-color: rgba(45, 212, 239, 0.28);
+}
+
+.ytk-keyword-cell strong {
+  display: block;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 1000;
+}
+
+.ytk-keyword-cell span {
+  display: block;
+  margin-top: 5px;
+  color: #7dd3fc;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.ytk-selected-panel {
+  padding: 22px 24px;
+}
+
+.ytk-selected-kicker {
+  color: #93c5fd;
+  font-size: 12px;
+  font-weight: 950;
+}
+
+.ytk-selected-panel strong {
+  display: block;
+  margin-top: 8px;
+  color: #fff;
+  font-size: 26px;
+  font-weight: 1000;
+  letter-spacing: -0.05em;
+}
+
+.ytk-selected-panel span {
+  display: block;
+  margin-top: 8px;
+  color: #7dd3fc;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.ytk-title-groups,
+.ytk-tag-groups {
+  padding: 0 24px 24px;
+  display: grid;
+  gap: 14px;
+}
+
+.ytk-title-group,
+.ytk-tag-group {
+  border-radius: 18px;
+  border: 1px solid rgba(96, 165, 250, 0.14);
+  background: rgba(3, 10, 22, 0.46);
+  padding: 16px;
+}
+
+.ytk-title-group h3,
+.ytk-tag-group h3 {
+  margin: 0 0 10px;
+  color: #93c5fd;
+  font-size: 13px;
+  font-weight: 1000;
+}
+
+.ytk-title-group ol {
+  margin: 0;
+  padding-left: 20px;
+  display: grid;
+  gap: 9px;
+}
+
+.ytk-title-group li {
+  color: #eaf2ff;
+  font-size: 14px;
+  font-weight: 900;
+  line-height: 1.55;
+}
+
+.ytk-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.ytk-tags span {
+  min-height: 32px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: rgba(45, 212, 239, 0.14);
+  color: #67e8f9;
+  border: 1px solid rgba(45, 212, 239, 0.18);
+  display: inline-flex;
+  align-items: center;
+  font-size: 13px;
+  font-weight: 950;
+}
+
+.ytk-hidden-copy {
+  position: fixed;
+  left: -9999px;
+  top: -9999px;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
+@media (max-width: 1180px) {
+  .ytk-result-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .ytk-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 760px) {
+  .ytk-shell {
+    width: min(100%, 430px);
+    padding: 14px 10px 60px;
+  }
+
+  .ytk-nav {
+    top: 8px;
+    min-height: auto;
+    padding: 12px;
+    border-radius: 20px;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .ytk-brand {
+    align-self: flex-start;
+  }
+
+  .ytk-nav-links {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .ytk-nav-links a {
+    min-height: 38px;
+    padding: 0 12px;
+    border-radius: 14px;
+    font-size: 13px;
+  }
+
+  .ytk-hero {
+    padding: 30px 22px 24px;
+    border-radius: 22px;
+  }
+
+  .ytk-hero h1 {
+    font-size: 38px;
+    line-height: 1.05;
+  }
+
+  .ytk-hero p {
+    font-size: 13px;
+    line-height: 1.65;
+  }
+
+  .ytk-search-card {
+    padding: 14px;
+    border-radius: 20px;
+  }
+
+  .ytk-options {
+    grid-template-columns: 1fr;
+  }
+
+  .ytk-sticky-filter {
+    top: 132px;
+    border-radius: 16px;
+  }
+
+  .ytk-sticky-left strong,
+  .ytk-sticky-left span,
+  .ytk-sticky-left em,
+  .ytk-sticky-filter a {
+    min-height: 28px;
+    padding: 0 9px;
+    font-size: 11px;
+  }
+
+  .ytk-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .ytk-summary-card {
+    padding: 18px;
+    border-radius: 20px;
+  }
+
+  .ytk-summary-card strong {
+    font-size: 24px;
+  }
+
+  .ytk-notice-card {
+    align-items: flex-start;
+    flex-direction: column;
+    padding: 18px;
+  }
+
+  .ytk-panel {
+    border-radius: 22px;
+  }
+
+  .ytk-panel-head {
+    padding: 20px 18px 14px;
+    flex-direction: column;
+  }
+
+  .ytk-panel-head h2 {
+    font-size: 22px;
+  }
+
+  .ytk-table-wrap {
+    padding: 0 12px 18px;
+  }
+
+  .ytk-table {
+    min-width: 780px;
+  }
+
+  .ytk-table th {
+    top: 190px;
+  }
+
+  .ytk-title-groups,
+  .ytk-tag-groups {
+    padding-left: 18px;
+    padding-right: 18px;
+  }
+}
+
+/* v4: sortable sticky table header, right sticky idea panel, action column removed */
+.ytk-result-grid {
+  align-items: start;
+}
+
+.ytk-side {
+  position: sticky;
+  top: 96px;
+  max-height: calc(100vh - 112px);
+  overflow-y: auto;
+  padding-right: 4px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(45, 212, 239, 0.38) rgba(3, 10, 22, 0.30);
+}
+
+.ytk-side::-webkit-scrollbar {
+  width: 8px;
+}
+
+.ytk-side::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: rgba(45, 212, 239, 0.38);
+}
+
+.ytk-side::-webkit-scrollbar-track {
+  background: rgba(3, 10, 22, 0.30);
+}
+
+.ytk-table-wrap {
+  position: relative;
+  overflow-x: auto;
+  overflow-y: visible;
+}
+
+.ytk-table {
+  min-width: 1040px;
+}
+
+.ytk-table thead {
+  position: sticky;
+  top: 92px;
+  z-index: 60;
+}
+
+.ytk-table th {
+  position: sticky;
+  top: 92px;
+  z-index: 61;
+  padding: 10px 10px;
+  background: rgba(7, 16, 29, 0.98);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.26);
+  backdrop-filter: blur(14px);
+}
+
+.ytk-keyword-head {
+  min-width: 300px;
+}
+
+.ytk-sort-btn {
+  width: 100%;
+  min-height: 34px;
+  padding: 0 9px;
+  border: 1px solid transparent;
+  border-radius: 11px;
+  background: transparent;
+  color: #93c5fd;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 1000;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.ytk-sort-btn:hover,
+.ytk-sort-btn.active {
+  color: #e0f2fe;
+  background: rgba(14, 116, 144, 0.20);
+  border-color: rgba(45, 212, 239, 0.22);
+}
+
+.ytk-sort-btn i {
+  width: 0;
+  height: 0;
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+  border-top: 6px solid rgba(147, 197, 253, 0.70);
+  transform: translateY(1px);
+}
+
+.ytk-sort-btn.active.asc i {
+  border-top: 0;
+  border-bottom: 6px solid #67e8f9;
+}
+
+.ytk-sort-btn.active.desc i {
+  border-top-color: #67e8f9;
+}
+
+.ytk-speed-pill {
+  min-height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 1000;
+  border: 1px solid rgba(96, 165, 250, 0.18);
+}
+
+.speed-3 {
+  color: #bbf7d0;
+  background: rgba(34, 197, 94, 0.15);
+  border-color: rgba(34, 197, 94, 0.26);
+}
+
+.speed-2 {
+  color: #bfdbfe;
+  background: rgba(37, 99, 235, 0.15);
+  border-color: rgba(96, 165, 250, 0.26);
+}
+
+.speed-1 {
+  color: #fde68a;
+  background: rgba(250, 204, 21, 0.12);
+  border-color: rgba(250, 204, 21, 0.20);
+}
+
+@media (max-width: 1180px) {
+  .ytk-side {
+    position: static;
+    max-height: none;
+    overflow: visible;
+    padding-right: 0;
+  }
+}
+
+@media (max-width: 760px) {
+  .ytk-table {
+    min-width: 980px;
+  }
+
+  .ytk-table thead,
+  .ytk-table th {
+    top: 132px;
+  }
+}
+
+/* v5: 조회속도 반영 기회점수 + 엑셀형 표 헤더 고정 보정 */
+:root {
+  --ytk-table-sticky-top: 96px;
+}
+
+.ytk-panel-head {
+  position: relative;
+  z-index: 2;
+}
+
+.ytk-table-wrap {
+  position: relative;
+  overflow-x: auto;
+  overflow-y: visible;
+  padding-top: 0;
+}
+
+.ytk-table {
+  border-collapse: separate;
+  border-spacing: 0 8px;
+  min-width: 1060px;
+}
+
+.ytk-table thead {
+  position: sticky;
+  top: var(--ytk-table-sticky-top);
+  z-index: 80;
+}
+
+.ytk-table thead tr {
+  position: relative;
+  z-index: 81;
+}
+
+.ytk-table th {
+  position: sticky !important;
+  top: var(--ytk-table-sticky-top) !important;
+  z-index: 82 !important;
+  height: 46px;
+  padding: 0 10px;
+  background: linear-gradient(180deg, rgba(7, 16, 29, 0.995), rgba(5, 13, 27, 0.995));
+  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.32);
+  backdrop-filter: blur(14px);
+  vertical-align: middle;
+}
+
+.ytk-table th:first-child {
+  padding-left: 12px;
+}
+
+.ytk-keyword-head {
+  min-width: 310px;
+  color: #93c5fd;
+}
+
+.ytk-sort-btn {
+  min-height: 34px;
+  height: 34px;
+}
+
+.ytk-side {
+  position: sticky;
+  top: var(--ytk-table-sticky-top);
+  align-self: start;
+  max-height: calc(100vh - var(--ytk-table-sticky-top) - 16px);
+  overflow-y: auto;
+}
+
+@media (max-width: 1180px) {
+  .ytk-side {
+    position: static;
+    max-height: none;
+    overflow: visible;
+  }
+}
+
+@media (max-width: 760px) {
+  :root {
+    --ytk-table-sticky-top: 154px;
+  }
+
+  .ytk-table {
+    min-width: 1000px;
+  }
+
+  .ytk-table thead,
+  .ytk-table th {
+    top: var(--ytk-table-sticky-top) !important;
+  }
+}
+
+
+/* v6: 화면 정리 및 표 헤더/오른쪽 패널 고정 안정화 */
+.ytk-notice-card {
+  display: none !important;
+}
+
+.ytk-result-grid {
+  align-items: start;
+}
+
+.ytk-table-panel {
+  overflow: visible !important;
+}
+
+.ytk-table-wrap {
+  overflow-x: visible !important;
+  overflow-y: visible !important;
+  padding-top: 0 !important;
+}
+
+.ytk-table {
+  min-width: 1180px;
+  border-collapse: separate;
+  border-spacing: 0 8px;
+}
+
+.ytk-table thead {
+  position: sticky;
+  top: 96px;
+  z-index: 80;
+  background: rgba(7, 16, 29, 0.985);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.28);
+}
+
+.ytk-table thead tr {
+  background: rgba(7, 16, 29, 0.985);
+}
+
+.ytk-table th {
+  position: static !important;
+  top: auto !important;
+  z-index: auto !important;
+  background: rgba(7, 16, 29, 0.985) !important;
+  backdrop-filter: none !important;
+  padding-top: 12px !important;
+  padding-bottom: 12px !important;
+  border-top: 1px solid rgba(96, 165, 250, 0.16);
+  border-bottom: 1px solid rgba(96, 165, 250, 0.16);
+}
+
+.ytk-table th:first-child {
+  border-left: 1px solid rgba(96, 165, 250, 0.16);
+}
+
+.ytk-table th:last-child {
+  border-right: 1px solid rgba(96, 165, 250, 0.16);
+}
+
+.ytk-side {
+  position: sticky;
+  top: 96px;
+  align-self: start;
+  max-height: calc(100vh - 112px);
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.ytk-side::-webkit-scrollbar {
+  width: 6px;
+}
+
+.ytk-side::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: rgba(96, 165, 250, 0.25);
+}
+
+@media (max-width: 1180px) {
+  .ytk-side {
+    position: static;
+    max-height: none;
+    overflow: visible;
+    padding-right: 0;
+  }
+
+  .ytk-table-wrap {
+    overflow-x: auto !important;
+  }
+
+  .ytk-table thead {
+    position: static;
+    top: auto;
+    box-shadow: none;
+  }
+}
+
+@media (max-width: 760px) {
+  .ytk-table-wrap {
+    overflow-x: auto !important;
+  }
+
+  .ytk-table thead {
+    position: static;
+    top: auto;
+  }
+}
+
+
+/* v7: login quota / premium state */
+.ytk-access-status,
+.ytk-upgrade-card {
+  margin: 18px 0 0;
+  border: 1px solid rgba(96, 165, 250, 0.24);
+  border-radius: 22px;
+  background: rgba(9, 20, 36, 0.82);
+  box-shadow: var(--ytk-shadow);
+  padding: 18px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.ytk-access-status strong,
+.ytk-upgrade-card strong {
+  display: block;
+  color: #fff;
+  font-size: 17px;
+  font-weight: 1000;
+  letter-spacing: -0.045em;
+}
+
+.ytk-access-status span,
+.ytk-upgrade-card p {
+  display: block;
+  margin: 6px 0 0;
+  color: #a9bfdd;
+  font-size: 13px;
+  font-weight: 850;
+  line-height: 1.55;
+}
+
+.ytk-access-status a,
+.ytk-upgrade-card a {
+  min-height: 40px;
+  padding: 0 15px;
+  border-radius: 15px;
+  background: linear-gradient(135deg, #2874f0, #16b8d9);
+  color: #fff;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+  font-size: 13px;
+  font-weight: 1000;
+}
+
+.ytk-access-status.is-premium {
+  border-color: rgba(34, 197, 94, 0.28);
+  background: rgba(6, 78, 59, 0.20);
+}
+
+.ytk-access-status.is-locked,
+.ytk-upgrade-card {
+  border-color: rgba(56, 189, 248, 0.26);
+  background: rgba(7, 16, 29, 0.92);
+}
+
+.ytk-upgrade-card {
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.ytk-upgrade-card div {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.ytk-algorithm-pill {
+  min-height: 30px;
+  padding: 0 11px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 1000;
+  border: 1px solid rgba(96, 165, 250, 0.18);
+  background: rgba(37, 99, 235, 0.16);
+  color: #bfdbfe;
+}
+
+.ytk-algorithm-pill.signal-3 {
+  border-color: rgba(34, 197, 94, 0.24);
+  background: rgba(22, 101, 52, 0.28);
+  color: #bbf7d0;
+}
+
+.ytk-algorithm-pill.signal-2 {
+  border-color: rgba(56, 189, 248, 0.24);
+  background: rgba(14, 116, 144, 0.24);
+  color: #bae6fd;
+}
+
+.ytk-algorithm-pill.signal-1 {
+  border-color: rgba(250, 204, 21, 0.26);
+  background: rgba(113, 63, 18, 0.26);
+  color: #fde68a;
+}
+
+@media (max-width: 760px) {
+  .ytk-access-status,
+  .ytk-upgrade-card {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 16px;
+    border-radius: 20px;
+  }
+
+  .ytk-access-status a,
+  .ytk-upgrade-card a {
+    width: 100%;
+  }
+}
+
+/* v8: 구독대비조회수 표기 + 테이블/오른쪽 패널 레이아웃 안정화 */
+.ytk-result-grid {
+  grid-template-columns: minmax(0, 1fr) minmax(300px, 360px) !important;
+  gap: 16px !important;
+  overflow: visible !important;
+}
+
+.ytk-table-panel,
+.ytk-result-grid > .ytk-panel,
+.ytk-side,
+.ytk-side .ytk-panel {
+  min-width: 0 !important;
+}
+
+.ytk-table-panel {
+  overflow: visible !important;
+}
+
+.ytk-table-wrap {
+  width: 100% !important;
+  max-width: 100% !important;
+  overflow-x: visible !important;
+  overflow-y: visible !important;
+  padding: 0 14px 20px !important;
+}
+
+.ytk-table {
+  width: 100% !important;
+  min-width: 0 !important;
+  table-layout: fixed !important;
+  border-collapse: separate !important;
+  border-spacing: 0 8px !important;
+}
+
+.ytk-table col.ytk-col-keyword { width: 25%; }
+.ytk-table col.ytk-col-views { width: 9%; }
+.ytk-table col.ytk-col-avg { width: 9%; }
+.ytk-table col.ytk-col-recent { width: 8.5%; }
+.ytk-table col.ytk-col-speed { width: 9%; }
+.ytk-table col.ytk-col-ratio { width: 11%; }
+.ytk-table col.ytk-col-algo { width: 8.5%; }
+.ytk-table col.ytk-col-demand { width: 6.5%; }
+.ytk-table col.ytk-col-comp { width: 7%; }
+.ytk-table col.ytk-col-opportunity { width: 6.5%; }
+
+.ytk-table thead {
+  position: sticky !important;
+  top: 96px !important;
+  z-index: 90 !important;
+  background: rgba(7, 16, 29, 0.992) !important;
+  box-shadow: 0 12px 26px rgba(0, 0, 0, 0.32) !important;
+}
+
+.ytk-table thead tr {
+  background: rgba(7, 16, 29, 0.992) !important;
+}
+
+.ytk-table th {
+  position: static !important;
+  top: auto !important;
+  z-index: auto !important;
+  height: 46px !important;
+  padding: 7px 6px !important;
+  background: rgba(7, 16, 29, 0.992) !important;
+  border-top: 1px solid rgba(96, 165, 250, 0.16) !important;
+  border-bottom: 1px solid rgba(96, 165, 250, 0.16) !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  vertical-align: middle !important;
+}
+
+.ytk-keyword-head {
+  min-width: 0 !important;
+  width: auto !important;
+  padding-left: 10px !important;
+}
+
+.ytk-sort-btn {
+  width: 100% !important;
+  min-height: 34px !important;
+  height: auto !important;
+  padding: 4px 4px !important;
+  justify-content: center !important;
+  gap: 4px !important;
+  white-space: normal !important;
+  word-break: keep-all !important;
+  line-height: 1.12 !important;
+  font-size: 11.5px !important;
+  letter-spacing: -0.04em !important;
+  text-align: center !important;
+}
+
+.ytk-sort-btn i {
+  flex: 0 0 auto !important;
+}
+
+.ytk-table td {
+  padding: 12px 7px !important;
+  font-size: 13px !important;
+  line-height: 1.25 !important;
+  white-space: nowrap !important;
+}
+
+.ytk-keyword-cell {
+  overflow: hidden !important;
+}
+
+.ytk-keyword-cell strong,
+.ytk-keyword-cell span {
+  max-width: 100% !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+.ytk-speed-pill,
+.ytk-algorithm-pill {
+  min-height: 26px !important;
+  padding: 0 8px !important;
+  font-size: 11.5px !important;
+  white-space: nowrap !important;
+}
+
+.ytk-side {
+  width: 100% !important;
+  position: sticky !important;
+  top: 96px !important;
+  align-self: start !important;
+  max-height: calc(100vh - 112px) !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  padding-right: 4px !important;
+}
+
+.ytk-side .ytk-panel-head,
+.ytk-side .ytk-selected-panel {
+  padding-left: 20px !important;
+  padding-right: 20px !important;
+}
+
+.ytk-selected-panel strong {
+  font-size: 24px !important;
+  line-height: 1.18 !important;
+}
+
+.ytk-selected-panel span {
+  font-size: 12px !important;
+  line-height: 1.55 !important;
+  word-break: keep-all !important;
+}
+
+.ytk-title-groups,
+.ytk-tag-groups {
+  padding-left: 20px !important;
+  padding-right: 20px !important;
+}
+
+.ytk-title-group,
+.ytk-tag-group {
+  padding: 14px !important;
+}
+
+.ytk-title-group li {
+  font-size: 13px !important;
+}
+
+@media (max-width: 1280px) {
+  .ytk-result-grid {
+    grid-template-columns: minmax(0, 1fr) 330px !important;
+  }
+
+  .ytk-table col.ytk-col-keyword { width: 23%; }
+  .ytk-table col.ytk-col-ratio { width: 11.5%; }
+
+  .ytk-table td {
+    font-size: 12.5px !important;
+    padding-left: 6px !important;
+    padding-right: 6px !important;
+  }
+
+  .ytk-sort-btn {
+    font-size: 11px !important;
+  }
+}
+
+@media (max-width: 1180px) {
+  .ytk-result-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .ytk-side {
+    position: static !important;
+    max-height: none !important;
+    overflow: visible !important;
+    padding-right: 0 !important;
+  }
+
+  .ytk-table-wrap {
+    overflow-x: auto !important;
+    overflow-y: visible !important;
+  }
+
+  .ytk-table {
+    min-width: 1120px !important;
+    table-layout: fixed !important;
+  }
+
+  .ytk-table thead {
+    position: static !important;
+    top: auto !important;
+    box-shadow: none !important;
+  }
+}
+
+@media (max-width: 760px) {
+  .ytk-table {
+    min-width: 1080px !important;
+  }
+
+  .ytk-table td {
+    font-size: 12px !important;
+  }
+}
+
+
+/* =========================================================
+   v10 compact layout polish
+   - 무료 회원 사용량 영역은 얇게 정리
+   - 요약 카드 5개를 PC에서 1줄로 정렬
+   - 전체 폭/글씨/테이블 폭을 줄여 오른쪽 패널과 균형 조정
+   - 추천 키워드 헤더와 표 배치를 더 가운데 정렬
+   ========================================================= */
+:root {
+  --ytk-compact-shadow: 0 18px 52px rgba(0, 0, 0, 0.26);
+}
+
+.ytk-shell {
+  width: min(1410px, calc(100vw - 72px)) !important;
+  padding-top: 18px !important;
+}
+
+.ytk-nav {
+  min-height: 60px !important;
+  margin-bottom: 18px !important;
+  border-radius: 22px !important;
+}
+
+.ytk-logo {
+  width: 38px !important;
+  height: 38px !important;
+  border-radius: 13px !important;
+  font-size: 14px !important;
+}
+
+.ytk-brand strong {
+  font-size: 16px !important;
+}
+
+.ytk-brand em {
+  font-size: 10px !important;
+}
+
+.ytk-nav-links a {
+  min-height: 38px !important;
+  padding: 0 15px !important;
+  border-radius: 14px !important;
+  font-size: 13px !important;
+}
+
+.ytk-hero {
+  padding: 32px 34px 28px !important;
+  border-radius: 24px !important;
+  box-shadow: var(--ytk-compact-shadow) !important;
+}
+
+.ytk-hero h1 {
+  font-size: clamp(34px, 4.2vw, 58px) !important;
+}
+
+.ytk-hero p {
+  margin: 16px 0 22px !important;
+  font-size: 14px !important;
+  line-height: 1.62 !important;
+}
+
+.ytk-search-card {
+  max-width: 900px !important;
+  padding: 15px !important;
+  border-radius: 22px !important;
+}
+
+.ytk-field label {
+  font-size: 12px !important;
+  margin-bottom: 7px !important;
+}
+
+.ytk-field input,
+.ytk-select-btn,
+.ytk-submit-btn {
+  height: 50px !important;
+  border-radius: 15px !important;
+  font-size: 14px !important;
+}
+
+.ytk-options {
+  grid-template-columns: 200px 200px 128px !important;
+  gap: 10px !important;
+}
+
+.ytk-access-status,
+.ytk-upgrade-card {
+  margin: 14px 0 14px !important;
+  padding: 14px 18px !important;
+  min-height: 70px !important;
+  border-radius: 20px !important;
+  box-shadow: var(--ytk-compact-shadow) !important;
+}
+
+.ytk-access-status strong,
+.ytk-upgrade-card strong {
+  font-size: 14px !important;
+  letter-spacing: -0.04em !important;
+}
+
+.ytk-access-status span,
+.ytk-upgrade-card p {
+  margin-top: 5px !important;
+  font-size: 12px !important;
+  line-height: 1.45 !important;
+}
+
+.ytk-access-status a,
+.ytk-upgrade-card a {
+  min-height: 36px !important;
+  padding: 0 14px !important;
+  border-radius: 14px !important;
+  font-size: 12px !important;
+}
+
+.ytk-summary {
+  display: grid !important;
+  grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+  gap: 12px !important;
+  margin: 0 0 18px !important;
+  align-items: stretch !important;
+}
+
+.ytk-summary-card {
+  min-height: 86px !important;
+  padding: 16px 18px !important;
+  border-radius: 18px !important;
+  box-shadow: var(--ytk-compact-shadow) !important;
+}
+
+.ytk-summary-card span {
+  font-size: 11px !important;
+  letter-spacing: -0.025em !important;
+}
+
+.ytk-summary-card strong {
+  margin-top: 7px !important;
+  font-size: clamp(20px, 1.6vw, 27px) !important;
+  line-height: 1.06 !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+.ytk-result-grid {
+  width: 100% !important;
+  max-width: 100% !important;
+  margin-top: 18px !important;
+  grid-template-columns: minmax(0, 1fr) minmax(285px, 335px) !important;
+  gap: 14px !important;
+}
+
+.ytk-panel {
+  border-radius: 22px !important;
+  box-shadow: var(--ytk-compact-shadow) !important;
+}
+
+.ytk-table-panel .ytk-panel-head {
+  padding: 20px 22px 14px !important;
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto !important;
+  align-items: center !important;
+  gap: 12px !important;
+}
+
+.ytk-table-panel .ytk-panel-head > div:first-child {
+  min-width: 0 !important;
+  text-align: center !important;
+  padding-left: 120px !important;
+}
+
+.ytk-panel-head h2 {
+  font-size: 22px !important;
+  line-height: 1.1 !important;
+}
+
+.ytk-panel-head p {
+  margin-top: 7px !important;
+  font-size: 12px !important;
+  line-height: 1.45 !important;
+  word-break: keep-all !important;
+}
+
+.ytk-copy-btn,
+.ytk-row-btn,
+.ytk-excel-btn {
+  min-height: 34px !important;
+  padding: 0 12px !important;
+  border-radius: 12px !important;
+  font-size: 11.5px !important;
+}
+
+.ytk-table-wrap {
+  padding: 0 16px 18px !important;
+}
+
+.ytk-table {
+  width: 100% !important;
+  min-width: 0 !important;
+  table-layout: fixed !important;
+  border-spacing: 0 7px !important;
+}
+
+.ytk-table col.ytk-col-keyword { width: 23% !important; }
+.ytk-table col.ytk-col-views { width: 8.5% !important; }
+.ytk-table col.ytk-col-avg { width: 8.5% !important; }
+.ytk-table col.ytk-col-recent { width: 7.5% !important; }
+.ytk-table col.ytk-col-speed { width: 8.5% !important; }
+.ytk-table col.ytk-col-ratio { width: 12% !important; }
+.ytk-table col.ytk-col-algo { width: 8.5% !important; }
+.ytk-table col.ytk-col-demand { width: 7% !important; }
+.ytk-table col.ytk-col-comp { width: 7.5% !important; }
+.ytk-table col.ytk-col-opportunity { width: 9% !important; }
+
+.ytk-table thead {
+  top: 88px !important;
+}
+
+.ytk-table th {
+  height: 42px !important;
+  padding: 5px 5px !important;
+}
+
+.ytk-table th:first-child,
+.ytk-table td:first-child {
+  text-align: left !important;
+}
+
+.ytk-keyword-head {
+  font-size: 11.5px !important;
+  padding-left: 10px !important;
+}
+
+.ytk-sort-btn {
+  min-height: 30px !important;
+  height: 30px !important;
+  padding: 2px 3px !important;
+  font-size: 10.5px !important;
+  line-height: 1.05 !important;
+  letter-spacing: -0.055em !important;
+}
+
+.ytk-sort-btn i {
+  border-left-width: 3px !important;
+  border-right-width: 3px !important;
+  border-top-width: 5px !important;
+}
+
+.ytk-table td {
+  padding: 11px 6px !important;
+  font-size: 12.5px !important;
+  line-height: 1.2 !important;
+  text-align: center !important;
+}
+
+.ytk-keyword-cell {
+  text-align: left !important;
+}
+
+.ytk-keyword-cell strong {
+  font-size: 13px !important;
+  line-height: 1.18 !important;
+}
+
+.ytk-keyword-cell span {
+  margin-top: 4px !important;
+  font-size: 10.5px !important;
+}
+
+.ytk-speed-pill,
+.ytk-algorithm-pill {
+  min-height: 24px !important;
+  padding: 0 7px !important;
+  font-size: 10.5px !important;
+}
+
+.ytk-side {
+  top: 88px !important;
+  max-height: calc(100vh - 102px) !important;
+  padding-right: 3px !important;
+}
+
+.ytk-side .ytk-panel {
+  border-radius: 20px !important;
+}
+
+.ytk-side .ytk-panel-head,
+.ytk-side .ytk-selected-panel {
+  padding: 18px 18px 14px !important;
+}
+
+.ytk-selected-kicker {
+  font-size: 11px !important;
+}
+
+.ytk-selected-panel strong {
+  font-size: 22px !important;
+  line-height: 1.14 !important;
+}
+
+.ytk-selected-panel span {
+  margin-top: 7px !important;
+  font-size: 11.2px !important;
+  line-height: 1.5 !important;
+}
+
+.ytk-title-groups,
+.ytk-tag-groups {
+  padding: 0 18px 18px !important;
+  gap: 11px !important;
+}
+
+.ytk-title-group,
+.ytk-tag-group {
+  padding: 13px !important;
+  border-radius: 16px !important;
+}
+
+.ytk-title-group h3,
+.ytk-tag-group h3 {
+  font-size: 12px !important;
+  margin-bottom: 8px !important;
+}
+
+.ytk-title-group ol {
+  gap: 7px !important;
+  padding-left: 18px !important;
+}
+
+.ytk-title-group li {
+  font-size: 12.5px !important;
+  line-height: 1.48 !important;
+}
+
+.ytk-tags {
+  gap: 6px !important;
+}
+
+.ytk-tags span {
+  min-height: 28px !important;
+  padding: 0 10px !important;
+  font-size: 11.5px !important;
+}
+
+@media (max-width: 1380px) {
+  .ytk-shell {
+    width: min(1320px, calc(100vw - 48px)) !important;
+  }
+
+  .ytk-result-grid {
+    grid-template-columns: minmax(0, 1fr) 310px !important;
+    gap: 12px !important;
+  }
+
+  .ytk-table col.ytk-col-keyword { width: 21.5% !important; }
+  .ytk-table col.ytk-col-ratio { width: 12.5% !important; }
+  .ytk-table col.ytk-col-opportunity { width: 8.5% !important; }
+
+  .ytk-table td {
+    font-size: 12px !important;
+    padding-left: 5px !important;
+    padding-right: 5px !important;
+  }
+
+  .ytk-sort-btn {
+    font-size: 10px !important;
+  }
+}
+
+@media (max-width: 1180px) {
+  .ytk-shell {
+    width: min(100%, calc(100vw - 28px)) !important;
+  }
+
+  .ytk-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .ytk-summary-card:last-child {
+    grid-column: 1 / -1;
+  }
+
+  .ytk-table-panel .ytk-panel-head {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+  }
+
+  .ytk-table-panel .ytk-panel-head > div:first-child {
+    padding-left: 0 !important;
+    text-align: left !important;
+  }
+
+  .ytk-result-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .ytk-table-wrap {
+    overflow-x: auto !important;
+  }
+
+  .ytk-table {
+    min-width: 1080px !important;
+  }
+}
+
+@media (max-width: 760px) {
+  .ytk-shell {
+    width: min(100%, 430px) !important;
+    padding: 12px 10px 56px !important;
+  }
+
+  .ytk-hero {
+    padding: 28px 20px 22px !important;
+  }
+
+  .ytk-hero h1 {
+    font-size: 34px !important;
+  }
+
+  .ytk-options {
+    grid-template-columns: 1fr !important;
+  }
+
+  .ytk-access-status,
+  .ytk-upgrade-card {
+    margin: 12px 0 12px !important;
+    min-height: 0 !important;
+  }
+
+  .ytk-summary {
+    grid-template-columns: 1fr !important;
+    gap: 10px !important;
+  }
+
+  .ytk-summary-card:last-child {
+    grid-column: auto;
+  }
+
+  .ytk-summary-card {
+    min-height: 72px !important;
+  }
+
+  .ytk-summary-card strong {
+    font-size: 22px !important;
+  }
+
+  .ytk-table {
+    min-width: 1040px !important;
+  }
+}
+
+
+/* =========================================================
+   v11 mobile/table padding polish
+   - 표 왼쪽 여백 보강
+   - 모바일에서 표가 패널 벽에 붙지 않도록 최적화
+   - 모바일 가로 스크롤 시 키워드 컬럼을 유지해 가독성 개선
+   ========================================================= */
+.ytk-table-wrap {
+  padding-left: 22px !important;
+  padding-right: 22px !important;
+  scroll-padding-left: 22px !important;
+}
+
+.ytk-table th:first-child,
+.ytk-table td:first-child {
+  padding-left: 18px !important;
+}
+
+.ytk-keyword-head {
+  padding-left: 18px !important;
+}
+
+.ytk-keyword-cell strong,
+.ytk-keyword-cell span {
+  padding-left: 2px !important;
+}
+
+.ytk-table-panel .ytk-panel-head {
+  padding-left: 26px !important;
+  padding-right: 26px !important;
+}
+
+@media (max-width: 1180px) {
+  .ytk-table-wrap {
+    padding-left: 18px !important;
+    padding-right: 18px !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    scrollbar-gutter: stable both-edges;
+  }
+
+  .ytk-table {
+    min-width: 1040px !important;
+  }
+
+  .ytk-table th:first-child,
+  .ytk-table td:first-child {
+    padding-left: 18px !important;
+  }
+}
+
+@media (max-width: 760px) {
+  .ytk-shell {
+    width: 100% !important;
+    max-width: 430px !important;
+    padding-left: 10px !important;
+    padding-right: 10px !important;
+  }
+
+  .ytk-nav {
+    margin-bottom: 14px !important;
+  }
+
+  .ytk-nav-links {
+    gap: 6px !important;
+    padding-bottom: 2px !important;
+  }
+
+  .ytk-nav-links a {
+    padding: 0 11px !important;
+    font-size: 12px !important;
+  }
+
+  .ytk-access-status,
+  .ytk-upgrade-card {
+    margin: 10px 0 12px !important;
+    padding: 15px 16px !important;
+  }
+
+  .ytk-summary {
+    margin-bottom: 16px !important;
+  }
+
+  .ytk-result-grid {
+    margin-top: 14px !important;
+  }
+
+  .ytk-table-panel .ytk-panel-head {
+    padding: 18px 18px 12px !important;
+    text-align: left !important;
+  }
+
+  .ytk-table-panel .ytk-panel-head h2 {
+    font-size: 21px !important;
+  }
+
+  .ytk-table-panel .ytk-panel-head p {
+    font-size: 11.5px !important;
+    line-height: 1.5 !important;
+  }
+
+  .ytk-panel-actions {
+    width: 100% !important;
+    justify-content: flex-start !important;
+  }
+
+  .ytk-copy-btn,
+  .ytk-excel-btn {
+    min-height: 32px !important;
+    padding: 0 11px !important;
+    font-size: 11px !important;
+  }
+
+  .ytk-table-wrap {
+    width: calc(100% - 4px) !important;
+    margin: 0 auto !important;
+    padding: 0 14px 18px 14px !important;
+    overflow-x: auto !important;
+    overflow-y: visible !important;
+    scroll-padding-left: 14px !important;
+    border-radius: 18px !important;
+  }
+
+  .ytk-table {
+    min-width: 1010px !important;
+    border-spacing: 0 7px !important;
+  }
+
+  .ytk-table col.ytk-col-keyword { width: 210px !important; }
+  .ytk-table col.ytk-col-views { width: 82px !important; }
+  .ytk-table col.ytk-col-avg { width: 88px !important; }
+  .ytk-table col.ytk-col-recent { width: 78px !important; }
+  .ytk-table col.ytk-col-speed { width: 82px !important; }
+  .ytk-table col.ytk-col-ratio { width: 112px !important; }
+  .ytk-table col.ytk-col-algo { width: 82px !important; }
+  .ytk-table col.ytk-col-demand { width: 68px !important; }
+  .ytk-table col.ytk-col-comp { width: 76px !important; }
+  .ytk-table col.ytk-col-opportunity { width: 78px !important; }
+
+  .ytk-table thead {
+    position: static !important;
+    box-shadow: none !important;
+  }
+
+  .ytk-table th {
+    height: 40px !important;
+    padding: 5px 6px !important;
+    font-size: 10.5px !important;
+  }
+
+  .ytk-table th:first-child,
+  .ytk-table td:first-child {
+    position: sticky !important;
+    left: 0 !important;
+    z-index: 4 !important;
+    padding-left: 16px !important;
+    padding-right: 10px !important;
+    background: rgba(5, 13, 27, 0.985) !important;
+    box-shadow: 12px 0 20px rgba(0, 0, 0, 0.22) !important;
+  }
+
+  .ytk-table th:first-child {
+    z-index: 8 !important;
+  }
+
+  .ytk-keyword-row.active td:first-child,
+  .ytk-keyword-row:hover td:first-child {
+    background: rgba(14, 116, 144, 0.26) !important;
+  }
+
+  .ytk-table td {
+    min-height: 48px !important;
+    padding-top: 10px !important;
+    padding-bottom: 10px !important;
+    font-size: 11.5px !important;
+  }
+
+  .ytk-keyword-cell strong {
+    font-size: 12px !important;
+    line-height: 1.18 !important;
+  }
+
+  .ytk-keyword-cell span {
+    font-size: 10px !important;
+    line-height: 1.25 !important;
+  }
+
+  .ytk-sort-btn {
+    min-height: 28px !important;
+    height: 28px !important;
+    font-size: 10px !important;
+  }
+
+  .ytk-speed-pill,
+  .ytk-algorithm-pill {
+    min-height: 22px !important;
+    padding: 0 7px !important;
+    font-size: 10px !important;
+  }
+
+  .ytk-side {
+    margin-top: 12px !important;
+  }
+
+  .ytk-side .ytk-panel-head,
+  .ytk-side .ytk-selected-panel,
+  .ytk-title-groups,
+  .ytk-tag-groups {
+    padding-left: 16px !important;
+    padding-right: 16px !important;
+  }
+}
+
+@media (max-width: 430px) {
+  .ytk-shell {
+    padding-left: 8px !important;
+    padding-right: 8px !important;
+  }
+
+  .ytk-nav,
+  .ytk-access-status,
+  .ytk-summary-card,
+  .ytk-panel {
+    border-radius: 18px !important;
+  }
+
+  .ytk-table-wrap {
+    padding-left: 12px !important;
+    padding-right: 12px !important;
+  }
+}
+
+
+/* =========================================================
+   v12 mobile optimization
+   - 모바일 summary 2줄 구성
+   - sticky 키워드 컬럼이 오른쪽 열을 완전히 가리도록 불투명 처리
+   - 모바일 표 가로 스크롤 안정화
+   - base footer 겹침 방지
+   ========================================================= */
+.youtube-keyword-body footer,
+.youtube-keyword-body .site-footer,
+.youtube-keyword-body .global-footer,
+.youtube-keyword-body .main-footer,
+.youtube-keyword-body .app-footer {
+  display: none !important;
+}
+
+.ytk-table-wrap {
+  position: relative !important;
+  background: rgba(5, 13, 27, 0.22) !important;
+  isolation: isolate !important;
+}
+
+.ytk-table th:first-child,
+.ytk-table td:first-child {
+  background-color: #06101d !important;
+}
+
+.ytk-keyword-row.active td:first-child,
+.ytk-keyword-row:hover td:first-child {
+  background-color: #073248 !important;
+}
+
+@media (max-width: 760px) {
+  .youtube-keyword-body {
+    overflow-x: hidden !important;
+  }
+
+  .ytk-shell {
+    width: 100% !important;
+    max-width: 430px !important;
+    padding: 10px 8px 72px !important;
+  }
+
+  .ytk-nav {
+    position: relative !important;
+    top: auto !important;
+    margin-bottom: 10px !important;
+    padding: 12px !important;
+    border-radius: 20px !important;
+    overflow: hidden !important;
+  }
+
+  .ytk-brand {
+    min-width: 0 !important;
+  }
+
+  .ytk-logo {
+    width: 36px !important;
+    height: 36px !important;
+    border-radius: 13px !important;
+    font-size: 13px !important;
+  }
+
+  .ytk-brand strong {
+    font-size: 14px !important;
+  }
+
+  .ytk-brand em {
+    font-size: 10px !important;
+  }
+
+  .ytk-nav-links {
+    width: 100% !important;
+    display: grid !important;
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+    gap: 6px !important;
+    overflow: visible !important;
+  }
+
+  .ytk-nav-links a {
+    min-width: 0 !important;
+    min-height: 34px !important;
+    padding: 0 6px !important;
+    border-radius: 13px !important;
+    font-size: 11px !important;
+    letter-spacing: -0.055em !important;
+  }
+
+  .ytk-access-status,
+  .ytk-upgrade-card {
+    margin: 10px 0 12px !important;
+    padding: 14px 16px !important;
+    border-radius: 20px !important;
+    gap: 12px !important;
+  }
+
+  .ytk-access-status strong,
+  .ytk-upgrade-card strong {
+    font-size: 14px !important;
+  }
+
+  .ytk-access-status span,
+  .ytk-upgrade-card p {
+    margin-top: 4px !important;
+    font-size: 11px !important;
+    line-height: 1.45 !important;
+  }
+
+  .ytk-access-status a,
+  .ytk-upgrade-card a {
+    min-height: 36px !important;
+    border-radius: 14px !important;
+    font-size: 11px !important;
+  }
+
+  /* 검색 기준~사용 상태: 모바일 2줄 요약 */
+  .ytk-summary {
+    display: grid !important;
+    grid-template-columns: repeat(6, minmax(0, 1fr)) !important;
+    gap: 8px !important;
+    margin: 0 0 14px !important;
+  }
+
+  .ytk-summary-card {
+    min-width: 0 !important;
+    min-height: 58px !important;
+    padding: 11px 12px !important;
+    border-radius: 17px !important;
+    overflow: hidden !important;
+  }
+
+  .ytk-summary-card:nth-child(1),
+  .ytk-summary-card:nth-child(2),
+  .ytk-summary-card:nth-child(3) {
+    grid-column: span 2 !important;
+  }
+
+  .ytk-summary-card:nth-child(4),
+  .ytk-summary-card:nth-child(5) {
+    grid-column: span 3 !important;
+  }
+
+  .ytk-summary-card span {
+    font-size: 10px !important;
+    line-height: 1.15 !important;
+  }
+
+  .ytk-summary-card strong {
+    margin-top: 5px !important;
+    font-size: 17px !important;
+    line-height: 1.12 !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+
+  .ytk-summary-card:nth-child(1) strong,
+  .ytk-summary-card:nth-child(2) strong {
+    font-size: 15px !important;
+  }
+
+  .ytk-result-grid {
+    display: block !important;
+    margin-top: 12px !important;
+  }
+
+  .ytk-table-panel {
+    border-radius: 20px !important;
+    overflow: hidden !important;
+  }
+
+  .ytk-table-panel .ytk-panel-head {
+    padding: 18px 18px 12px !important;
+    gap: 12px !important;
+  }
+
+  .ytk-table-panel .ytk-panel-head h2 {
+    font-size: 21px !important;
+  }
+
+  .ytk-table-panel .ytk-panel-head p {
+    font-size: 11px !important;
+    line-height: 1.45 !important;
+  }
+
+  .ytk-panel-actions {
+    width: 100% !important;
+    display: flex !important;
+    justify-content: flex-start !important;
+    gap: 8px !important;
+  }
+
+  .ytk-copy-btn,
+  .ytk-excel-btn {
+    min-height: 32px !important;
+    padding: 0 11px !important;
+    border-radius: 12px !important;
+    font-size: 10.5px !important;
+  }
+
+  .ytk-table-wrap {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 10px 16px !important;
+    overflow-x: auto !important;
+    overflow-y: visible !important;
+    -webkit-overflow-scrolling: touch !important;
+    scroll-padding-left: 10px !important;
+    scrollbar-width: thin !important;
+    border-radius: 0 0 20px 20px !important;
+    background: rgba(4, 11, 23, 0.94) !important;
+    overscroll-behavior-x: contain !important;
+  }
+
+  .ytk-table-wrap::-webkit-scrollbar {
+    height: 7px !important;
+  }
+
+  .ytk-table-wrap::-webkit-scrollbar-thumb {
+    border-radius: 999px !important;
+    background: rgba(56, 189, 248, 0.34) !important;
+  }
+
+  .ytk-table {
+    width: max-content !important;
+    min-width: 1010px !important;
+    table-layout: fixed !important;
+    border-spacing: 0 7px !important;
+    margin: 0 !important;
+  }
+
+  .ytk-table thead {
+    position: static !important;
+    top: auto !important;
+    box-shadow: none !important;
+    z-index: auto !important;
+  }
+
+  .ytk-table th {
+    height: 38px !important;
+    padding: 5px 6px !important;
+    font-size: 10px !important;
+    line-height: 1.12 !important;
+    background: #06101d !important;
+  }
+
+  .ytk-sort-btn {
+    min-height: 26px !important;
+    height: 26px !important;
+    padding: 3px 2px !important;
+    font-size: 9.5px !important;
+    line-height: 1.05 !important;
+    white-space: normal !important;
+  }
+
+  .ytk-table td {
+    height: 56px !important;
+    padding: 10px 7px !important;
+    font-size: 11px !important;
+    background: rgba(3, 10, 22, 0.96) !important;
+    vertical-align: middle !important;
+  }
+
+  .ytk-table col.ytk-col-keyword { width: 190px !important; }
+  .ytk-table col.ytk-col-views { width: 80px !important; }
+  .ytk-table col.ytk-col-avg { width: 84px !important; }
+  .ytk-table col.ytk-col-recent { width: 74px !important; }
+  .ytk-table col.ytk-col-speed { width: 76px !important; }
+  .ytk-table col.ytk-col-ratio { width: 106px !important; }
+  .ytk-table col.ytk-col-algo { width: 76px !important; }
+  .ytk-table col.ytk-col-demand { width: 64px !important; }
+  .ytk-table col.ytk-col-comp { width: 72px !important; }
+  .ytk-table col.ytk-col-opportunity { width: 72px !important; }
+
+  /* sticky left keyword column: 오른쪽 열이 안으로 들어와도 완전히 가리기 */
+  .ytk-table th:first-child,
+  .ytk-table td:first-child {
+    position: sticky !important;
+    left: 0 !important;
+    z-index: 30 !important;
+    width: 190px !important;
+    min-width: 190px !important;
+    max-width: 190px !important;
+    padding-left: 14px !important;
+    padding-right: 12px !important;
+    background: #06101d !important;
+    border-right: 1px solid rgba(56, 189, 248, 0.22) !important;
+    box-shadow: 15px 0 18px rgba(1, 8, 18, 0.96) !important;
+    clip-path: inset(0 -22px 0 0) !important;
+  }
+
+  .ytk-table th:first-child {
+    z-index: 45 !important;
+    background: #071322 !important;
+  }
+
+  .ytk-keyword-row.active td:first-child,
+  .ytk-keyword-row:hover td:first-child {
+    background: #07324a !important;
+  }
+
+  .ytk-table td:first-child::after,
+  .ytk-table th:first-child::after {
+    content: "" !important;
+    position: absolute !important;
+    top: 0 !important;
+    right: -16px !important;
+    width: 16px !important;
+    height: 100% !important;
+    background: linear-gradient(90deg, rgba(1, 8, 18, 0.98), rgba(1, 8, 18, 0)) !important;
+    pointer-events: none !important;
+  }
+
+  .ytk-keyword-cell strong {
+    font-size: 12px !important;
+    line-height: 1.16 !important;
+    white-space: normal !important;
+    word-break: keep-all !important;
+  }
+
+  .ytk-keyword-cell span {
+    margin-top: 4px !important;
+    font-size: 9.5px !important;
+    line-height: 1.2 !important;
+  }
+
+  .ytk-speed-pill,
+  .ytk-algorithm-pill {
+    min-height: 22px !important;
+    padding: 0 7px !important;
+    font-size: 9.5px !important;
+  }
+
+  .ytk-side {
+    position: static !important;
+    top: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+    padding-right: 0 !important;
+    margin-top: 14px !important;
+  }
+
+  .ytk-side .ytk-panel {
+    border-radius: 20px !important;
+    overflow: hidden !important;
+  }
+
+  .ytk-side .ytk-panel-head,
+  .ytk-side .ytk-selected-panel,
+  .ytk-title-groups,
+  .ytk-tag-groups {
+    padding-left: 16px !important;
+    padding-right: 16px !important;
+  }
+
+  .ytk-title-group,
+  .ytk-tag-group {
+    padding: 14px !important;
+    overflow: hidden !important;
+  }
+
+  .ytk-tags {
+    gap: 7px !important;
+  }
+
+  .ytk-tags span {
+    max-width: 100% !important;
+    white-space: normal !important;
+    word-break: keep-all !important;
+  }
+}
+
+@media (max-width: 390px) {
+  .ytk-summary-card strong {
+    font-size: 15px !important;
+  }
+
+  .ytk-summary-card:nth-child(1) strong,
+  .ytk-summary-card:nth-child(2) strong {
+    font-size: 13.5px !important;
+  }
+
+  .ytk-table col.ytk-col-keyword,
+  .ytk-table th:first-child,
+  .ytk-table td:first-child {
+    width: 176px !important;
+    min-width: 176px !important;
+    max-width: 176px !important;
+  }
+
+  .ytk-table {
+    min-width: 960px !important;
+  }
+}

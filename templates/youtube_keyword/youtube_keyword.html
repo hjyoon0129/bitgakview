@@ -1,0 +1,330 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}유튜브 키워드 분석기 | BitgakView{% endblock %}
+{% block body_class %}youtube-keyword-body{% endblock %}
+
+{% block extra_css %}
+<meta name="description" content="유튜브 키워드 분석기. 쇼츠용 키워드와 일반 유튜브 영상 키워드, 제목 아이디어, 태그를 추천합니다.">
+<meta name="keywords" content="유튜브 키워드, 쇼츠 키워드, 유튜브 제목 추천, 유튜브 태그 추천, 콘텐츠 아이디어, BitgakView">
+<meta name="robots" content="index, follow">
+<link rel="stylesheet" href="{% static 'youtube_keyword/css/youtube_keyword.css' %}?v=20260605-mobile-v12">
+{% endblock %}
+
+{% block content %}
+<div class="ytk-shell">
+  <nav class="ytk-nav" aria-label="유튜브 키워드 분석기 네비게이션">
+    <a class="ytk-brand" href="/stocks/">
+      <span class="ytk-logo">B</span>
+      <span>
+        <strong>BitgakView</strong>
+        <em>AI Tools</em>
+      </span>
+    </a>
+
+    <div class="ytk-nav-links">
+      <a href="/stocks/">홈</a>
+      <a href="/stocks/005930/">차트</a>
+      <a href="{% url 'insights:list' %}">빗각관점</a>
+      <a class="active" href="{% url 'youtube_keyword:index' %}">유튜브 키워드</a>
+    </div>
+  </nav>
+
+  <section class="ytk-hero" id="ytkSearchForm">
+    <div class="ytk-badge">BETA · YouTube Keyword Lab</div>
+
+    <h1>
+      유튜브 키워드를 찾고<br>
+      제목과 태그까지 한 번에
+    </h1>
+
+    <p>
+      검색어를 입력하면 쇼츠용 또는 일반 유튜브 영상용 키워드 아이디어를 추천합니다.
+      검색어 없이 분석하면 선택한 카테고리의 인기 후보를 수요 대비 경쟁이 낮은 순으로 보여줍니다.
+    </p>
+
+    <form
+      id="ytkKeywordSearchForm"
+      class="ytk-search-card"
+      method="get"
+      action="{% url 'youtube_keyword:index' %}"
+      autocomplete="off"
+      data-is-authenticated="{{ ytk_access.is_authenticated|yesno:'1,0' }}"
+      data-is-premium="{{ ytk_access.is_premium|yesno:'1,0' }}"
+      data-remaining="{{ ytk_access.remaining_today }}"
+      data-daily-limit="{{ ytk_access.daily_limit }}"
+      data-pricing-url="{{ ytk_access.pricing_url }}"
+    >
+      <div class="ytk-field ytk-keyword-field">
+        <label for="keyword">검색어</label>
+        <input
+          id="keyword"
+          type="text"
+          name="keyword"
+          value="{{ keyword }}"
+          placeholder="비워두면 선택한 카테고리 인기 키워드를 조회합니다"
+          autocomplete="off"
+        >
+      </div>
+
+      <div class="ytk-options">
+        <div class="ytk-field">
+          <label>분석 유형</label>
+          <div class="ytk-select" data-ytk-select>
+            <input type="hidden" name="search_type" value="{{ search_type }}">
+            <button type="button" class="ytk-select-btn" aria-haspopup="listbox" aria-expanded="false">
+              <span>{{ search_type_label }}</span>
+              <i></i>
+            </button>
+            <div class="ytk-select-menu" role="listbox">
+              {% for item in search_type_choices %}
+                <button type="button" data-value="{{ item.value }}" data-label="{{ item.label }}" class="{% if item.value == search_type %}selected{% endif %}">
+                  <strong>{{ item.label }}</strong>
+                  <small>{{ item.hint }}</small>
+                </button>
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+
+        <div class="ytk-field">
+          <label>카테고리</label>
+          <div class="ytk-select" data-ytk-select>
+            <input type="hidden" name="category" value="{{ category }}">
+            <button type="button" class="ytk-select-btn" aria-haspopup="listbox" aria-expanded="false">
+              <span>{{ category_label }}</span>
+              <i></i>
+            </button>
+            <div class="ytk-select-menu" role="listbox">
+              {% for item in category_choices %}
+                <button type="button" data-value="{{ item.value }}" data-label="{{ item.label }}" class="{% if item.value == category %}selected{% endif %}">
+                  <strong>{{ item.label }}</strong>
+                  <small>{{ item.hint }}</small>
+                </button>
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+
+        <button class="ytk-submit-btn" type="submit">분석하기</button>
+      </div>
+    </form>
+  </section>
+
+
+  <section class="ytk-access-status {% if ytk_access.is_premium %}is-premium{% elif not ytk_access.is_authenticated or access_block_kind == 'premium' %}is-locked{% endif %}">
+    {% if not ytk_access.is_authenticated %}
+      <div>
+        <strong>로그인 후 사용할 수 있습니다</strong>
+        <span>무료 회원은 하루 {{ ytk_access.daily_limit }}회까지 유튜브 키워드 검색을 사용할 수 있습니다.</span>
+      </div>
+      <a href="/accounts/login/?next={{ request.get_full_path|urlencode }}">무료 로그인</a>
+    {% elif ytk_access.is_premium %}
+      <div>
+        <strong>프리미엄 무제한 사용 중</strong>
+        <span>오늘 검색 {{ ytk_access.used_today }}회 · 유튜브 키워드 분석과 엑셀 다운로드를 제한 없이 사용할 수 있습니다.</span>
+      </div>
+      <a href="/stocks/pricing/">프리미엄 확인</a>
+    {% elif access_block_kind == 'premium' %}
+      <div>
+        <strong>오늘 무료 검색 {{ ytk_access.daily_limit }}회를 모두 사용했습니다</strong>
+        <span>프리미엄으로 전환하면 유튜브 키워드 검색을 제한 없이 사용할 수 있습니다.</span>
+      </div>
+      <a href="/stocks/pricing/">프리미엄 보기</a>
+    {% else %}
+      <div>
+        <strong>무료 회원 사용량</strong>
+        <span>오늘 {{ ytk_access.used_today }}회 사용 · 남은 검색 {{ ytk_access.remaining_today }}회</span>
+      </div>
+      <a href="/stocks/pricing/">프리미엄 전환</a>
+    {% endif %}
+  </section>
+
+  {% if access_message and not result %}
+    <section class="ytk-upgrade-card">
+      <strong>{{ access_message }}</strong>
+      <p>비로그인 사용자는 검색 결과를 볼 수 없고, 무료 로그인 후 하루 3회까지 사용할 수 있습니다. 프리미엄 또는 관리자 승인을 받으면 제한 없이 사용할 수 있습니다.</p>
+      <div>
+        {% if not ytk_access.is_authenticated %}
+          <a href="/accounts/login/?next={{ request.get_full_path|urlencode }}">무료 로그인</a>
+        {% endif %}
+        <a href="/stocks/pricing/">프리미엄 보기</a>
+      </div>
+    </section>
+  {% endif %}
+
+  {% if result %}
+    <section class="ytk-summary">
+      <div class="ytk-summary-card">
+        <span>검색 기준</span>
+        <strong>{{ result.summary_keyword }}</strong>
+      </div>
+      <div class="ytk-summary-card">
+        <span>분석 유형</span>
+        <strong>{{ result.search_type_label }}</strong>
+      </div>
+      <div class="ytk-summary-card">
+        <span>카테고리</span>
+        <strong>{{ result.category_label }}</strong>
+      </div>
+      <div class="ytk-summary-card">
+        <span>추천 키워드</span>
+        <strong>{{ result.rows|length }}개</strong>
+      </div>
+      <div class="ytk-summary-card">
+        <span>사용 상태</span>
+        {% if ytk_access.is_premium %}
+          <strong>무제한</strong>
+        {% else %}
+          <strong>{{ ytk_access.remaining_today }}회 남음</strong>
+        {% endif %}
+      </div>
+    </section>
+
+
+    <section class="ytk-result-grid">
+      <div class="ytk-panel ytk-table-panel">
+        <div class="ytk-panel-head">
+          <div>
+            <h2>추천 키워드</h2>
+            <p>기본 정렬은 조회속도, 수요도, 경쟁강도, 구독자 대비 조회 반응을 조합한 기회점수 순입니다. 소재와 키워드만 참고하고 내용은 직접 재구성하세요.</p>
+          </div>
+          <div class="ytk-panel-actions">
+            <button type="button" class="ytk-copy-btn" data-copy-target="keywordTableText">키워드 복사</button>
+            <a
+              id="ytkExcelDownloadBtn"
+              class="ytk-excel-btn"
+              href="{% url 'youtube_keyword:download_excel' %}?keyword={{ keyword|urlencode }}&search_type={{ search_type }}&category={{ category }}&sort_key=opportunity&sort_dir=desc"
+              data-base-url="{% url 'youtube_keyword:download_excel' %}"
+              data-keyword="{{ keyword }}"
+              data-search-type="{{ search_type }}"
+              data-category="{{ category }}"
+            >엑셀 다운로드</a>
+          </div>
+        </div>
+
+        <div class="ytk-table-wrap">
+          <table class="ytk-table" id="ytkKeywordTable">
+            <colgroup>
+                <col class="ytk-col-keyword">
+                <col class="ytk-col-views">
+                <col class="ytk-col-avg">
+                <col class="ytk-col-recent">
+                <col class="ytk-col-speed">
+                <col class="ytk-col-ratio">
+                <col class="ytk-col-algo">
+                <col class="ytk-col-demand">
+                <col class="ytk-col-comp">
+                <col class="ytk-col-opportunity">
+              </colgroup>
+            <thead>
+              <tr>
+                <th class="ytk-keyword-head">키워드</th>
+                <th><button type="button" class="ytk-sort-btn" data-sort-key="estimated_views">예상조회 <i></i></button></th>
+                <th><button type="button" class="ytk-sort-btn" data-sort-key="top_avg_views">상위평균 <i></i></button></th>
+                <th><button type="button" class="ytk-sort-btn" data-sort-key="recent_videos">최근영상 <i></i></button></th>
+                <th><button type="button" class="ytk-sort-btn" data-sort-key="view_velocity_score">조회속도 <i></i></button></th>
+                <th><button type="button" class="ytk-sort-btn" data-sort-key="subscriber_view_ratio">구독대비조회수 <i></i></button></th>
+                <th><button type="button" class="ytk-sort-btn" data-sort-key="algorithm_boost_score">알고리즘 <i></i></button></th>
+                <th><button type="button" class="ytk-sort-btn" data-sort-key="demand">수요도 <i></i></button></th>
+                <th><button type="button" class="ytk-sort-btn" data-sort-key="competition">경쟁강도 <i></i></button></th>
+                <th><button type="button" class="ytk-sort-btn active desc" data-sort-key="opportunity">기회점수 <i></i></button></th>
+              </tr>
+            </thead>
+            <tbody id="ytkKeywordTbody">
+              {% for row in result.rows %}
+                <tr class="ytk-keyword-row {% if forloop.first %}active{% endif %}" data-row-index="{{ forloop.counter0 }}">
+                  <td class="ytk-keyword-cell">
+                    <strong>{{ row.keyword }}</strong>
+                    <span>조회속도 {{ row.view_velocity_label }} · 수요 {{ row.demand }}</span>
+                  </td>
+                  <td>{{ row.estimated_views_display }}</td>
+                  <td>{{ row.top_avg_views_display }}</td>
+                  <td>{{ row.recent_videos }}개</td>
+                  <td><span class="ytk-speed-pill speed-{{ row.view_velocity_rank }}">{{ row.view_velocity_label }}</span></td>
+                  <td>{{ row.subscriber_view_ratio_display }}</td>
+                  <td><span class="ytk-algorithm-pill signal-{{ row.algorithm_signal_rank }}">{{ row.algorithm_signal_label }}</span></td>
+                  <td>{{ row.demand }}</td>
+                  <td>{{ row.competition }}</td>
+                  <td><strong>{{ row.opportunity }}</strong></td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+
+        <textarea id="keywordTableText" class="ytk-hidden-copy">{% for row in result.rows %}{{ row.keyword }} | 예상조회 {{ row.estimated_views_display }} | 조회속도 {{ row.view_velocity_label }} | 구독대비조회수 {{ row.subscriber_view_ratio_display }} | 알고리즘 {{ row.algorithm_signal_label }} | 수요 {{ row.demand }} | 경쟁 {{ row.competition }} | 기회 {{ row.opportunity }}
+{% endfor %}</textarea>
+      </div>
+
+      <aside class="ytk-side">
+        <div class="ytk-panel ytk-selected-panel">
+          <div class="ytk-selected-kicker">선택 키워드</div>
+          <strong id="ytkSelectedKeyword">{{ result.first_row.keyword }}</strong>
+          <span id="ytkSelectedMeta">예상조회 {{ result.first_row.estimated_views_display }} · 조회속도 {{ result.first_row.view_velocity_label }} · 구독대비조회수 {{ result.first_row.subscriber_view_ratio_display }} · 알고리즘 {{ result.first_row.algorithm_signal_label }} · 수요 {{ result.first_row.demand }} · 경쟁 {{ result.first_row.competition }} · 기회 {{ result.first_row.opportunity }}</span>
+        </div>
+
+        <div class="ytk-panel">
+          <div class="ytk-panel-head">
+            <div>
+              <h2>제목 아이디어</h2>
+              <p>후킹형, 검색형, 안정형으로 나눠서 참고하세요.</p>
+            </div>
+            <button type="button" class="ytk-copy-btn" data-copy-target="titleText">복사</button>
+          </div>
+
+          <div id="ytkTitleGroups" class="ytk-title-groups">
+            {% for group in result.first_row.title_groups %}
+              <div class="ytk-title-group">
+                <h3>{{ group.name }}</h3>
+                <ol>
+                  {% for title in group.items %}
+                    <li>{{ title }}</li>
+                  {% endfor %}
+                </ol>
+              </div>
+            {% endfor %}
+          </div>
+
+          <textarea id="titleText" class="ytk-hidden-copy">{% for title in result.first_row.titles %}{{ title }}
+{% endfor %}</textarea>
+        </div>
+
+        <div class="ytk-panel">
+          <div class="ytk-panel-head">
+            <div>
+              <h2>태그</h2>
+              <p>핵심 태그와 확장 태그를 구분했습니다.</p>
+            </div>
+            <button type="button" class="ytk-copy-btn" data-copy-target="tagText">복사</button>
+          </div>
+
+          <div id="ytkTagGroups" class="ytk-tag-groups">
+            {% for group in result.first_row.tag_groups %}
+              <div class="ytk-tag-group">
+                <h3>{{ group.name }}</h3>
+                <div class="ytk-tags">
+                  {% for tag in group.items %}
+                    <span>#{{ tag }}</span>
+                  {% endfor %}
+                </div>
+              </div>
+            {% endfor %}
+          </div>
+
+          <textarea id="tagText" class="ytk-hidden-copy">{% for tag in result.first_row.tags %}{{ tag }}{% if not forloop.last %}, {% endif %}{% endfor %}</textarea>
+        </div>
+      </aside>
+    </section>
+
+    {{ result.rows|json_script:"ytkRowsData" }}
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{{ ytk_access|json_script:"ytkAccessData" }}
+{{ ytk_access|json_script:"bitgak-access-data" }}
+<script src="{% static 'access/js/bitgak_access_guard.js' %}?v=20260605-ytk-modal-v12"></script>
+<script src="{% static 'youtube_keyword/js/youtube_keyword.js' %}?v=20260605-ytk-modal-v12"></script>
+{% endblock %}

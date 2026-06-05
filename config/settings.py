@@ -90,6 +90,7 @@ INSTALLED_APPS = [
     "apps.access",
     "apps.analytics.apps.AnalyticsConfig",
     "apps.insights.apps.InsightsConfig",
+    "apps.youtube_keyword.apps.YoutubeKeywordConfig",
 ]
 
 MIDDLEWARE = [

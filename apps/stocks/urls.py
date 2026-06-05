@@ -1,5 +1,5 @@
 from django.urls import path
-
+from .global_market_api import global_market_temperature_api
 from . import views
 
 
@@ -23,6 +23,14 @@ urlpatterns = [
     path("api/indicators/<str:code>/", views.chart_indicators_api, name="chart_indicators_api"),
     path("api/piramid/<str:code>/", views.chart_piramid_api, name="chart_piramid_api"),
     path("api/drawing-tool-settings/", views.drawing_tool_settings_api, name="drawing_tool_settings_api"),
+
+
+
+
+# urlpatterns 안에 추가
+    path("api/global-market-temperature/", global_market_temperature_api, name="global_market_temperature_api"),
+
+
 
     # features/pricing/api 경로보다 아래에 있어야 한다.
     path("<str:code>/", views.stock_detail, name="detail"),

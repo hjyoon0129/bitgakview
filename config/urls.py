@@ -130,6 +130,8 @@ urlpatterns = [
     path("support/", include("apps.support.urls", namespace="support")),
     path("access/", include("apps.access.urls")),
     path("insights/", include("apps.insights.urls")),
+
+    path("tools/youtube-keyword/", include("apps.youtube_keyword.urls")),
 ]
 
 if settings.DEBUG:
