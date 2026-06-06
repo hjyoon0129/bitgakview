@@ -7,6 +7,7 @@ Django settings for BitgakView project.
 - django-allauth 기반 Google / Naver / Kakao 소셜 로그인 준비
 - custom accounts는 INSTALLED_APPS에 등록하지 않고 URL/View 전용으로 사용
 - templates 폴더는 BASE_DIR / "templates" 사용
+- Redis 공유 캐시 기본 적용
 """
 
 import os
@@ -393,24 +394,47 @@ SERVER_EMAIL = os.getenv(
 
 
 # =========================
-# Cache
+# Cache - Redis shared cache
 # =========================
-USE_REDIS = env_bool("USE_REDIS", False)
+# 서버에서는 Redis를 기본으로 사용한다.
+# 로컬에서 Redis 없이 실행해야 할 때만 .env에 USE_REDIS=false 입력.
+USE_REDIS = env_bool("USE_REDIS", True)
+
+REDIS_CACHE_URL = (
+    os.getenv("REDIS_CACHE_URL")
+    or os.getenv("REDIS_URL")
+    or "redis://127.0.0.1:6379/1"
+)
+
+REDIS_KEY_PREFIX = os.getenv("REDIS_KEY_PREFIX", "bitgakview")
+REDIS_CACHE_TIMEOUT = int(os.getenv("REDIS_CACHE_TIMEOUT", "300"))
+REDIS_MAX_CONNECTIONS = int(os.getenv("REDIS_MAX_CONNECTIONS", "80"))
 
 if USE_REDIS:
-    REDIS_CACHE_URL = os.getenv("REDIS_CACHE_URL", "redis://127.0.0.1:6379/1")
-
     CACHES = {
         "default": {
-            "BACKEND": "django.core.cache.backends.redis.RedisCache",
+            "BACKEND": "django_redis.cache.RedisCache",
             "LOCATION": REDIS_CACHE_URL,
-            "TIMEOUT": 300,
+            "TIMEOUT": REDIS_CACHE_TIMEOUT,
+            "KEY_PREFIX": REDIS_KEY_PREFIX,
+            "OPTIONS": {
+                "CLIENT_CLASS": "django_redis.client.DefaultClient",
+                "CONNECTION_POOL_KWARGS": {
+                    "max_connections": REDIS_MAX_CONNECTIONS,
+                    "retry_on_timeout": True,
+                },
+                # Redis 장애가 나도 사이트 전체가 바로 죽지 않게 함.
+                # 캐시 miss처럼 동작하고, 외부 데이터/API는 기존 로직으로 다시 가져옴.
+                "IGNORE_EXCEPTIONS": env_bool("REDIS_IGNORE_EXCEPTIONS", True),
+            },
         }
     }
 else:
     CACHES = {
         "default": {
             "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+            "LOCATION": "bitgakview-local-cache",
+            "TIMEOUT": REDIS_CACHE_TIMEOUT,
         }
     }
 
@@ -422,6 +446,11 @@ LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
 }
+
+
+# =========================
+# BitgakView service info
+# =========================
 BITGAK_SERVICE_NAME = "BitgakView"
 BITGAK_SERVICE_DOMAIN = "bitgakview.com"
 BITGAK_SUPPORT_EMAIL = "bitgakview@gmail.com"

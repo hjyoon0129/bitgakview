@@ -759,7 +759,7 @@
     return url.toString();
   }
 
-  const CHART_SESSION_CACHE_VERSION = "v12";
+  const CHART_SESSION_CACHE_VERSION = "v16";
 
   function getChartSessionCacheKey(url) {
     return "bitgak:chart:payload:" + CHART_SESSION_CACHE_VERSION + ":" + code + ":" + state.interval + ":" + url;
@@ -1001,9 +1001,32 @@
     if (last) updateOHLC(last);
   }
 
+  function isMajorIndexCode() {
+    return INDEX_SESSION_CACHE_CODES.has(String(code || "").toUpperCase());
+  }
+
+  function getFallbackVisibleBars() {
+    // 백엔드가 default_visible_bars를 주지 않는 환경에서도
+    // 주요 지수는 처음 화면을 최근 구간으로 보여주고, 전체 데이터는 유지한다.
+    if (!isMajorIndexCode()) return 0;
+
+    if (isIntradayInterval(state.interval)) {
+      // 1~4시간봉은 너무 짧게 보이지 않도록 약 6~12개월권 봉 수를 기본값으로 둔다.
+      if (state.interval === "4h") return 500;
+      if (state.interval === "3h") return 600;
+      if (state.interval === "2h") return 700;
+      return 900;
+    }
+
+    if (state.interval === "1d") return 756;      // 약 3년
+    if (state.interval === "1w") return 520;      // 약 10년
+    if (state.interval === "1mo") return 120;     // 약 10년
+    return 756;
+  }
+
   function getDefaultVisibleBarsFromPayload() {
     const payload = state.payload || {};
-    const raw = payload.default_visible_bars || payload.initial_visible_bars || payload.visible_bars || 0;
+    const raw = payload.default_visible_bars || payload.initial_visible_bars || payload.visible_bars || getFallbackVisibleBars();
     const n = Number(raw);
     return Number.isFinite(n) && n > 0 ? Math.floor(n) : 0;
   }

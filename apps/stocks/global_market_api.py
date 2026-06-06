@@ -21,9 +21,9 @@ YAHOO_SYMBOLS = {
 INDEX_KEYS = ["kospi", "kosdaq", "nasdaq100", "sp500"]
 YAHOO_HOSTS = ["query1.finance.yahoo.com", "query2.finance.yahoo.com"]
 YAHOO_TIMEOUT_SECONDS = 4
-FRESH_CACHE_KEY = "bitgakview:global_market_temperature:v13:fresh"
-STALE_CACHE_KEY = "bitgakview:global_market_temperature:v13:stale"
-REFRESH_LOCK_KEY = "bitgakview:global_market_temperature:v13:refresh_lock"
+FRESH_CACHE_KEY = "bitgakview:global_market_temperature:v17:fresh"
+STALE_CACHE_KEY = "bitgakview:global_market_temperature:v17:stale"
+REFRESH_LOCK_KEY = "bitgakview:global_market_temperature:v17:refresh_lock"
 FRESH_TTL_SECONDS = 60 * 10
 STALE_TTL_SECONDS = 60 * 60
 
@@ -333,6 +333,7 @@ def _build_payload():
         "ok": True,
         "source": "Yahoo Finance chart API",
         "cache_state": "fresh",
+        "cache_backend": "django-cache",
         "updated_at": updated_at,
         "indices": indices,
         "future": future,
@@ -382,12 +383,16 @@ def global_market_temperature_api(request):
     if not force_refresh:
         cached = cache.get(FRESH_CACHE_KEY)
         if cached:
-            return JsonResponse(cached)
+            payload = dict(cached)
+            payload["cache_state"] = "fresh-hit"
+            payload["cache_backend"] = "django-cache"
+            return JsonResponse(payload)
 
         stale = cache.get(STALE_CACHE_KEY)
         if stale:
             payload = dict(stale)
             payload["cache_state"] = "stale"
+            payload["cache_backend"] = "django-cache"
             _maybe_start_background_refresh()
             return JsonResponse(payload)
 
@@ -400,6 +405,7 @@ def global_market_temperature_api(request):
         if stale:
             payload = dict(stale)
             payload["cache_state"] = "stale-error"
+            payload["cache_backend"] = "django-cache"
             payload.setdefault("errors", {})["refresh"] = str(exc)
             return JsonResponse(payload)
         return JsonResponse({"ok": False, "message": str(exc)}, status=503)

@@ -2,12 +2,17 @@
 <link rel="preconnect" href="https://unpkg.com" crossorigin>
 <link rel="dns-prefetch" href="//unpkg.com">
 
-<link rel="stylesheet" href="{% static 'stocks/css/bitgak_chart.css' %}?v=20260531-watchlist-indicator-strip-v1">
-<link rel="stylesheet" href="{% static 'stocks/css/piramid.css' %}?v=20260601-piramid-v6">
+<link rel="stylesheet" href="{% static 'stocks/css/bitgak_chart.css' %}?v=20260606-redis-v17">
+<link rel="stylesheet" href="{% static 'stocks/css/piramid.css' %}?v=20260606-piramid-v17">
 
-<script src="https://unpkg.com/lightweight-charts@5.0.8/dist/lightweight-charts.standalone.production.js"></script>
-<script src="{% static 'stocks/js/bitgak_chart_core.js' %}?v=20260531-watchlist-indicator-strip-v1"></script>
-<script src="{% static 'stocks/js/piramid.js' %}?v=20260601-piramid-v6"></script>
-<script src="{% static 'stocks/js/bitgak_groups.js' %}?v=20260531-watchlist-indicator-strip-v1"></script>
-<script src="{% static 'stocks/js/bitgak_indicators.js' %}?v=20260531-watchlist-indicator-strip-v1"></script>
-<script src="{% static 'stocks/js/bitgak_search.js' %}?v=20260531-watchlist-indicator-strip-v1"></script>
+<script src="{% static 'stocks/vendor/lightweight-charts.standalone.production.js' %}?v=20260606-local-v17"></script>
+<script>
+  if (!window.LightweightCharts) {
+    document.write('<script src="https://unpkg.com/lightweight-charts@5.0.8/dist/lightweight-charts.standalone.production.js"><\/script>');
+  }
+</script>
+<script src="{% static 'stocks/js/bitgak_chart_core.js' %}?v=20260606-redis-v17"></script>
+<script src="{% static 'stocks/js/piramid.js' %}?v=20260606-piramid-v17"></script>
+<script src="{% static 'stocks/js/bitgak_groups.js' %}?v=20260606-redis-v17"></script>
+<script src="{% static 'stocks/js/bitgak_indicators.js' %}?v=20260606-redis-v17"></script>
+<script src="{% static 'stocks/js/bitgak_search.js' %}?v=20260606-redis-v17"></script>

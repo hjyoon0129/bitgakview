@@ -2199,17 +2199,19 @@ def api_ohlcv(request, code):
         range_key = "all"
 
     asset_code = _normalize_asset_code(code)
-    cache_key = f"stocks:chart-payload:v12:{asset_code}:{range_key}:{interval}"
+    cache_key = f"stocks:chart-payload:v17:{asset_code}:{range_key}:{interval}"
 
     if request.GET.get("refresh") != "1":
         cached = cache.get(cache_key)
         if cached is not None:
             payload = dict(cached)
             payload["cache_hit"] = True
+            payload["cache_backend"] = "django-cache"
             return JsonResponse(payload, status=200, json_dumps_params={"ensure_ascii": False})
 
     payload = _make_payload(code, range_key, interval)
     payload["cache_hit"] = False
+    payload["cache_backend"] = "django-cache"
 
     if payload.get("ok"):
         cache.set(cache_key, payload, _chart_payload_cache_timeout(code, interval))
