@@ -1527,7 +1527,7 @@ def _yahoo_chart_result(symbol, range_key="all", interval="1d"):
             },
         )
         try:
-            with urlopen(request, timeout=9) as response:
+            with urlopen(request, timeout=5) as response:
                 raw = response.read().decode("utf-8")
             payload = json.loads(raw)
             result = (payload.get("chart", {}).get("result") or [None])[0]
@@ -2161,6 +2161,29 @@ def _make_payload(code, range_key, interval):
     }
 
 
+def _chart_payload_cache_timeout(code, interval):
+    """차트 API 응답 캐시 시간.
+
+    외부 시세 API(pykrx, yfinance, Yahoo chart)를 매 클릭마다 호출하면
+    차트 로딩이 크게 느려집니다. 같은 종목/지표/시간봉 요청은 짧게 캐시해서
+    사용자가 뒤로가기·새로고침·시간봉 전환 후 재진입할 때 즉시 응답하도록 합니다.
+    """
+    interval = _normalize_interval(interval)
+    asset_code = _normalize_asset_code(code)
+    intraday = _is_intraday_interval(interval)
+
+    if asset_code in GLOBAL_INDEX_SYMBOLS:
+        # 대표지수는 외부 Yahoo/pykrx 호출이 체감 병목입니다.
+        # 사용자가 차트를 열 때마다 새로 받지 않도록 일반 종목보다 길게 캐시합니다.
+        if intraday:
+            return 60 * 20     # 지수 시간봉: 20분 캐시
+        return 60 * 60 * 4     # 지수 일/주/월봉: 4시간 캐시
+
+    if intraday:
+        return 60 * 10         # 국내 개별종목 시간봉: 10분 캐시
+    return 60 * 30             # 국내 개별종목 일/주/월봉: 30분 캐시
+
+
 @require_GET
 def api_ohlcv(request, code):
     display_interval = request.GET.get("display_interval")
@@ -2175,7 +2198,21 @@ def api_ohlcv(request, code):
     else:
         range_key = "all"
 
+    asset_code = _normalize_asset_code(code)
+    cache_key = f"stocks:chart-payload:v12:{asset_code}:{range_key}:{interval}"
+
+    if request.GET.get("refresh") != "1":
+        cached = cache.get(cache_key)
+        if cached is not None:
+            payload = dict(cached)
+            payload["cache_hit"] = True
+            return JsonResponse(payload, status=200, json_dumps_params={"ensure_ascii": False})
+
     payload = _make_payload(code, range_key, interval)
+    payload["cache_hit"] = False
+
+    if payload.get("ok"):
+        cache.set(cache_key, payload, _chart_payload_cache_timeout(code, interval))
 
     return JsonResponse(payload, status=200, json_dumps_params={"ensure_ascii": False})
 

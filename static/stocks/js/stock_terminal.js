@@ -48,6 +48,7 @@
         pendingTool: null,
         previewPoint: null,
         drawings: [],
+        requestSeq: 0,
         indicators: [
             {
                 id: "ma20",
@@ -324,69 +325,132 @@
         return url.toString();
     }
 
+    const CHART_CACHE_VERSION = "v12";
+
+    function chartCacheKey(url) {
+        return "bitgak:terminal:chart:" + CHART_CACHE_VERSION + ":" + stockCode + ":" + state.interval + ":" + state.range + ":" + url;
+    }
+
+    const INDEX_CACHE_CODES = new Set(["KOSPI", "KOSDAQ", "NASDAQ", "NASDAQ100", "NQF", "SP500", "SOX"]);
+
+    function isIndexLikeCode() {
+        return INDEX_CACHE_CODES.has(String(stockCode || "").toUpperCase());
+    }
+
+    function chartCacheTtl() {
+        const intraday = /^(1h|2h|3h|4h|60m)$/i.test(state.interval);
+        if (isIndexLikeCode()) {
+            return intraday ? 20 * 60 * 1000 : 4 * 60 * 60 * 1000;
+        }
+        return intraday ? 10 * 60 * 1000 : 30 * 60 * 1000;
+    }
+
+    function readChartCache(url) {
+        try {
+            const raw = sessionStorage.getItem(chartCacheKey(url));
+            if (!raw) return null;
+            const parsed = JSON.parse(raw);
+            if (!parsed || !parsed.data || !parsed.savedAt) return null;
+            if (Date.now() - Number(parsed.savedAt) > chartCacheTtl()) return null;
+            return parsed.data;
+        } catch (e) {
+            return null;
+        }
+    }
+
+    function writeChartCache(url, data) {
+        try {
+            if (!data || data.ok === false) return;
+            sessionStorage.setItem(chartCacheKey(url), JSON.stringify({ savedAt: Date.now(), data: data }));
+        } catch (e) {}
+    }
+
+    function applyChartData(data) {
+        if (!data || !data.ok) {
+            throw new Error((data && data.message) || "차트 데이터를 불러오지 못했습니다.");
+        }
+
+        state.payload = data;
+        state.rows = data.rows || [];
+
+        if (!chart) {
+            createChart();
+        }
+
+        candleSeries.setData(data.ohlc || []);
+        lineSeries.setData(getCloseLineData(state.rows));
+        areaSeries.setData(getCloseLineData(state.rows));
+        volumeSeries.setData(data.volume || []);
+
+        applyChartType();
+        rebuildAllIndicators();
+        updateHeadline(data);
+        updateOHLC(state.rows[state.rows.length - 1]);
+
+        if (dataSourceText) {
+            dataSourceText.textContent = `데이터: ${data.source || "-"}${data.cache_hit ? " · cache" : ""}`;
+        }
+
+        const bottomStatus = document.getElementById("bottomStatus");
+        if (bottomStatus) {
+            bottomStatus.textContent = data.intraday
+                ? "분봉/시간봉: 외부 제공처의 최근 범위 데이터"
+                : "일/주/월봉: 장기 히스토리 데이터";
+        }
+
+        const defaultVisibleBars = Number(data.default_visible_bars || data.initial_visible_bars || 0);
+        if (defaultVisibleBars > 0 && state.rows.length > defaultVisibleBars) {
+            try {
+                chart.timeScale().setVisibleLogicalRange({
+                    from: Math.max(0, state.rows.length - defaultVisibleBars),
+                    to: state.rows.length + 8,
+                });
+            } catch (e) {
+                chart.timeScale().fitContent();
+            }
+        } else {
+            chart.timeScale().fitContent();
+        }
+        renderDrawings();
+    }
+
     async function loadChartData() {
+        const token = ++state.requestSeq;
+        const url = getFetchUrl();
         showLoading(true);
         showError(false);
 
+        const cached = readChartCache(url);
+        if (cached) {
+            try {
+                applyChartData(cached);
+                showLoading(false);
+                return;
+            } catch (e) {}
+        }
+
         try {
-            const response = await fetch(getFetchUrl(), {
+            const response = await fetch(url, {
                 headers: {
                     "X-Requested-With": "XMLHttpRequest",
                 },
+                cache: "no-store",
             });
 
             const data = await response.json();
+            if (token !== state.requestSeq) return;
 
             if (!response.ok || !data.ok) {
                 throw new Error(data.message || "차트 데이터를 불러오지 못했습니다.");
             }
 
-            state.payload = data;
-            state.rows = data.rows || [];
-
-            if (!chart) {
-                createChart();
-            }
-
-            candleSeries.setData(data.ohlc || []);
-            lineSeries.setData(getCloseLineData(state.rows));
-            areaSeries.setData(getCloseLineData(state.rows));
-            volumeSeries.setData(data.volume || []);
-
-            applyChartType();
-            rebuildAllIndicators();
-            updateHeadline(data);
-            updateOHLC(state.rows[state.rows.length - 1]);
-
-            if (dataSourceText) {
-                dataSourceText.textContent = `데이터: ${data.source || "-"}`;
-            }
-
-            document.getElementById("bottomStatus").textContent =
-                data.intraday
-                    ? "분봉/시간봉: 외부 제공처의 최근 범위 데이터"
-                    : "일/주/월봉: 장기 히스토리 데이터";
-
-            const defaultVisibleBars = Number(data.default_visible_bars || data.initial_visible_bars || 0);
-            if (defaultVisibleBars > 0 && state.rows.length > defaultVisibleBars) {
-                try {
-                    chart.timeScale().setVisibleLogicalRange({
-                        from: Math.max(0, state.rows.length - defaultVisibleBars),
-                        to: state.rows.length + 8,
-                    });
-                } catch (e) {
-                    chart.timeScale().fitContent();
-                }
-            } else {
-                chart.timeScale().fitContent();
-            }
-            renderDrawings();
-
+            writeChartCache(url, data);
+            applyChartData(data);
             showLoading(false);
         } catch (error) {
             console.error(error);
             showLoading(false);
-            showError(true, error.message || "차트 데이터를 불러오지 못했습니다.");
+            if (!cached) showError(true, error.message || "차트 데이터를 불러오지 못했습니다.");
         }
     }
 

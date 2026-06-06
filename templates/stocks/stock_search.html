@@ -1591,6 +1591,136 @@
       padding: 10px;
     }
   }
+
+  /* =========================================================
+     v14 Home column alignment final
+     - 왼쪽 1행(검색 히어로)과 오른쪽 1행(Market Database) 높이 고정 매칭
+     - 왼쪽 2행(빗각뷰 포인트)과 오른쪽 2행(주요지수) 시작선 매칭
+     - 좌우/상하 여백을 하나의 변수로 통일
+     ========================================================= */
+  @media (min-width: 1181px) {
+    .home-shell {
+      --home-grid-gap-final: 24px;
+      --home-side-width-final: 350px;
+      --home-first-row-height-final: 392px;
+      width: min(1500px, calc(100vw - 52px)) !important;
+      padding-top: 20px !important;
+    }
+
+    .home-main-grid {
+      grid-template-columns: minmax(0, 1fr) var(--home-side-width-final) !important;
+      gap: var(--home-grid-gap-final) !important;
+      align-items: start !important;
+    }
+
+    .home-left-stack,
+    .home-side-stack {
+      display: grid !important;
+      gap: var(--home-grid-gap-final) !important;
+      align-content: start !important;
+      min-width: 0 !important;
+    }
+
+    .home-left-stack > *,
+    .home-side-stack > * {
+      margin-top: 0 !important;
+      margin-bottom: 0 !important;
+      box-sizing: border-box !important;
+    }
+
+    .home-left-stack > .insight-carousel-section,
+    .home-left-stack > .insight-home-section,
+    .home-left-stack > .home-insight-section,
+    .home-left-stack > .insight-carousel-wrap,
+    .home-left-stack > section[class*="insight"],
+    .home-left-stack > div[class*="insight"] {
+      margin-top: 0 !important;
+      margin-bottom: 0 !important;
+    }
+
+    .home-hero {
+      height: var(--home-first-row-height-final) !important;
+      min-height: var(--home-first-row-height-final) !important;
+      padding: 38px 42px 36px !important;
+      display: flex !important;
+      flex-direction: column !important;
+      justify-content: center !important;
+      overflow: visible !important;
+    }
+
+    .home-side-stack {
+      grid-template-rows: var(--home-first-row-height-final) auto !important;
+    }
+
+    .home-side-stack > .home-side-card:first-child {
+      height: var(--home-first-row-height-final) !important;
+      min-height: var(--home-first-row-height-final) !important;
+      padding: 24px !important;
+      display: grid !important;
+      grid-template-rows: auto auto minmax(0, 1fr) minmax(0, 1fr) !important;
+      gap: 14px !important;
+      align-content: stretch !important;
+    }
+
+    .home-side-stack > .home-side-card:first-child h3 {
+      min-height: 28px !important;
+      margin: 0 !important;
+      line-height: 1.18 !important;
+    }
+
+    .home-side-stack > .home-side-card:first-child p {
+      min-height: 0 !important;
+      margin: 0 !important;
+      line-height: 1.5 !important;
+    }
+
+    .home-side-stack > .home-side-card:first-child .db-stat-card {
+      height: 100% !important;
+      min-height: 0 !important;
+      margin: 0 !important;
+      padding: 18px !important;
+      display: flex !important;
+      flex-direction: column !important;
+      justify-content: center !important;
+    }
+
+    .home-side-stack > .home-side-card:nth-child(2) {
+      align-self: start !important;
+      padding: 24px !important;
+    }
+
+    .home-side-card,
+    .home-hero,
+    .home-panel {
+      border-radius: 30px !important;
+    }
+
+    .quick-list {
+      gap: 12px !important;
+    }
+
+    .quick-link {
+      min-height: 66px !important;
+      padding: 13px 15px !important;
+      border-radius: 17px !important;
+    }
+  }
+
+  @media (min-width: 1181px) and (max-width: 1320px) {
+    .home-shell {
+      --home-side-width-final: 330px;
+      --home-first-row-height-final: 376px;
+    }
+
+    .home-hero {
+      padding: 34px 34px 32px !important;
+    }
+
+    .home-title {
+      font-size: clamp(40px, 5vw, 66px) !important;
+    }
+  }
+
 </style>
 {% endblock %}
 
@@ -1833,48 +1963,64 @@
       </section>
 
       <section class="home-side-card">
-        <h3>빠른 이동</h3>
-        <p>대표 종목 차트로 바로 이동합니다.</p>
+        <h3>주요지수</h3>
+        <p>대표 지수 차트로 바로 이동합니다.</p>
 
         <div class="quick-list">
-          <a class="quick-link" href="/tools/youtube-keyword/">
+          <a class="quick-link" href="/stocks/KOSPI/" data-index-prefetch="KOSPI">
             <span>
-              <strong>유튜브 키워드 분석기</strong>
-              <span>쇼츠 · 롱폼 제목 · 태그 추천</span>
+              <strong>코스피 지수</strong>
+              <span>KOSPI</span>
             </span>
-            <em class="quick-badge">BETA</em>
+            <em class="quick-badge">국내</em>
           </a>
 
-          <a class="quick-link" href="/stocks/005930/">
+          <a class="quick-link" href="/stocks/KOSDAQ/" data-index-prefetch="KOSDAQ">
             <span>
-              <strong>삼성전자</strong>
-              <span>005930</span>
+              <strong>코스닥 지수</strong>
+              <span>KOSDAQ</span>
             </span>
-            <em class="quick-badge">KOSPI</em>
+            <em class="quick-badge">국내</em>
           </a>
 
-          <a class="quick-link" href="/stocks/000660/">
+          <a class="quick-link" href="/stocks/NASDAQ/" data-index-prefetch="NASDAQ">
             <span>
-              <strong>SK하이닉스</strong>
-              <span>000660</span>
+              <strong>나스닥 종합</strong>
+              <span>NASDAQ</span>
             </span>
-            <em class="quick-badge">KOSPI</em>
+            <em class="quick-badge">해외</em>
           </a>
 
-          <a class="quick-link" href="/stocks/035420/">
+          <a class="quick-link" href="/stocks/NASDAQ100/" data-index-prefetch="NASDAQ100">
             <span>
-              <strong>NAVER</strong>
-              <span>035420</span>
+              <strong>나스닥 100</strong>
+              <span>NASDAQ100</span>
             </span>
-            <em class="quick-badge">KOSPI</em>
+            <em class="quick-badge">해외</em>
           </a>
 
-          <a class="quick-link" href="/stocks/035720/">
+          <a class="quick-link" href="/stocks/NQF/" data-index-prefetch="NQF">
             <span>
-              <strong>카카오</strong>
-              <span>035720</span>
+              <strong>나스닥 100 E-mini 선물</strong>
+              <span>NQF</span>
             </span>
-            <em class="quick-badge">KOSPI</em>
+            <em class="quick-badge">선물</em>
+          </a>
+
+          <a class="quick-link" href="/stocks/SOX/" data-index-prefetch="SOX">
+            <span>
+              <strong>필라델피아 반도체</strong>
+              <span>SOX</span>
+            </span>
+            <em class="quick-badge">해외</em>
+          </a>
+
+          <a class="quick-link" href="/stocks/SP500/" data-index-prefetch="SP500">
+            <span>
+              <strong>S&amp;P 500</strong>
+              <span>SP500</span>
+            </span>
+            <em class="quick-badge">해외</em>
           </a>
         </div>
       </section>

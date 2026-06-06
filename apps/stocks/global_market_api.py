@@ -1,5 +1,7 @@
 import json
 import math
+import threading
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from urllib.parse import quote
 from urllib.request import Request, urlopen
 
@@ -9,30 +11,31 @@ from django.utils import timezone
 
 
 YAHOO_SYMBOLS = {
-    "kospi": {"name": "KOSPI", "symbol": "^KS11", "symbols": ["^KS11"], "stooq": "^ks11"},
-    "kosdaq": {"name": "KOSDAQ", "symbol": "^KQ11", "symbols": ["^KQ11"], "stooq": "^kq11"},
-    "nasdaq": {"name": "NASDAQ Composite", "symbol": "^IXIC", "symbols": ["^IXIC", "^COMPX"], "stooq": "^ixic"},
-    "nasdaq100": {"name": "NASDAQ 100", "symbol": "^NDX", "symbols": ["^NDX"], "stooq": "^ndx"},
-    "sp500": {"name": "S&P 500", "symbol": "^GSPC", "symbols": ["^GSPC", "^SPX"], "stooq": "^spx"},
-    "sox": {"name": "PHLX Semiconductor", "symbol": "^SOX", "symbols": ["^SOX"], "stooq": "^sox"},
-    "emini_nasdaq": {"name": "E-mini NASDAQ 100", "symbol": "NQ=F", "symbols": ["NQ=F", "MNQ=F"], "stooq": "nq.f"},
+    "kospi": {"name": "KOSPI", "symbol": "^KS11"},
+    "kosdaq": {"name": "KOSDAQ", "symbol": "^KQ11"},
+    "nasdaq100": {"name": "NASDAQ 100", "symbol": "^NDX"},
+    "sp500": {"name": "S&P 500", "symbol": "^GSPC"},
+    "emini_nasdaq": {"name": "E-mini NASDAQ 100", "symbol": "NQ=F"},
 }
 
-INDEX_KEYS = ["kospi", "kosdaq", "nasdaq", "nasdaq100", "sp500", "sox"]
+INDEX_KEYS = ["kospi", "kosdaq", "nasdaq100", "sp500"]
+YAHOO_HOSTS = ["query1.finance.yahoo.com", "query2.finance.yahoo.com"]
+YAHOO_TIMEOUT_SECONDS = 4
+FRESH_CACHE_KEY = "bitgakview:global_market_temperature:v13:fresh"
+STALE_CACHE_KEY = "bitgakview:global_market_temperature:v13:stale"
+REFRESH_LOCK_KEY = "bitgakview:global_market_temperature:v13:refresh_lock"
+FRESH_TTL_SECONDS = 60 * 10
+STALE_TTL_SECONDS = 60 * 60
 
 
 def _fetch_yahoo_chart(symbol, range_value="10y", interval="1d"):
-    """Yahoo Chart API query1/query2를 모두 시도한다."""
-    symbol = str(symbol or "").strip()
-    if not symbol:
-        raise ValueError("Empty Yahoo symbol")
-
     encoded = quote(symbol, safe="")
-    last_exc = None
-    for host in ["query1.finance.yahoo.com", "query2.finance.yahoo.com"]:
+    last_error = None
+
+    for host in YAHOO_HOSTS:
         url = (
             f"https://{host}/v8/finance/chart/{encoded}"
-            f"?range={range_value}&interval={interval}&includePrePost=false&events=history&includeAdjustedClose=true"
+            f"?range={range_value}&interval={interval}&includePrePost=false&events=history"
         )
         req = Request(
             url,
@@ -40,32 +43,21 @@ def _fetch_yahoo_chart(symbol, range_value="10y", interval="1d"):
                 "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
                 "(KHTML, like Gecko) Chrome/124.0 Safari/537.36",
                 "Accept": "application/json,text/plain,*/*",
-                "Referer": "https://finance.yahoo.com/",
             },
         )
         try:
-            with urlopen(req, timeout=8) as response:
+            with urlopen(req, timeout=YAHOO_TIMEOUT_SECONDS) as response:
                 raw = response.read().decode("utf-8")
             payload = json.loads(raw)
             result = (payload.get("chart", {}).get("result") or [None])[0]
             if result:
                 return result
+            last_error = ValueError(f"No Yahoo chart result for {symbol}")
         except Exception as exc:
-            last_exc = exc
-            continue
-    raise ValueError(f"No Yahoo chart result for {symbol}: {last_exc}")
+            last_error = exc
 
+    raise last_error or ValueError(f"No Yahoo chart result for {symbol}")
 
-def _fetch_yahoo_chart_from_info(symbol_info, range_value="10y", interval="1d"):
-    symbols = symbol_info.get("symbols") or [symbol_info.get("symbol")]
-    last_exc = None
-    for symbol in symbols:
-        try:
-            return _fetch_yahoo_chart(symbol, range_value=range_value, interval=interval)
-        except Exception as exc:
-            last_exc = exc
-            continue
-    raise ValueError(f"No Yahoo chart result for {symbol_info.get('name')}: {last_exc}")
 
 def _safe_float(value, default=None):
     try:
@@ -94,14 +86,6 @@ def _format_percent(value, signed=False):
     return f"{sign}{value:.2f}%"
 
 
-def _last_valid(values):
-    for value in reversed(values or []):
-        number = _safe_float(value)
-        if number is not None:
-            return number
-    return None
-
-
 def _last_two_valid(values):
     found = []
     for value in reversed(values or []):
@@ -128,14 +112,6 @@ def _extract_quote_arrays(result):
 
 
 def _extract_current(result):
-    """
-    Yahoo chartPreviousClose는 range 시작 직전 종가인 경우가 많아서 10년 차트에서는
-    전일대비가 수백 %로 왜곡될 수 있습니다. 그래서 전일대비 기준값은 아래 순서로 잡습니다.
-
-    1. regularMarketPreviousClose / previousClose / previous_close
-    2. 차트 배열의 마지막 전 거래일 종가
-    3. chartPreviousClose는 최후 fallback으로만 사용
-    """
     meta = result.get("meta") or {}
     closes, highs = _extract_quote_arrays(result)
     last_close, previous_close_from_series = _last_two_valid(closes)
@@ -188,7 +164,7 @@ def _change_label(change, change_percent):
 
 
 def _make_market_item(key, symbol_info, range_value="10y", interval="1d"):
-    result = _fetch_yahoo_chart_from_info(symbol_info, range_value=range_value, interval=interval)
+    result = _fetch_yahoo_chart(symbol_info["symbol"], range_value=range_value, interval=interval)
     current = _extract_current(result)
 
     return {
@@ -213,7 +189,6 @@ def _make_index_item(key, symbol_info):
 
 
 def _make_future_item():
-    # 선물도 최고점 대비 하락률이 필요하므로 10년 일봉으로 현재가·전일대비·고점대비를 함께 계산합니다.
     return _make_market_item("emini_nasdaq", YAHOO_SYMBOLS["emini_nasdaq"], range_value="10y", interval="1d")
 
 
@@ -305,22 +280,47 @@ def _error_market_item(key):
     }
 
 
-def _build_payload():
-    indices = []
-    errors = {}
-
-    for key in INDEX_KEYS:
-        try:
-            indices.append(_make_index_item(key, YAHOO_SYMBOLS[key]))
-        except Exception as exc:
-            errors[key] = str(exc)
-            indices.append(_error_market_item(key))
-
+def _safe_build_index(key):
     try:
-        future = _make_future_item()
+        return key, _make_index_item(key, YAHOO_SYMBOLS[key]), None
     except Exception as exc:
-        errors["emini_nasdaq"] = str(exc)
-        future = _error_market_item("emini_nasdaq")
+        return key, _error_market_item(key), str(exc)
+
+
+def _safe_build_future():
+    try:
+        return "emini_nasdaq", _make_future_item(), None
+    except Exception as exc:
+        return "emini_nasdaq", _error_market_item("emini_nasdaq"), str(exc)
+
+
+def _build_payload():
+    errors = {}
+    index_map = {}
+    future = None
+
+    jobs = [("index", key) for key in INDEX_KEYS] + [("future", "emini_nasdaq")]
+    with ThreadPoolExecutor(max_workers=5) as executor:
+        future_map = {}
+        for job_type, key in jobs:
+            if job_type == "future":
+                future_obj = executor.submit(_safe_build_future)
+            else:
+                future_obj = executor.submit(_safe_build_index, key)
+            future_map[future_obj] = (job_type, key)
+
+        for future_obj in as_completed(future_map):
+            _, key = future_map[future_obj]
+            result_key, item, error = future_obj.result()
+            if error:
+                errors[result_key] = error
+            if result_key == "emini_nasdaq":
+                future = item
+            else:
+                index_map[result_key] = item
+
+    indices = [index_map.get(key) or _error_market_item(key) for key in INDEX_KEYS]
+    future = future or _error_market_item("emini_nasdaq")
 
     timing = _timing_from_drawdowns(indices)
     avg_drop = timing["average_drop"]
@@ -332,6 +332,7 @@ def _build_payload():
     return {
         "ok": True,
         "source": "Yahoo Finance chart API",
+        "cache_state": "fresh",
         "updated_at": updated_at,
         "indices": indices,
         "future": future,
@@ -353,16 +354,55 @@ def _build_payload():
     }
 
 
+def _save_payload(payload):
+    cache.set(FRESH_CACHE_KEY, payload, FRESH_TTL_SECONDS)
+    cache.set(STALE_CACHE_KEY, payload, STALE_TTL_SECONDS)
+
+
+def _refresh_cache_background():
+    try:
+        payload = _build_payload()
+        _save_payload(payload)
+    except Exception:
+        pass
+    finally:
+        cache.delete(REFRESH_LOCK_KEY)
+
+
+def _maybe_start_background_refresh():
+    if not cache.add(REFRESH_LOCK_KEY, True, 45):
+        return
+    thread = threading.Thread(target=_refresh_cache_background, daemon=True)
+    thread.start()
+
+
 def global_market_temperature_api(request):
-    cache_key = "bitgakview:global_market_temperature:v4"
-    cached = cache.get(cache_key)
-    if cached:
-        return JsonResponse(cached)
+    force_refresh = request.GET.get("refresh") in {"1", "true", "yes"}
 
-    payload = _build_payload()
-    cache.set(cache_key, payload, 60)
-    return JsonResponse(payload)
+    if not force_refresh:
+        cached = cache.get(FRESH_CACHE_KEY)
+        if cached:
+            return JsonResponse(cached)
+
+        stale = cache.get(STALE_CACHE_KEY)
+        if stale:
+            payload = dict(stale)
+            payload["cache_state"] = "stale"
+            _maybe_start_background_refresh()
+            return JsonResponse(payload)
+
+    try:
+        payload = _build_payload()
+        _save_payload(payload)
+        return JsonResponse(payload)
+    except Exception as exc:
+        stale = cache.get(STALE_CACHE_KEY)
+        if stale:
+            payload = dict(stale)
+            payload["cache_state"] = "stale-error"
+            payload.setdefault("errors", {})["refresh"] = str(exc)
+            return JsonResponse(payload)
+        return JsonResponse({"ok": False, "message": str(exc)}, status=503)
 
 
-# 기존 urls.py에서 market_temperature_api 이름을 쓰고 있다면 이 alias를 사용해도 됩니다.
 market_temperature_api = global_market_temperature_api

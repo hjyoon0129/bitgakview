@@ -759,6 +759,49 @@
     return url.toString();
   }
 
+  const CHART_SESSION_CACHE_VERSION = "v12";
+
+  function getChartSessionCacheKey(url) {
+    return "bitgak:chart:payload:" + CHART_SESSION_CACHE_VERSION + ":" + code + ":" + state.interval + ":" + url;
+  }
+
+  const INDEX_SESSION_CACHE_CODES = new Set(["KOSPI", "KOSDAQ", "NASDAQ", "NASDAQ100", "NQF", "SP500", "SOX"]);
+
+  function isIndexLikeSessionCode() {
+    return INDEX_SESSION_CACHE_CODES.has(String(code || "").toUpperCase());
+  }
+
+  function getChartSessionCacheTtl() {
+    const intraday = isIntradayInterval(state.interval);
+    if (isIndexLikeSessionCode()) {
+      return intraday ? 20 * 60 * 1000 : 4 * 60 * 60 * 1000;
+    }
+    return intraday ? 10 * 60 * 1000 : 30 * 60 * 1000;
+  }
+
+  function readChartSessionCache(url) {
+    try {
+      const raw = sessionStorage.getItem(getChartSessionCacheKey(url));
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      if (!parsed || !parsed.data || !parsed.savedAt) return null;
+      if (Date.now() - Number(parsed.savedAt) > getChartSessionCacheTtl()) return null;
+      return parsed.data;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function writeChartSessionCache(url, data) {
+    try {
+      if (!data || data.ok === false) return;
+      sessionStorage.setItem(getChartSessionCacheKey(url), JSON.stringify({
+        savedAt: Date.now(),
+        data: data,
+      }));
+    } catch (e) {}
+  }
+
   function normalizeRows(data) {
     const rawRows = Array.isArray(data.rows)
       ? data.rows
@@ -1004,12 +1047,80 @@
     timeScale.applyOptions({ rightOffset: 8, barSpacing: getIntervalMeta(state.interval).barSpacing || 8 });
   }
 
+  async function applyChartPayload(data, token) {
+    if (token !== state.requestToken) return false;
+
+    if (!data || !data.ok) {
+      throw new Error((data && data.message) || "차트 데이터를 불러오지 못했습니다.");
+    }
+
+    const normalizedRows = normalizeRows(data);
+    const serverAggregated = !!data.server_aggregated || String(data.source || "").indexOf("yfinance") >= 0;
+    const baseRows = serverAggregated ? normalizedRows : aggregateHourlyRows(normalizedRows, state.interval);
+
+    if (!baseRows.length) {
+      throw new Error("표시할 차트 데이터가 없습니다.");
+    }
+
+    state.payload = data;
+    state.baseRows = baseRows;
+    state.rows = applyGaplessTimes(baseRows, state.interval, data);
+
+    applyIntervalChartOptions();
+    resetManualMainPriceRange(false);
+    candleSeries.setData(rowsToOhlcData(state.rows));
+    updateHeaderInfo(data);
+
+    layoutPanes();
+    fitOrKeepVisibleRange(true);
+
+    if (state.insightSnapshotMode && state.insightSnapshot) {
+      applyInsightSnapshotPayload(state.insightSnapshot, false);
+    } else if (state.insightEditorMode) {
+      state.drawings = Array.isArray(state.drawings) ? state.drawings.map(normalizeDrawing).filter(Boolean) : [];
+      state.tempDrawing = state.tempDrawing ? normalizeDrawing(state.tempDrawing) : null;
+      renderDrawings();
+    } else {
+      await loadDrawingsFromStorage();
+      renderDrawings();
+    }
+
+    document.dispatchEvent(new CustomEvent("bitgak:chart-data-loaded", {
+      bubbles: true,
+      detail: {
+        rows: state.rows,
+        baseRows: state.baseRows,
+        payload: data,
+        interval: state.interval,
+      },
+    }));
+
+    if (state.insightEditorMode) notifyInsightChartDirty("data-loaded");
+
+    setTimeout(function () {
+      layoutPanes();
+      hideTradingViewMark();
+    }, 100);
+
+    return true;
+  }
+
   async function loadChartData() {
     const token = ++state.requestToken;
+    const requestUrl = buildApiUrl();
     setLoading(true);
 
+    const cached = readChartSessionCache(requestUrl);
+    if (cached) {
+      try {
+        await applyChartPayload(cached, token);
+        setLoading(false);
+        return;
+      } catch (e) {}
+    }
+
     try {
-      const res = await fetch(buildApiUrl(), {
+      const res = await fetch(requestUrl, {
         headers: { "X-Requested-With": "XMLHttpRequest" },
         cache: "no-store",
       });
@@ -1022,59 +1133,11 @@
         throw new Error(data.message || "차트 데이터를 불러오지 못했습니다.");
       }
 
-      const normalizedRows = normalizeRows(data);
-      const serverAggregated = !!data.server_aggregated || String(data.source || "").indexOf("yfinance") >= 0;
-      const baseRows = serverAggregated ? normalizedRows : aggregateHourlyRows(normalizedRows, state.interval);
-
-      if (!baseRows.length) {
-        throw new Error("표시할 차트 데이터가 없습니다.");
-      }
-
-      state.payload = data;
-      state.baseRows = baseRows;
-      state.rows = applyGaplessTimes(baseRows, state.interval, data);
-
-      applyIntervalChartOptions();
-      resetManualMainPriceRange(false);
-      candleSeries.setData(rowsToOhlcData(state.rows));
-      updateHeaderInfo(data);
-
-      layoutPanes();
-      fitOrKeepVisibleRange(true);
-
-      if (state.insightSnapshotMode && state.insightSnapshot) {
-        applyInsightSnapshotPayload(state.insightSnapshot, false);
-      } else if (state.insightEditorMode) {
-        // 빗각관점 글쓰기 iframe에서는 계정/브라우저 저장 드로잉을 섞지 않는다.
-        // 단, 같은 iframe 안에서 일봉→주봉처럼 기간만 바꿀 때는 방금 그린 드로잉을 절대 초기화하지 않는다.
-        // 부모 페이지가 snapshot으로 저장하기 전이어도 state.drawings를 유지해야 드로잉이 사라지지 않는다.
-        state.drawings = Array.isArray(state.drawings) ? state.drawings.map(normalizeDrawing).filter(Boolean) : [];
-        state.tempDrawing = state.tempDrawing ? normalizeDrawing(state.tempDrawing) : null;
-        renderDrawings();
-      } else {
-        await loadDrawingsFromStorage();
-        renderDrawings();
-      }
-
-      document.dispatchEvent(new CustomEvent("bitgak:chart-data-loaded", {
-        bubbles: true,
-        detail: {
-          rows: state.rows,
-          baseRows: state.baseRows,
-          payload: data,
-          interval: state.interval,
-        },
-      }));
-
-      if (state.insightEditorMode) notifyInsightChartDirty("data-loaded");
-
-      setTimeout(function () {
-        layoutPanes();
-        hideTradingViewMark();
-      }, 100);
+      writeChartSessionCache(requestUrl, data);
+      await applyChartPayload(data, token);
     } catch (err) {
       console.error(err);
-      showSoftMessage(err.message || "차트 데이터를 불러오지 못했습니다.");
+      if (!cached) showSoftMessage(err.message || "차트 데이터를 불러오지 못했습니다.");
     } finally {
       if (token === state.requestToken) setLoading(false);
     }
