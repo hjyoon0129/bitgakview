@@ -326,7 +326,7 @@
       localization: {
         locale: "ko-KR",
         priceFormatter: function (price) {
-          return formatNumber(Math.round(price));
+          return formatNumber(price);
         },
         timeFormatter: function (time) {
           return normalizeTimeForDisplay(time);
@@ -701,7 +701,7 @@
       localization: {
         locale: "ko-KR",
         priceFormatter: function (price) {
-          return formatNumber(Math.round(price));
+          return formatNumber(price);
         },
         timeFormatter: function (time) {
           return normalizeTimeForDisplay(time);
@@ -748,6 +748,8 @@
     const candidate = getRequestCandidate();
     const url = new URL(apiUrl, getBitgakBaseUrl());
 
+    url.searchParams.set("code", code);
+    url.searchParams.set("symbol", code);
     url.searchParams.set("interval", candidate.interval);
     url.searchParams.set("range", candidate.range);
     url.searchParams.set("resolution", candidate.resolution);
@@ -938,7 +940,12 @@
     const change = data.current && data.current.change ? data.current.change : 0;
     const changeRate = data.current && data.current.change_rate ? data.current.change_rate : 0;
 
-    if (currentPriceText) currentPriceText.textContent = `${formatNumber(price)}원`;
+    if (currentPriceText) {
+      const marketText = String(data.market || app.dataset.market || "").toUpperCase();
+      const unit = data.price_unit || data.priceUnit || (/^(KOSPI|KOSDAQ|KONEX|KRX)$/.test(marketText) ? "원" : "pt");
+      const unitText = unit ? (unit === "원" ? unit : " " + unit) : "";
+      currentPriceText.textContent = `${formatNumber(price)}${unitText}`;
+    }
 
     if (changeText) {
       const sign = change > 0 ? "+" : "";
@@ -951,10 +958,33 @@
     if (last) updateOHLC(last);
   }
 
+  function getDefaultVisibleBarsFromPayload() {
+    const payload = state.payload || {};
+    const raw = payload.default_visible_bars || payload.initial_visible_bars || payload.visible_bars || 0;
+    const n = Number(raw);
+    return Number.isFinite(n) && n > 0 ? Math.floor(n) : 0;
+  }
+
   function fitOrKeepVisibleRange(forceFit) {
     if (!state.rows.length) return;
 
     const timeScale = chart.timeScale();
+    const defaultVisibleBars = getDefaultVisibleBarsFromPayload();
+
+    // 해외지수처럼 장기 히스토리를 내려받는 자산은 처음에 전체를 fitContent하면
+    // 최근 나스닥/반도체 지수 모양이 증권앱 일봉과 다르게 장기 압축 차트로 보인다.
+    // 백엔드가 default_visible_bars를 내려주면 데이터는 유지하고 화면만 최근 봉으로 맞춘다.
+    if (forceFit && defaultVisibleBars > 0 && state.rows.length > defaultVisibleBars) {
+      const from = Math.max(0, state.rows.length - defaultVisibleBars);
+      const to = state.rows.length + 8;
+      try {
+        timeScale.setVisibleLogicalRange({ from, to });
+      } catch (e) {
+        timeScale.fitContent();
+      }
+      timeScale.applyOptions({ rightOffset: 8, barSpacing: getIntervalMeta(state.interval).barSpacing || 8 });
+      return;
+    }
 
     if (forceFit || state.rows.length <= 180) {
       timeScale.fitContent();

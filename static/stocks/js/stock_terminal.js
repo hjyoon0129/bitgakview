@@ -186,7 +186,7 @@
             handleScale: true,
             localization: {
                 locale: "ko-KR",
-                priceFormatter: price => formatNumber(Math.round(price)),
+                priceFormatter: price => formatNumber(price),
             },
         });
 
@@ -317,6 +317,8 @@
 
     function getFetchUrl() {
         const url = new URL(apiUrl, window.location.origin);
+        url.searchParams.set("code", stockCode);
+        url.searchParams.set("symbol", stockCode);
         url.searchParams.set("interval", state.interval);
         url.searchParams.set("range", state.range);
         return url.toString();
@@ -365,7 +367,19 @@
                     ? "분봉/시간봉: 외부 제공처의 최근 범위 데이터"
                     : "일/주/월봉: 장기 히스토리 데이터";
 
-            chart.timeScale().fitContent();
+            const defaultVisibleBars = Number(data.default_visible_bars || data.initial_visible_bars || 0);
+            if (defaultVisibleBars > 0 && state.rows.length > defaultVisibleBars) {
+                try {
+                    chart.timeScale().setVisibleLogicalRange({
+                        from: Math.max(0, state.rows.length - defaultVisibleBars),
+                        to: state.rows.length + 8,
+                    });
+                } catch (e) {
+                    chart.timeScale().fitContent();
+                }
+            } else {
+                chart.timeScale().fitContent();
+            }
             renderDrawings();
 
             showLoading(false);
@@ -382,7 +396,10 @@
         const change = Number(current.change || 0);
         const rate = Number(current.change_rate || 0);
 
-        headlinePriceEl.textContent = formatNumber(price) + "원";
+        const marketText = String(data.market || root.dataset.market || "").toUpperCase();
+        const unit = data.price_unit || data.priceUnit || (/^(KOSPI|KOSDAQ|KONEX|KRX)$/.test(marketText) ? "원" : "pt");
+        const unitText = unit ? (unit === "원" ? unit : " " + unit) : "";
+        headlinePriceEl.textContent = formatNumber(price) + unitText;
 
         const sign = change > 0 ? "+" : "";
         headlineChangeEl.textContent = `${sign}${formatNumber(change)} (${sign}${rate}%)`;

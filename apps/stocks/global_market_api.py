@@ -9,39 +9,63 @@ from django.utils import timezone
 
 
 YAHOO_SYMBOLS = {
-    "kospi": {"name": "KOSPI", "symbol": "^KS11"},
-    "kosdaq": {"name": "KOSDAQ", "symbol": "^KQ11"},
-    "nasdaq100": {"name": "NASDAQ 100", "symbol": "^NDX"},
-    "sp500": {"name": "S&P 500", "symbol": "^GSPC"},
-    "emini_nasdaq": {"name": "E-mini NASDAQ 100", "symbol": "NQ=F"},
+    "kospi": {"name": "KOSPI", "symbol": "^KS11", "symbols": ["^KS11"], "stooq": "^ks11"},
+    "kosdaq": {"name": "KOSDAQ", "symbol": "^KQ11", "symbols": ["^KQ11"], "stooq": "^kq11"},
+    "nasdaq": {"name": "NASDAQ Composite", "symbol": "^IXIC", "symbols": ["^IXIC", "^COMPX"], "stooq": "^ixic"},
+    "nasdaq100": {"name": "NASDAQ 100", "symbol": "^NDX", "symbols": ["^NDX"], "stooq": "^ndx"},
+    "sp500": {"name": "S&P 500", "symbol": "^GSPC", "symbols": ["^GSPC", "^SPX"], "stooq": "^spx"},
+    "sox": {"name": "PHLX Semiconductor", "symbol": "^SOX", "symbols": ["^SOX"], "stooq": "^sox"},
+    "emini_nasdaq": {"name": "E-mini NASDAQ 100", "symbol": "NQ=F", "symbols": ["NQ=F", "MNQ=F"], "stooq": "nq.f"},
 }
 
-
-INDEX_KEYS = ["kospi", "kosdaq", "nasdaq100", "sp500"]
+INDEX_KEYS = ["kospi", "kosdaq", "nasdaq", "nasdaq100", "sp500", "sox"]
 
 
 def _fetch_yahoo_chart(symbol, range_value="10y", interval="1d"):
-    encoded = quote(symbol, safe="")
-    url = (
-        f"https://query1.finance.yahoo.com/v8/finance/chart/{encoded}"
-        f"?range={range_value}&interval={interval}&includePrePost=true&events=history"
-    )
-    req = Request(
-        url,
-        headers={
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-            "(KHTML, like Gecko) Chrome/124.0 Safari/537.36",
-            "Accept": "application/json,text/plain,*/*",
-        },
-    )
-    with urlopen(req, timeout=7) as response:
-        raw = response.read().decode("utf-8")
-    payload = json.loads(raw)
-    result = (payload.get("chart", {}).get("result") or [None])[0]
-    if not result:
-        raise ValueError(f"No Yahoo chart result for {symbol}")
-    return result
+    """Yahoo Chart API query1/query2를 모두 시도한다."""
+    symbol = str(symbol or "").strip()
+    if not symbol:
+        raise ValueError("Empty Yahoo symbol")
 
+    encoded = quote(symbol, safe="")
+    last_exc = None
+    for host in ["query1.finance.yahoo.com", "query2.finance.yahoo.com"]:
+        url = (
+            f"https://{host}/v8/finance/chart/{encoded}"
+            f"?range={range_value}&interval={interval}&includePrePost=false&events=history&includeAdjustedClose=true"
+        )
+        req = Request(
+            url,
+            headers={
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+                "(KHTML, like Gecko) Chrome/124.0 Safari/537.36",
+                "Accept": "application/json,text/plain,*/*",
+                "Referer": "https://finance.yahoo.com/",
+            },
+        )
+        try:
+            with urlopen(req, timeout=8) as response:
+                raw = response.read().decode("utf-8")
+            payload = json.loads(raw)
+            result = (payload.get("chart", {}).get("result") or [None])[0]
+            if result:
+                return result
+        except Exception as exc:
+            last_exc = exc
+            continue
+    raise ValueError(f"No Yahoo chart result for {symbol}: {last_exc}")
+
+
+def _fetch_yahoo_chart_from_info(symbol_info, range_value="10y", interval="1d"):
+    symbols = symbol_info.get("symbols") or [symbol_info.get("symbol")]
+    last_exc = None
+    for symbol in symbols:
+        try:
+            return _fetch_yahoo_chart(symbol, range_value=range_value, interval=interval)
+        except Exception as exc:
+            last_exc = exc
+            continue
+    raise ValueError(f"No Yahoo chart result for {symbol_info.get('name')}: {last_exc}")
 
 def _safe_float(value, default=None):
     try:
@@ -164,7 +188,7 @@ def _change_label(change, change_percent):
 
 
 def _make_market_item(key, symbol_info, range_value="10y", interval="1d"):
-    result = _fetch_yahoo_chart(symbol_info["symbol"], range_value=range_value, interval=interval)
+    result = _fetch_yahoo_chart_from_info(symbol_info, range_value=range_value, interval=interval)
     current = _extract_current(result)
 
     return {
@@ -330,7 +354,7 @@ def _build_payload():
 
 
 def global_market_temperature_api(request):
-    cache_key = "bitgakview:global_market_temperature:v3"
+    cache_key = "bitgakview:global_market_temperature:v4"
     cached = cache.get(cache_key)
     if cached:
         return JsonResponse(cached)

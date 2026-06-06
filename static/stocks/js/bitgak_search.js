@@ -15,6 +15,13 @@
   const MAX_RESULTS = 45;
 
   const FALLBACK_STOCKS = [
+    { code: "KOSPI", name: "코스피 지수", market: "INDEX-KR", aliases: ["코스피", "kospi", "ks11", "종합주가지수", "코스피인덱스", "kospi index"], search_rank: 5000, asset_type: "index", price_unit: "pt" },
+    { code: "KOSDAQ", name: "코스닥 지수", market: "INDEX-KR", aliases: ["코스닥", "kosdaq", "kq11", "코스닥인덱스", "kosdaq index"], search_rank: 4990, asset_type: "index", price_unit: "pt" },
+    { code: "NASDAQ", name: "나스닥 종합", market: "INDEX-US", aliases: ["나스닥", "나스닥종합", "nasdaq", "ixic", "^ixic", "nasdaq composite"], search_rank: 4980, asset_type: "index", price_unit: "pt" },
+    { code: "NASDAQ100", name: "나스닥 100", market: "INDEX-US", aliases: ["나스닥100", "나스닥 100", "nasdaq100", "nasdaq 100", "ndx", "^ndx", "nas100", "us100"], search_rank: 4970, asset_type: "index", price_unit: "pt" },
+    { code: "NQF", name: "나스닥 100 E-mini 선물", market: "FUTURE-US", aliases: ["나스닥선물", "나스닥 100 선물", "나스닥100선물", "e-mini", "emini", "nq", "nq=f", "nqf", "nasdaq futures"], search_rank: 4960, asset_type: "future", is_derivative: true, price_unit: "pt" },
+    { code: "SP500", name: "S&P 500", market: "INDEX-US", aliases: ["s&p500", "s&p 500", "sp500", "spx", "gspc", "^gspc", "에스앤피", "에센피", "us500"], search_rank: 4950, asset_type: "index", price_unit: "pt" },
+    { code: "SOX", name: "필라델피아 반도체 지수", market: "INDEX-US", aliases: ["필라델피아반도체", "필라델피아 반도체", "sox", "^sox", "phlx semiconductor", "반도체지수"], search_rank: 4940, asset_type: "index", price_unit: "pt" },
     { code: "005930", name: "삼성전자", market: "KOSPI", aliases: ["삼성", "삼전", "samsung", "samsung electronics"], search_rank: 1000 },
     { code: "005935", name: "삼성전자우", market: "KOSPI", aliases: ["삼전우", "삼성우", "삼성전자우선주"], search_rank: 930 },
     { code: "000660", name: "SK하이닉스", market: "KOSPI", aliases: ["하이닉스", "하닉", "skhynix", "hynix", "sk 하이닉스"], search_rank: 980 },
@@ -139,6 +146,9 @@
       href: item.href || (code ? "/stocks/" + encodeURIComponent(code) + "/" : "#"),
       search_rank: Number(item.search_rank || item.rank || 0) || 0,
       is_derivative: !!item.is_derivative,
+      asset_type: String(item.asset_type || item.assetType || "stock").trim() || "stock",
+      yahoo_symbol: String(item.yahoo_symbol || item.yahooSymbol || "").trim(),
+      price_unit: String(item.price_unit || item.priceUnit || (String(item.market || "").startsWith("INDEX") ? "pt" : "")).trim(),
     };
   }
 
@@ -220,7 +230,10 @@
 
   function itemTemplate(item, index) {
     const href = getItemHref(item);
-    const derivativeBadge = item.is_derivative ? '<span class="stock-search-market derivative">ETF/ETN</span>' : "";
+    const assetType = String(item.asset_type || "stock").toLowerCase();
+    const derivativeBadge = item.is_derivative
+      ? '<span class="stock-search-market derivative">선물/파생</span>'
+      : (assetType === "index" ? '<span class="stock-search-market derivative">INDEX</span>' : "");
     return `
       <a class="stock-search-item" href="${escapeHtml(href)}" data-search-index="${index}">
         <div>

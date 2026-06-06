@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta
 from types import SimpleNamespace
-from urllib.parse import urlencode
+from urllib.parse import urlencode, quote
 from urllib.request import Request, urlopen
 import ast
 import json
@@ -98,7 +98,149 @@ DERIVATIVE_KEYWORDS = [
 ]
 
 
-FALLBACK_STOCKS = [
+# -----------------------------------------------------------------------------
+# 글로벌 대표지수 / 선물 심볼
+# -----------------------------------------------------------------------------
+# 사용자는 /stocks/KOSPI/, /stocks/NASDAQ100/처럼 친숙한 내부 코드로 접속하고,
+# 실제 시세는 Yahoo Finance 심볼(^KS11, ^NDX, NQ=F 등)로 가져옵니다.
+# StockSymbol DB에 저장하지 않아도 검색/차트가 동작하도록 fallback payload에 포함합니다.
+
+GLOBAL_INDEX_SYMBOLS = {
+    "KOSPI": {
+        "code": "KOSPI",
+        "name": "코스피 지수",
+        "market": "INDEX-KR",
+        "asset_type": "index",
+        "provider": "pykrx-index",
+        "krx_index_code": "1001",
+        "naver_symbol": "KOSPI",
+        "yahoo_symbol": "^KS11",
+        "yahoo_symbols": ["^KS11"],
+        "stooq_symbol": "^ks11",
+        "price_unit": "pt",
+        "aliases": ["코스피", "kospi", "ks11", "^ks11", "종합주가지수", "코스피인덱스", "kospi index"],
+        "search_rank": 5000,
+    },
+    "KOSDAQ": {
+        "code": "KOSDAQ",
+        "name": "코스닥 지수",
+        "market": "INDEX-KR",
+        "asset_type": "index",
+        "provider": "pykrx-index",
+        "krx_index_code": "2001",
+        "naver_symbol": "KOSDAQ",
+        "yahoo_symbol": "^KQ11",
+        "yahoo_symbols": ["^KQ11"],
+        "stooq_symbol": "^kq11",
+        "price_unit": "pt",
+        "aliases": ["코스닥", "kosdaq", "kq11", "^kq11", "코스닥인덱스", "kosdaq index"],
+        "search_rank": 4990,
+    },
+    "NASDAQ": {
+        "code": "NASDAQ",
+        "name": "나스닥 종합",
+        "market": "INDEX-US",
+        "asset_type": "index",
+        "yahoo_symbol": "^IXIC",
+        "yahoo_symbols": ["^IXIC", "^COMPX"],
+        "stooq_symbol": "^ixic",
+        "aliases": ["나스닥", "나스닥종합", "nasdaq", "ixic", "^ixic", "nasdaq composite"],
+        "search_rank": 4980,
+    },
+    "NASDAQ100": {
+        "code": "NASDAQ100",
+        "name": "나스닥 100",
+        "market": "INDEX-US",
+        "asset_type": "index",
+        "yahoo_symbol": "^NDX",
+        "yahoo_symbols": ["^NDX"],
+        "stooq_symbol": "^ndx",
+        "aliases": ["나스닥100", "나스닥 100", "nasdaq100", "nasdaq 100", "ndx", "^ndx"],
+        "search_rank": 4970,
+    },
+    "NQF": {
+        "code": "NQF",
+        "name": "나스닥 100 E-mini 선물",
+        "market": "FUTURE-US",
+        "asset_type": "future",
+        "yahoo_symbol": "NQ=F",
+        "yahoo_symbols": ["NQ=F", "MNQ=F"],
+        "stooq_symbol": "nq.f",
+        "aliases": ["나스닥선물", "나스닥 100 선물", "나스닥100선물", "e-mini", "emini", "nq", "nq=f", "nqf", "nasdaq futures"],
+        "search_rank": 4960,
+        "is_derivative": True,
+    },
+    "SP500": {
+        "code": "SP500",
+        "name": "S&P 500",
+        "market": "INDEX-US",
+        "asset_type": "index",
+        "yahoo_symbol": "^GSPC",
+        "yahoo_symbols": ["^GSPC", "^SPX"],
+        "stooq_symbol": "^spx",
+        "aliases": ["s&p500", "s&p 500", "sp500", "spx", "gspc", "^gspc", "에스앤피", "에센피"],
+        "search_rank": 4950,
+    },
+    "SOX": {
+        "code": "SOX",
+        "name": "필라델피아 반도체 지수",
+        "market": "INDEX-US",
+        "asset_type": "index",
+        "yahoo_symbol": "^SOX",
+        "yahoo_symbols": ["^SOX"],
+        "stooq_symbol": "^sox",
+        "aliases": ["필라델피아반도체", "필라델피아 반도체", "sox", "^sox", "phlx semiconductor", "반도체지수"],
+        "search_rank": 4940,
+    },
+}
+
+
+def _global_fallback_payloads():
+    result = []
+    for item in GLOBAL_INDEX_SYMBOLS.values():
+        result.append({
+            "code": item["code"],
+            "name": item["name"],
+            "market": item["market"],
+            "aliases": item.get("aliases", []),
+            "search_rank": item.get("search_rank", 0),
+            "is_derivative": bool(item.get("is_derivative") or item.get("asset_type") == "future"),
+            "asset_type": item.get("asset_type", "index"),
+            "yahoo_symbol": item.get("yahoo_symbol", ""),
+            "price_unit": item.get("price_unit", "pt"),
+        })
+    return result
+
+
+def _build_global_alias_map():
+    aliases = {}
+    for code, item in GLOBAL_INDEX_SYMBOLS.items():
+        keys = [code, item.get("yahoo_symbol", ""), item.get("name", "")] + item.get("aliases", [])
+        for key in keys:
+            raw = str(key or "").strip().upper()
+            compact = re.sub(r"[\s_:\-./]+", "", raw)
+            compact = compact.replace("&", "")
+            if raw:
+                aliases[raw] = code
+            if compact:
+                aliases[compact] = code
+    aliases.update({
+        "SNP500": "SP500",
+        "SANDP500": "SP500",
+        "SPX": "SP500",
+        "US500": "SP500",
+        "NAS100": "NASDAQ100",
+        "US100": "NASDAQ100",
+        "NQ": "NQF",
+        "NQ=F": "NQF",
+    })
+    return aliases
+
+
+GLOBAL_INDEX_ALIAS_MAP = _build_global_alias_map()
+
+
+FALLBACK_STOCKS = _global_fallback_payloads() + [
     {"code": "005930", "name": "삼성전자", "market": "KOSPI", "aliases": ["삼성", "삼전", "samsung", "samsung electronics"], "search_rank": 1000},
     {"code": "005935", "name": "삼성전자우", "market": "KOSPI", "aliases": ["삼전우", "삼성우"], "search_rank": 930},
     {"code": "207940", "name": "삼성바이오로직스", "market": "KOSPI", "aliases": ["삼바", "삼성바이오"], "search_rank": 880},
@@ -147,6 +289,28 @@ def _clean_code(code):
     return digits[-6:]
 
 
+def _normalize_asset_code(code):
+    """KRX 6자리 종목코드와 글로벌 지수 내부코드를 함께 정규화합니다."""
+    raw = str(code or "").strip()
+
+    if not raw:
+        return ""
+
+    upper = raw.upper()
+    compact = re.sub(r"[\s_:\-./]+", "", upper).replace("&", "")
+
+    if upper in GLOBAL_INDEX_ALIAS_MAP:
+        return GLOBAL_INDEX_ALIAS_MAP[upper]
+    if compact in GLOBAL_INDEX_ALIAS_MAP:
+        return GLOBAL_INDEX_ALIAS_MAP[compact]
+
+    return _clean_code(raw)
+
+
+def _is_global_asset_code(code):
+    return _normalize_asset_code(code) in GLOBAL_INDEX_SYMBOLS
+
+
 def _empty_ohlcv():
     return pd.DataFrame(columns=["date", "open", "high", "low", "close", "volume"])
 
@@ -157,7 +321,19 @@ def _is_derivative_name(name):
 
 
 def _fallback_stock(code):
-    code = _clean_code(code)
+    asset_code = _normalize_asset_code(code)
+
+    if asset_code in GLOBAL_INDEX_SYMBOLS:
+        item = GLOBAL_INDEX_SYMBOLS[asset_code]
+        return SimpleNamespace(
+            code=item["code"],
+            name=item["name"],
+            market=item["market"],
+            asset_type=item.get("asset_type", "index"),
+            yahoo_symbol=item.get("yahoo_symbol", ""),
+        )
+
+    code = _clean_code(asset_code or code)
     item = FALLBACK_BY_CODE.get(code)
 
     if item:
@@ -167,7 +343,12 @@ def _fallback_stock(code):
 
 
 def _get_stock(code):
-    code = _clean_code(code)
+    asset_code = _normalize_asset_code(code)
+
+    if asset_code in GLOBAL_INDEX_SYMBOLS:
+        return _fallback_stock(asset_code)
+
+    code = _clean_code(asset_code or code)
     obj = StockSymbol.objects.filter(code=code).first()
 
     if obj:
@@ -177,7 +358,8 @@ def _get_stock(code):
 
 
 def _safe_reverse_stock_detail(code):
-    code = _clean_code(code)
+    asset_code = _normalize_asset_code(code)
+    code = asset_code or _clean_code(code)
 
     try:
         return reverse("stocks:detail", args=[code])
@@ -186,7 +368,24 @@ def _safe_reverse_stock_detail(code):
 
 
 def _stock_to_payload(stock_obj):
-    code = _clean_code(getattr(stock_obj, "code", ""))
+    code = _normalize_asset_code(getattr(stock_obj, "code", ""))
+
+    if code in GLOBAL_INDEX_SYMBOLS:
+        item = GLOBAL_INDEX_SYMBOLS[code]
+        return {
+            "code": item["code"],
+            "name": item["name"],
+            "market": item["market"],
+            "aliases": item.get("aliases", []),
+            "href": _safe_reverse_stock_detail(item["code"]),
+            "search_rank": item.get("search_rank", 0),
+            "is_derivative": bool(item.get("is_derivative") or item.get("asset_type") == "future"),
+            "asset_type": item.get("asset_type", "index"),
+            "yahoo_symbol": item.get("yahoo_symbol", ""),
+            "price_unit": item.get("price_unit", "pt"),
+        }
+
+    code = _clean_code(code)
     name = str(getattr(stock_obj, "name", "") or code).strip()
     market = str(getattr(stock_obj, "market", "") or "KRX").strip()
     fallback = FALLBACK_BY_CODE.get(code, {})
@@ -199,6 +398,7 @@ def _stock_to_payload(stock_obj):
         "href": _safe_reverse_stock_detail(code),
         "search_rank": fallback.get("search_rank", 0),
         "is_derivative": _is_derivative_name(name),
+        "asset_type": fallback.get("asset_type", "stock"),
     }
 
 
@@ -226,7 +426,7 @@ def _get_all_stocks_payload():
     전체 종목 payload 생성은 DB 전체를 순회하므로 홈 화면에서 매번 호출하면 느려진다.
     필요할 때만 사용하고, 기본 홈 렌더링에서는 인기/기본 종목만 내려준다.
     """
-    payload = []
+    payload = _global_fallback_payloads()
     qs = StockSymbol.objects.all().order_by("market", "name", "code")
 
     for stock_obj in qs.iterator(chunk_size=1000):
@@ -878,6 +1078,14 @@ def _yahoo_symbol_candidates(code):
 
 
 def _yahoo_period_for_range(range_key):
+    raw = str(range_key or "").strip().lower()
+
+    # v10: 국내 코스피/코스닥 종목 시간봉도 해외지수처럼 길게 가져온다.
+    # yfinance/Yahoo의 1h 데이터는 보통 10년치가 아니라 최대 약 730일권이 한계다.
+    # 프론트가 120d를 보내더라도 백엔드에서 effective_range=730d로 바꿔 호출한다.
+    if raw in {"730d", "720d", "2y", "24mo"}:
+        return "730d"
+
     range_key = _normalize_range(range_key)
 
     if range_key in ["1d", "5d"]:
@@ -893,8 +1101,7 @@ def _yahoo_period_for_range(range_key):
     if range_key == "1y":
         return "365d"
 
-    # Yahoo 1h 데이터는 너무 길게 요청하면 실패/누락될 수 있어 우선 180d로 제한
-    return "180d"
+    return "730d"
 
 
 def _extract_yfinance_column(df, target_name):
@@ -961,37 +1168,63 @@ def _standardize_yfinance_intraday_df(df):
 
 def _fetch_yahoo_intraday(code, range_key, interval):
     """
-    1시간~4시간봉 전용 데이터 소스.
-    Yahoo/yfinance에서 1h 원본을 받고, _aggregate_intraday_interval()에서
-    2h/3h/4h로 서버 재집계한다.
+    국내 개별종목 1시간~4시간봉 전용 데이터 소스.
+
+    v10:
+    - 기존에는 프론트가 보내는 range=120d/60d에 묶여 시간봉이 짧게 잘렸다.
+    - 이제 국내 KOSPI/KOSDAQ 종목도 해외지수와 동일하게 1h 원본을 최대 730일권까지 요청한다.
+    - 2h/3h/4h는 1h 원본을 받은 뒤 _aggregate_intraday_interval()에서 서버 재집계한다.
+    - Yahoo/yfinance 환경에 따라 730d가 실패할 수 있어 2y → 1y → 180d 순서로 fallback한다.
     """
     code = _clean_code(code)
 
     if not code or yf is None:
         return _empty_ohlcv()
 
-    period = _yahoo_period_for_range(range_key)
+    preferred_period = _yahoo_period_for_range(range_key)
+    period_candidates = [preferred_period]
+
+    if preferred_period in {"730d", "2y"}:
+        period_candidates += ["2y", "1y", "180d"]
+    else:
+        period_candidates += ["730d", "2y", "1y", "180d"]
+
+    # 중복 제거
+    period_candidates = list(dict.fromkeys([p for p in period_candidates if p]))
+
+    best_result = _empty_ohlcv()
 
     for symbol in _yahoo_symbol_candidates(code):
-        try:
-            df = yf.download(
-                symbol,
-                period=period,
-                interval="1h",
-                auto_adjust=False,
-                progress=False,
-                threads=False,
-                prepost=False,
-            )
-        except Exception:
-            continue
+        for period in period_candidates:
+            try:
+                df = yf.download(
+                    symbol,
+                    period=period,
+                    interval="1h",
+                    auto_adjust=False,
+                    progress=False,
+                    threads=False,
+                    prepost=False,
+                )
+            except Exception:
+                continue
 
-        result = _standardize_yfinance_intraday_df(df)
+            result = _standardize_yfinance_intraday_df(df)
 
-        if not result.empty:
-            return result
+            if result.empty:
+                continue
 
-    return _empty_ohlcv()
+            if len(result) > len(best_result):
+                best_result = result
+
+            # 730d/2y 요청에서 충분히 길게 오면 바로 사용
+            if period in {"730d", "2y"} and len(result) >= 700:
+                return result
+
+        if not best_result.empty:
+            return best_result
+
+    return best_result
 
 def _fetch_naver_intraday(code, range_key, interval):
     code = _clean_code(code)
@@ -1228,32 +1461,600 @@ def _calc_ma(rows, period):
 
 
 
-def _make_payload(code, range_key, interval):
-    code = _clean_code(code)
+def _yahoo_chart_period_for_range(range_key, intraday=False):
+    range_key = _normalize_range(range_key)
+
+    if intraday:
+        if range_key in ["1d", "5d"]:
+            return "5d"
+        if range_key in ["30d", "1m"]:
+            return "1mo"
+        if range_key in ["60d"]:
+            return "2mo"
+        if range_key in ["90d", "3m"]:
+            return "3mo"
+        if range_key in ["120d", "6m"]:
+            return "6mo"
+        return "730d"
+
+    mapping = {
+        "1d": "5d",
+        "5d": "5d",
+        "30d": "1mo",
+        "60d": "2mo",
+        "90d": "3mo",
+        "120d": "6mo",
+        "1m": "1mo",
+        "3m": "3mo",
+        "6m": "6mo",
+        "1y": "1y",
+        "3y": "3y",
+        "5y": "5y",
+        "10y": "10y",
+        "all": "max",
+    }
+    return mapping.get(range_key, "max")
+
+
+def _yahoo_chart_url(symbol, range_key="all", interval="1d", host="query1.finance.yahoo.com"):
+    """Yahoo Chart API URL을 만든다. range 방식은 Yahoo 공식 차트와 가장 가깝다."""
+    interval = _normalize_interval(interval)
+    intraday = _is_intraday_interval(interval)
+    yahoo_interval = "1h" if intraday else "1d"
+    yahoo_range = _yahoo_chart_period_for_range(range_key, intraday=intraday)
+    encoded = quote(str(symbol or "").strip(), safe="")
+    return (
+        f"https://{host}/v8/finance/chart/{encoded}"
+        f"?range={yahoo_range}&interval={yahoo_interval}"
+        f"&includePrePost=false&events=history&includeAdjustedClose=true"
+    )
+
+
+def _yahoo_chart_result(symbol, range_key="all", interval="1d"):
+    """query1 실패 시 query2도 시도한다."""
+    symbol = str(symbol or "").strip()
+    if not symbol:
+        return None
+
+    for host in ["query1.finance.yahoo.com", "query2.finance.yahoo.com"]:
+        url = _yahoo_chart_url(symbol, range_key=range_key, interval=interval, host=host)
+        request = Request(
+            url,
+            headers={
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+                "Accept": "application/json,text/plain,*/*",
+                "Referer": "https://finance.yahoo.com/",
+            },
+        )
+        try:
+            with urlopen(request, timeout=9) as response:
+                raw = response.read().decode("utf-8")
+            payload = json.loads(raw)
+            result = (payload.get("chart", {}).get("result") or [None])[0]
+            if result:
+                return result
+        except Exception:
+            continue
+    return None
+
+
+def _standardize_yahoo_chart_result(result, interval="1d"):
+    if not result:
+        return _empty_ohlcv()
+
+    interval = _normalize_interval(interval)
+    intraday = _is_intraday_interval(interval)
+    meta = result.get("meta") or {}
+    # 미국 지수는 거래소 기준일로 표시해야 네이버/증권사 차트와 날짜가 맞는다.
+    exchange_tz = meta.get("exchangeTimezoneName") or "America/New_York"
+
+    timestamps = result.get("timestamp") or []
+    quote_data = ((result.get("indicators") or {}).get("quote") or [{}])[0]
+    adjclose_data = ((result.get("indicators") or {}).get("adjclose") or [{}])[0]
+
+    opens = quote_data.get("open") or []
+    highs = quote_data.get("high") or []
+    lows = quote_data.get("low") or []
+    closes = quote_data.get("close") or []
+    adj_closes = adjclose_data.get("adjclose") or []
+    volumes = quote_data.get("volume") or []
+
+    rows = []
+    for i, ts in enumerate(timestamps):
+        open_value = _to_float(opens[i] if i < len(opens) else None)
+        high_value = _to_float(highs[i] if i < len(highs) else None)
+        low_value = _to_float(lows[i] if i < len(lows) else None)
+        close_value = _to_float(closes[i] if i < len(closes) else None)
+        adj_close_value = _to_float(adj_closes[i] if i < len(adj_closes) else None)
+        volume_value = _to_float(volumes[i] if i < len(volumes) else 0) or 0
+
+        # 일부 지수에서 close가 비어 들어오면 adjclose를 fallback으로 사용한다.
+        if close_value is None:
+            close_value = adj_close_value
+
+        if close_value is None or close_value <= 0:
+            continue
+
+        if open_value is None:
+            open_value = close_value
+        if high_value is None:
+            high_value = max(open_value, close_value)
+        if low_value is None:
+            low_value = min(open_value, close_value)
+
+        high_value = max(high_value, open_value, close_value)
+        low_value = min(low_value, open_value, close_value)
+
+        date_value = pd.to_datetime(ts, unit="s", utc=True, errors="coerce")
+        if pd.isna(date_value):
+            continue
+
+        try:
+            date_value = date_value.tz_convert(exchange_tz).tz_localize(None)
+        except Exception:
+            try:
+                date_value = date_value.tz_convert("America/New_York").tz_localize(None)
+            except Exception:
+                try:
+                    date_value = date_value.tz_localize(None)
+                except Exception:
+                    pass
+
+        # 일봉은 시간값을 잘라 거래일(date) 단위로 고정한다.
+        # 그래야 미국장이 열린 중간에도 국내 차트 엔진에서 날짜가 하루 밀리지 않는다.
+        if not intraday:
+            date_value = pd.to_datetime(date_value.date())
+
+        rows.append({
+            "date": date_value,
+            "open": open_value,
+            "high": high_value,
+            "low": low_value,
+            "close": close_value,
+            "volume": volume_value,
+        })
+
+    if not rows:
+        return _empty_ohlcv()
+
+    result_df = pd.DataFrame(rows)
+    result_df = result_df.sort_values("date").drop_duplicates(subset=["date"], keep="last").reset_index(drop=True)
+    return result_df
+
+
+def _stooq_symbol_candidates(symbol, item=None):
+    item = item or {}
+    candidates = []
+    if item.get("stooq_symbol"):
+        candidates.append(item["stooq_symbol"])
+
+    raw = str(symbol or "").strip().lower()
+    stooq_map = {
+        "^ixic": ["^ixic", "^compq"],
+        "^ndx": ["^ndx", "^ndq"],
+        "^gspc": ["^spx", "^gspc"],
+        "^spx": ["^spx"],
+        "^sox": ["^sox"],
+        "nq=f": ["nq.f", "mnq.f"],
+    }
+    candidates.extend(stooq_map.get(raw, [raw]))
+
+    result = []
+    for candidate in candidates:
+        candidate = str(candidate or "").strip().lower()
+        if candidate and candidate not in result:
+            result.append(candidate)
+    return result
+
+
+def _fetch_stooq_daily_ohlcv(symbol, item=None):
+    """Yahoo가 비정상 응답일 때 해외지수 일봉 fallback. 시간봉/선물은 Yahoo 우선."""
+    for stooq_symbol in _stooq_symbol_candidates(symbol, item=item):
+        url = f"https://stooq.com/q/d/l/?s={quote(stooq_symbol, safe='')}&i=d"
+        request = Request(
+            url,
+            headers={
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+                "Accept": "text/csv,*/*",
+            },
+        )
+        try:
+            with urlopen(request, timeout=8) as response:
+                raw = response.read().decode("utf-8", errors="ignore")
+        except Exception:
+            continue
+
+        rows = []
+        for line in raw.splitlines()[1:]:
+            parts = [part.strip() for part in line.split(",")]
+            if len(parts) < 5:
+                continue
+            date_value = pd.to_datetime(parts[0], errors="coerce")
+            open_value = _to_float(parts[1])
+            high_value = _to_float(parts[2])
+            low_value = _to_float(parts[3])
+            close_value = _to_float(parts[4])
+            volume_value = _to_float(parts[5]) if len(parts) >= 6 else 0
+            if pd.isna(date_value) or close_value is None or close_value <= 0:
+                continue
+            rows.append({
+                "date": date_value,
+                "open": open_value if open_value is not None else close_value,
+                "high": high_value if high_value is not None else close_value,
+                "low": low_value if low_value is not None else close_value,
+                "close": close_value,
+                "volume": volume_value or 0,
+            })
+
+        if rows:
+            df = pd.DataFrame(rows)
+            df = df.sort_values("date").drop_duplicates(subset=["date"], keep="last").reset_index(drop=True)
+            return df
+    return _empty_ohlcv()
+
+
+def _fetch_yahoo_chart_ohlcv(symbol, range_key="all", interval="1d", item=None):
+    """
+    해외지수/선물 차트용 강화 fetcher.
+    - Yahoo query1/query2 모두 시도
+    - 내부 심볼 후보를 순차 시도
+    - 일봉은 거래소 기준 날짜로 고정
+    - Yahoo 실패 시 Stooq 일봉 fallback
+    """
+    item = item or {}
+    symbols = item.get("yahoo_symbols") or [symbol]
+    symbols = [str(x or "").strip() for x in symbols if str(x or "").strip()]
+
+    if not symbols:
+        return _empty_ohlcv()
+
+    interval = _normalize_interval(interval)
+    intraday = _is_intraday_interval(interval)
+    best_df = _empty_ohlcv()
+
+    for candidate in symbols:
+        result = _yahoo_chart_result(candidate, range_key=range_key, interval=interval)
+        df = _standardize_yahoo_chart_result(result, interval=interval)
+        if not df.empty and len(df) >= max(5, len(best_df)):
+            best_df = df
+            # 일봉은 첫 정상 후보를 사용한다. 보통 ^IXIC/^NDX/^GSPC가 정답이다.
+            if not intraday and len(df) >= 30:
+                return df
+            if intraday and len(df) >= 20:
+                return df
+
+    if not intraday:
+        for candidate in symbols:
+            stooq_df = _fetch_stooq_daily_ohlcv(candidate, item=item)
+            if not stooq_df.empty and len(stooq_df) > len(best_df):
+                best_df = stooq_df
+                break
+
+    return best_df
+
+def _format_chart_number(value, decimals=2):
+    number = _to_float(value)
+    if number is None:
+        return 0
+    if abs(number) >= 1000:
+        return round(number, 2)
+    return round(number, decimals)
+
+
+def _global_default_visible_bars(asset_code, interval, range_key):
+    """
+    v9 최종형: 해외지수/선물은 데이터는 최대한 길게 내려주고,
+    첫 화면은 보기 좋은 수준으로만 잡는다.
+
+    - 일봉: 데이터 10년, 첫 화면 약 3년
+    - 주봉/월봉: 장기 흐름 확인용
+    - 1~4시간봉: Yahoo Chart API가 허용하는 최대권(730d)을 받아오고,
+      첫 화면도 최대한 길게 보여준다. rows가 visible_bars보다 적으면 전체를 fitContent한다.
+
+    참고: Yahoo Finance는 1h intraday를 10년치로 제공하지 않고 보통 최대 730일 수준이다.
+    그래서 시간봉은 '10년 데이터'가 아니라 '가능한 최대 730일 데이터 + 넓은 첫 화면' 전략으로 간다.
+    """
+    asset_code = _normalize_asset_code(asset_code)
     interval = _normalize_interval(interval)
     range_key = _normalize_range(range_key)
+
+    if asset_code in {"KOSPI", "KOSDAQ"} and not _is_intraday_interval(interval):
+        return 0
+
+    if interval == "1d":
+        return 756      # 약 3년치 일봉
+    if interval == "1w":
+        return 520      # 약 10년치 주봉
+    if interval in {"1mo", "3mo", "6mo", "12mo", "1y"}:
+        return 240      # 월봉/장기봉
+
+    if _is_intraday_interval(interval):
+        # 1h 원본을 730d까지 가져온 뒤 2h/3h/4h는 서버에서 재집계한다.
+        # visible_bars를 넉넉하게 잡아 rows가 이보다 적으면 전체 730d가 한 번에 보인다.
+        if interval in {"1h", "60m"}:
+            return 3600
+        if interval == "2h":
+            return 2400
+        if interval == "3h":
+            return 1800
+        if interval == "4h":
+            return 1400
+        return 2400
+
+    return 756
+
+
+def _global_effective_range_for_fetch(asset_code, interval, range_key):
+    """
+    해외지수/선물은 v9부터 '프론트가 보내는 120d/60d range'에 묶이지 않는다.
+
+    기존 문제:
+    - bitgak_chart_core.js의 1h~4h 버튼은 range=120d를 보냈다.
+    - 백엔드가 그 값을 그대로 존중해서 해외 시간봉이 몇 달치만 잘려 보였다.
+
+    수정:
+    - KOSPI/KOSDAQ은 기존 국내지수 로직 유지.
+    - 해외 일봉/주봉/월봉은 10년치 fetch.
+    - 해외 1~4시간봉은 Yahoo가 허용하는 최대권인 730d fetch.
+    - 첫 화면 표시 범위는 default_visible_bars가 담당한다.
+    """
+    asset_code = _normalize_asset_code(asset_code)
+    interval = _normalize_interval(interval)
+    range_key = _normalize_range(range_key)
+
+    if asset_code in {"KOSPI", "KOSDAQ"}:
+        if _is_intraday_interval(interval):
+            return "730d"
+        return range_key
+
+    if _is_intraday_interval(interval):
+        return "730d"
+
+    if range_key != "all":
+        # 해외지수 검색 화면에서 사용자가 명시적으로 기간을 보낸 경우도
+        # 일봉/주봉/월봉은 차트 이동으로 과거 확인이 가능하도록 기본값보다 짧게 자르지 않는다.
+        # 단, 1d/5d/30d 같은 명시 요청을 살리고 싶으면 아래 return을 range_key로 바꾸면 된다.
+        pass
+
+    if interval == "1d":
+        return "10y"
+    if interval == "1w":
+        return "10y"
+    if interval in {"1mo", "3mo", "6mo", "12mo", "1y"}:
+        return "10y"
+
+    return "10y"
+
+def _fetch_krx_index_daily_by_asset(asset_code, range_key):
+    item = GLOBAL_INDEX_SYMBOLS.get(_normalize_asset_code(asset_code) or "")
+
+    if not item or not item.get("krx_index_code"):
+        return _empty_ohlcv()
+
+    range_key = _normalize_range(range_key)
+    start_date = _range_start_date(range_key)
+    today = datetime.today().date()
+    fromdate = start_date.strftime("%Y%m%d")
+    index_code = item["krx_index_code"]
+    naver_symbol = item.get("naver_symbol") or item.get("code")
+
+    for back in range(0, 40):
+        end_date = today - timedelta(days=back)
+        todate = end_date.strftime("%Y%m%d")
+
+        try:
+            df = krx_stock.get_index_ohlcv_by_date(fromdate, todate, index_code)
+            result = _standardize_krx_df(df)
+            if not result.empty:
+                return result
+        except Exception:
+            continue
+
+    naver_df = _naver_sise_json(naver_symbol, fromdate, today.strftime("%Y%m%d"))
+    if not naver_df.empty:
+        return naver_df
+
+    return _empty_ohlcv()
+
+
+def _make_global_symbol_payload(code, range_key, interval):
+    asset_code = _normalize_asset_code(code)
+    item = GLOBAL_INDEX_SYMBOLS.get(asset_code)
+
+    if not item:
+        return None
+
+    interval = _normalize_interval(interval)
+    range_key = _normalize_range(range_key)
+    intraday_requested = _is_intraday_interval(interval)
+    intraday_source_used = False
+    effective_range_key = _global_effective_range_for_fetch(asset_code, interval, range_key)
+    default_visible_bars = _global_default_visible_bars(asset_code, interval, range_key)
+
+    # KOSPI/KOSDAQ 일봉·주봉·월봉은 Yahoo가 아니라 pykrx 지수 API를 우선 사용합니다.
+    # 이게 네이버/증권사에서 보는 코스피·코스닥 모양과 가장 잘 맞습니다.
+    if item.get("krx_index_code") and not intraday_requested:
+        base_df = _fetch_krx_index_daily_by_asset(asset_code, effective_range_key)
+        daily_interval = _daily_interval_from_display_interval(interval)
+        chart_df = _aggregate_interval(base_df, daily_interval)
+        source = f"pykrx-index:{item['krx_index_code']}"
+        provider = "pykrx-index"
+    else:
+        base_df = _fetch_yahoo_chart_ohlcv(item["yahoo_symbol"], effective_range_key, interval, item=item)
+        if intraday_requested:
+            chart_df = _aggregate_intraday_interval(base_df, interval)
+            intraday_source_used = not chart_df.empty
+        else:
+            daily_interval = _daily_interval_from_display_interval(interval)
+            chart_df = _aggregate_interval(base_df, daily_interval)
+        source = f"Yahoo Finance chart API:{item['yahoo_symbol']}"
+        provider = "yahoo-finance"
+
+    chart_df = _apply_visible_range(chart_df, effective_range_key)
+
+    if chart_df.empty:
+        return {
+            "ok": False,
+            "message": f"{item['name']} 데이터를 불러오지 못했습니다. pykrx/Yahoo Finance 응답을 확인하세요.",
+            "code": item["code"],
+            "name": item["name"],
+            "market": item["market"],
+            "asset_type": item.get("asset_type", "index"),
+            "price_unit": item.get("price_unit", "pt"),
+            "price_precision": 2,
+            "default_visible_bars": default_visible_bars,
+            "initial_visible_bars": default_visible_bars,
+            "range": range_key,
+            "effective_range": effective_range_key,
+            "interval": interval,
+            "requested_interval": interval,
+            "intraday": False,
+            "intraday_requested": intraday_requested,
+            "server_aggregated": False,
+            "provider": provider,
+            "source": source,
+            "results": [],
+            "rows": [],
+            "ohlc": [],
+            "volume": [],
+            "ma20": [],
+            "ma60": [],
+            "ma120": [],
+        }
+
+    results = []
+    ohlc = []
+    volume = []
+
+    for _, row in chart_df.iterrows():
+        date_value = pd.to_datetime(row["date"])
+        time_value = date_value.strftime("%Y-%m-%d %H:%M") if intraday_requested else date_value.strftime("%Y-%m-%d")
+
+        open_price = _format_chart_number(row["open"], decimals=2)
+        high_price = _format_chart_number(row["high"], decimals=2)
+        low_price = _format_chart_number(row["low"], decimals=2)
+        close_price = _format_chart_number(row["close"], decimals=2)
+        vol = int(float(row["volume"] or 0))
+
+        result_item = {
+            "time": time_value,
+            "display_time": time_value,
+            "open": open_price,
+            "high": high_price,
+            "low": low_price,
+            "close": close_price,
+            "volume": vol,
+        }
+
+        results.append(result_item)
+        ohlc.append({"time": time_value, "open": open_price, "high": high_price, "low": low_price, "close": close_price})
+        volume.append({
+            "time": time_value,
+            "value": vol,
+            "color": "rgba(38, 166, 154, 0.42)" if close_price >= open_price else "rgba(239, 83, 80, 0.42)",
+        })
+
+    last = results[-1]
+    prev = results[-2] if len(results) >= 2 else last
+    change = round(float(last["close"]) - float(prev["close"]), 2)
+    change_rate = round((change / float(prev["close"])) * 100, 2) if float(prev["close"]) else 0
+
+    return {
+        "ok": True,
+        "source": source,
+        "message": "",
+        "code": item["code"],
+        "name": item["name"],
+        "market": item["market"],
+        "asset_type": item.get("asset_type", "index"),
+        "yahoo_symbol": item.get("yahoo_symbol", ""),
+        "price_unit": item.get("price_unit", "pt"),
+        "price_precision": 2,
+        "default_visible_bars": default_visible_bars,
+        "initial_visible_bars": default_visible_bars,
+        "range": range_key,
+        "effective_range": effective_range_key,
+        "interval": interval,
+        "requested_interval": interval,
+        "intraday": intraday_source_used,
+        "intraday_requested": intraday_requested,
+        "server_aggregated": intraday_source_used,
+        "provider": provider,
+        "current": {"price": last["close"], "change": change, "change_rate": change_rate},
+        "results": results,
+        "rows": results,
+        "ohlc": ohlc,
+        "volume": volume,
+        "ma20": _calc_ma(results, 20),
+        "ma60": _calc_ma(results, 60),
+        "ma120": _calc_ma(results, 120),
+    }
+
+
+
+def _domestic_default_visible_bars(interval):
+    """국내 KOSPI/KOSDAQ 개별종목 시간봉 첫 화면 표시 봉 수."""
+    interval = _normalize_interval(interval)
+
+    if interval in {"1h", "60m"}:
+        return 3600
+    if interval == "2h":
+        return 2400
+    if interval == "3h":
+        return 1800
+    if interval == "4h":
+        return 1400
+    return 0
+
+
+def _domestic_effective_range_for_fetch(interval, range_key):
+    """
+    국내 개별종목은 프론트의 120d range에 묶이지 않고 시간봉을 최대한 길게 받는다.
+    일/주/월봉은 기존 range 정책을 유지한다.
+    """
+    interval = _normalize_interval(interval)
+    range_key = _normalize_range(range_key)
+
+    if _is_intraday_interval(interval):
+        return "730d"
+
+    return range_key
+
+def _make_payload(code, range_key, interval):
+    code = _normalize_asset_code(code)
+    interval = _normalize_interval(interval)
+    range_key = _normalize_range(range_key)
+
+    if code in GLOBAL_INDEX_SYMBOLS:
+        return _make_global_symbol_payload(code, range_key, interval)
+
+    code = _clean_code(code)
     stock = _get_stock(code)
 
     intraday_requested = _is_intraday_interval(interval)
     intraday_source_used = False
     source = "pykrx/naver"
+    effective_range_key = _domestic_effective_range_for_fetch(interval, range_key)
+    default_visible_bars = _domestic_default_visible_bars(interval) if intraday_requested else 0
 
     if intraday_requested:
-        base_df = _fetch_yahoo_intraday(code, range_key, interval)
+        base_df = _fetch_yahoo_intraday(code, effective_range_key, interval)
 
         if not base_df.empty:
             chart_df = _aggregate_intraday_interval(base_df, interval)
-            chart_df = _apply_visible_range(chart_df, range_key)
+            # effective_range_key=730d는 _apply_visible_range에서 자르지 않는다.
+            # 그래서 데이터는 길게 유지되고, 첫 화면은 default_visible_bars로만 조정된다.
+            chart_df = _apply_visible_range(chart_df, effective_range_key)
             intraday_source_used = True
-            source = "yfinance-hourly"
+            source = "yfinance-hourly-730d"
         else:
             chart_df = _empty_ohlcv()
             source = "yfinance-hourly-empty"
     else:
-        daily_df = _fetch_pykrx_daily(code, range_key)
+        daily_df = _fetch_pykrx_daily(code, effective_range_key)
         daily_interval = _daily_interval_from_display_interval(interval)
         chart_df = _aggregate_interval(daily_df, daily_interval)
-        chart_df = _apply_visible_range(chart_df, range_key)
+        chart_df = _apply_visible_range(chart_df, effective_range_key)
 
     if chart_df.empty:
         return {
@@ -1269,6 +2070,11 @@ def _make_payload(code, range_key, interval):
             "intraday_requested": intraday_requested,
             "server_aggregated": False,
             "provider": source,
+            "price_unit": "원",
+            "price_precision": 0,
+            "default_visible_bars": default_visible_bars,
+            "initial_visible_bars": default_visible_bars,
+            "effective_range": effective_range_key,
             "results": [],
             "rows": [],
             "ohlc": [],
@@ -1333,12 +2139,17 @@ def _make_payload(code, range_key, interval):
         "name": stock.name,
         "market": getattr(stock, "market", "KRX"),
         "range": range_key,
+        "effective_range": effective_range_key,
+        "default_visible_bars": default_visible_bars,
+        "initial_visible_bars": default_visible_bars,
         "interval": interval,
         "requested_interval": interval,
         "intraday": intraday_source_used,
         "intraday_requested": intraday_requested,
         "server_aggregated": intraday_source_used,
         "provider": "yfinance" if intraday_source_used else source,
+        "price_unit": "원",
+        "price_precision": 0,
         "current": {"price": int(last["close"]), "change": change, "change_rate": change_rate},
         "results": results,
         "rows": results,
@@ -1684,7 +2495,7 @@ def _normalize_user_groups(groups):
             if not isinstance(item, dict):
                 continue
 
-            code = _clean_code(item.get("code") or item.get("stock_code"))
+            code = _normalize_asset_code(item.get("code") or item.get("stock_code"))
             if not code or code in seen_codes:
                 continue
 
@@ -1719,7 +2530,7 @@ def _normalize_user_portfolio(portfolio):
             continue
 
         fixed = dict(trade)
-        fixed["code"] = _clean_code(fixed.get("code"))
+        fixed["code"] = _normalize_asset_code(fixed.get("code"))
         fixed["name"] = str(fixed.get("name") or fixed.get("code") or "")[:100]
         fixed["market"] = str(fixed.get("market") or "KRX")[:20]
 
@@ -1907,7 +2718,7 @@ def _normalize_chart_drawings(drawings):
 
 @require_http_methods(["GET", "POST"])
 def chart_drawings_api(request, code):
-    stock_code = _clean_code(code)
+    stock_code = _normalize_asset_code(code)
 
     if not request.user.is_authenticated:
         if request.method == "GET":
@@ -2130,7 +2941,7 @@ def _normalize_chart_indicators(indicators):
 
 @require_http_methods(["GET", "POST"])
 def chart_indicators_api(request, code):
-    stock_code = _clean_code(code)
+    stock_code = _normalize_asset_code(code)
 
     if not request.user.is_authenticated:
         if request.method == "GET":
@@ -2250,7 +3061,7 @@ def _normalize_piramid_plan(raw):
 
 @require_http_methods(["GET", "POST"])
 def chart_piramid_api(request, code):
-    stock_code = _clean_code(code)
+    stock_code = _normalize_asset_code(code)
 
     if not request.user.is_authenticated:
         if request.method == "GET":
