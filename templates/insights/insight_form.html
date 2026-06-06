@@ -102,19 +102,19 @@
 
       <div class="insight-stock-editor-controls insight-stock-editor-controls-simple">
         <label class="insight-stock-search-cell insight-stock-search-cell-wide">
-          <span>종목검색</span>
+          <span>종목/지수검색</span>
           <input
             class="insight-input"
             type="search"
             value="{{ initial_chart_name|default:initial_chart_code|default:'' }}"
-            placeholder="삼성전자 또는 005930 입력"
+            placeholder="삼성전자, 코스피, 나스닥100 또는 005930 입력"
             autocomplete="off"
             data-chart-symbol-search
             data-selected-code="{{ initial_chart_code|default:'' }}"
             data-selected-name="{{ initial_chart_name|default:'' }}"
           >
           <div class="insight-chart-search-results" data-chart-search-results hidden></div>
-          <small class="insight-chart-search-help">종목명을 입력하면 아래에서 선택하거나, 바로 차트 열기를 눌러도 됩니다.</small>
+          <small class="insight-chart-search-help">종목명·종목코드·코스피·코스닥·나스닥·S&amp;P500 같은 주요 지수를 입력하면 아래에서 선택할 수 있습니다.</small>
         </label>
 
         <label class="insight-stock-interval-cell">

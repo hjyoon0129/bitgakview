@@ -79,6 +79,13 @@
   }
 
   var BITGAK_LOCAL_STOCKS = [
+    { code: "KOSPI", name: "코스피 지수", market: "INDEX-KR", aliases: ["코스피", "kospi", "ks11", "종합주가지수", "코스피인덱스", "kospi index"], asset_type: "index" },
+    { code: "KOSDAQ", name: "코스닥 지수", market: "INDEX-KR", aliases: ["코스닥", "kosdaq", "kq11", "코스닥인덱스", "kosdaq index"], asset_type: "index" },
+    { code: "NASDAQ", name: "나스닥 종합", market: "INDEX-US", aliases: ["나스닥", "나스닥종합", "nasdaq", "ixic", "^ixic", "nasdaq composite"], asset_type: "index" },
+    { code: "NASDAQ100", name: "나스닥 100", market: "INDEX-US", aliases: ["나스닥100", "나스닥 100", "nasdaq100", "nasdaq 100", "ndx", "^ndx", "nas100", "us100"], asset_type: "index" },
+    { code: "NQF", name: "나스닥 100 E-mini 선물", market: "FUTURE-US", aliases: ["나스닥선물", "나스닥 100 선물", "나스닥100선물", "e-mini", "emini", "nq", "nq=f", "nqf", "nasdaq futures"], asset_type: "future" },
+    { code: "SOX", name: "필라델피아 반도체 지수", market: "INDEX-US", aliases: ["필라델피아반도체", "필라델피아 반도체", "반도체지수", "sox", "^sox", "phlx semiconductor"], asset_type: "index" },
+    { code: "SP500", name: "S&P 500", market: "INDEX-US", aliases: ["s&p500", "s&p 500", "sp500", "spx", "gspc", "^gspc", "에스앤피", "에센피", "us500"], asset_type: "index" },
     { code: "005930", name: "삼성전자", market: "KOSPI" },
     { code: "000660", name: "SK하이닉스", market: "KOSPI" },
     { code: "066570", name: "LG전자", market: "KOSPI" },
@@ -115,18 +122,49 @@
   ];
 
   function compactStockText(value) {
-    return String(value || "").toLowerCase().replace(/\s+/g, "").replace(/[().,·ㆍ_\-]/g, "").trim();
+    return String(value || "")
+      .normalize ? String(value || "").normalize("NFKC").toLowerCase().replace(/엘지/g, "lg").replace(/에스케이/g, "sk").replace(/[\s(){}\[\].,·ㆍ_\-&^=+]/g, "").trim()
+      : String(value || "").toLowerCase().replace(/[\s(){}\[\].,·ㆍ_\-&^=+]/g, "").trim();
+  }
+
+  function localStockSearchHaystack(item) {
+    var values = [item.name, item.code, item.market, item.asset_type];
+    if (Array.isArray(item.aliases)) values = values.concat(item.aliases);
+    return values.map(compactStockText).filter(Boolean).join(" ");
+  }
+
+  function localStockMatchScore(item, query, codeQuery) {
+    var q = compactStockText(query);
+    var codeQ = compactStockText(codeQuery || query);
+    var name = compactStockText(item.name);
+    var code = compactStockText(item.code);
+    var haystack = localStockSearchHaystack(item);
+    var rank = Number(item.search_rank || 0);
+
+    if (!q && !codeQ) return -1;
+    if (code && (code === q || code === codeQ)) return 100000 + rank;
+    if (name && name === q) return 95000 + rank;
+    if (code && codeQ && code.indexOf(codeQ) === 0) return 85000 + rank;
+    if (name && (name.indexOf(q) === 0 || q.indexOf(name) === 0)) return 76000 + rank;
+    if (haystack && q && haystack.indexOf(q) !== -1) return 62000 + rank;
+    if (haystack && codeQ && haystack.indexOf(codeQ) !== -1) return 58000 + rank;
+    return -1;
   }
 
   function localStockMatches(query) {
     var q = compactStockText(query);
     if (!q) return [];
     var codeQ = onlyCode(query);
-    return BITGAK_LOCAL_STOCKS.filter(function (item) {
-      var name = compactStockText(item.name);
-      var code = compactStockText(item.code);
-      return name.indexOf(q) !== -1 || q.indexOf(name) !== -1 || code.indexOf(compactStockText(codeQ)) !== -1;
-    }).slice(0, 8);
+    return BITGAK_LOCAL_STOCKS.map(function (item, index) {
+      return { item: item, index: index, score: localStockMatchScore(item, query, codeQ) };
+    }).filter(function (entry) {
+      return entry.score >= 0;
+    }).sort(function (a, b) {
+      if (b.score !== a.score) return b.score - a.score;
+      return a.index - b.index;
+    }).map(function (entry) {
+      return entry.item;
+    }).slice(0, 12);
   }
 
   function firstLocalStock(query) {
