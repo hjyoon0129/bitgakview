@@ -3,7 +3,7 @@ from django.conf.urls.static import static
 from django.contrib import admin
 from django.http import HttpResponse
 from django.shortcuts import redirect
-from django.urls import include, path
+from django.urls import include, path, resolve
 
 
 def google_site_verification(request):
@@ -17,31 +17,14 @@ def robots_txt(request):
     lines = [
         "# BitgakView robots.txt",
         "",
-        "# Google search",
-        "User-agent: Googlebot",
-        "Allow: /",
-        "",
-        "# Google Search Console inspection",
-        "User-agent: Google-InspectionTool",
-        "Allow: /",
-        "",
-        "# Naver search",
-        "User-agent: Yeti",
-        "Allow: /",
-        "",
-        "User-agent: NaverBot",
-        "Allow: /",
-        "",
-        "# Bing search",
-        "User-agent: Bingbot",
-        "Allow: /",
-        "",
-        "# Default crawlers",
         "User-agent: *",
         "Allow: /",
+        "",
+        "# Private / system pages",
+        "Disallow: /admin/",
         "Disallow: /accounts/",
-        "Disallow: /support/",
-        "Disallow: /access/",
+        "Disallow: /stocks/api/",
+        "Disallow: /api/",
         "",
         "Sitemap: https://bitgakview.com/sitemap.xml",
     ]
@@ -57,51 +40,66 @@ def sitemap_xml(request):
     <priority>1.0</priority>
   </url>
   <url>
-    <loc>https://bitgakview.com/stocks/</loc>
+    <loc>https://bitgakview.com/insights/</loc>
     <changefreq>daily</changefreq>
-    <priority>1.0</priority>
+    <priority>0.8</priority>
   </url>
   <url>
     <loc>https://bitgakview.com/stocks/features/</loc>
     <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
+    <priority>0.7</priority>
   </url>
   <url>
     <loc>https://bitgakview.com/stocks/pricing/</loc>
     <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
+    <priority>0.7</priority>
   </url>
   <url>
     <loc>https://bitgakview.com/stocks/005930/</loc>
     <changefreq>daily</changefreq>
-    <priority>0.9</priority>
+    <priority>0.8</priority>
   </url>
   <url>
     <loc>https://bitgakview.com/stocks/000660/</loc>
     <changefreq>daily</changefreq>
-    <priority>0.8</priority>
+    <priority>0.75</priority>
   </url>
   <url>
     <loc>https://bitgakview.com/stocks/035420/</loc>
     <changefreq>daily</changefreq>
-    <priority>0.8</priority>
+    <priority>0.75</priority>
   </url>
   <url>
     <loc>https://bitgakview.com/stocks/035720/</loc>
     <changefreq>daily</changefreq>
-    <priority>0.8</priority>
+    <priority>0.75</priority>
+  </url>
+  <url>
+    <loc>https://bitgakview.com/stocks/005380/</loc>
+    <changefreq>daily</changefreq>
+    <priority>0.75</priority>
   </url>
 </urlset>
 """
     return HttpResponse(xml, content_type="application/xml; charset=utf-8")
 
 
-def root_redirect(request):
-    return redirect("/stocks/")
+def home_view(request):
+    """
+    대표 메인 주소는 https://bitgakview.com/ 로 사용한다.
+    다만 기존 메인 화면은 apps.stocks.urls 의 /stocks/ 화면을 그대로 재사용한다.
+
+    이렇게 하면:
+    - / 는 실제 메인 화면으로 동작
+    - /stocks/ 는 기존 기능 호환용으로 유지
+    - sitemap/canonical 기준 대표 URL은 / 로 통일 가능
+    """
+    match = resolve("/stocks/")
+    return match.func(request, *match.args, **match.kwargs)
 
 
 urlpatterns = [
-    path("", root_redirect, name="home"),
+    path("", home_view, name="home"),
 
     # Google Search Console HTML file verification
     path(
@@ -126,11 +124,12 @@ urlpatterns = [
     # stocks
     path("stocks/", include("apps.stocks.urls")),
 
-    # support / access
+    # support / access / insights
     path("support/", include("apps.support.urls", namespace="support")),
     path("access/", include("apps.access.urls")),
     path("insights/", include("apps.insights.urls")),
 
+    # tools
     path("tools/youtube-keyword/", include("apps.youtube_keyword.urls")),
 ]
 
