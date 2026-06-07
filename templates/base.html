@@ -9,8 +9,12 @@
   <style>
     @import url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css");
     * { box-sizing: border-box; }
-    html, body {
+
+    html,
+    body {
       margin: 0;
+      width: 100%;
+      max-width: 100%;
       min-height: 100%;
       background: #07101d;
       color: #eaf2ff;
@@ -18,8 +22,25 @@
       letter-spacing: -0.025em;
       -webkit-font-smoothing: antialiased;
       text-rendering: optimizeLegibility;
+      overflow-x: hidden;
     }
-    body { overflow-x: hidden; }
+
+    html {
+      /* 모바일에서 일부 내부 요소가 100vw보다 커질 때 오른쪽 빈 여백/가로 밀림을 1차 차단 */
+      scrollbar-gutter: stable;
+    }
+
+    body {
+      position: relative;
+    }
+
+    img,
+    video,
+    canvas,
+    svg {
+      max-width: 100%;
+    }
+
     a { color: inherit; text-decoration: none; }
     button, input, select, textarea { font-family: inherit; }
 
@@ -80,7 +101,20 @@
       white-space: nowrap;
     }
     .site-nav a:hover { border-color: rgba(96, 165, 250, 0.4); background: #13223a; }
-    .site-main { width: 100%; min-height: calc(100vh - 64px); }
+
+    .site-main {
+      width: 100%;
+      max-width: 100vw;
+      min-height: calc(100vh - 64px);
+      overflow-x: clip;
+    }
+
+    @supports not (overflow: clip) {
+      .site-main {
+        overflow-x: hidden;
+      }
+    }
+
     .bitgak-chart-body .site-header { display: none !important; }
     .bitgak-chart-body .site-main {
       width: 100% !important;
@@ -90,7 +124,15 @@
       margin: 0 !important;
     }
     .bitgak-chart-body { overflow: hidden; }
+
     @media (max-width: 760px) {
+      html,
+      body,
+      .site-main {
+        max-width: 100vw;
+        overflow-x: hidden;
+      }
+
       .site-header { height: 58px; padding: 0 14px; }
       .site-logo { min-width: auto; }
       .site-logo-text { display: none; }
