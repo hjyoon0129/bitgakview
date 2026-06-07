@@ -4,6 +4,18 @@
   var currentSortKey = "opportunity";
   var currentSortDirection = "desc";
 
+  function normalizeBool(value) {
+    if (value === true || value === 1) return true;
+    if (value === false || value === 0 || value === null || value === undefined) return false;
+    var text = String(value).trim().toLowerCase();
+    return text === "1" || text === "true" || text === "yes" || text === "y" || text === "on";
+  }
+
+  function normalizeNumber(value, fallbackValue) {
+    var number = Number(value);
+    return Number.isFinite(number) ? number : fallbackValue;
+  }
+
   function readPageAccess() {
     var fallback = {
       is_authenticated: false,
@@ -15,42 +27,291 @@
       pricing_url: "/stocks/pricing/"
     };
 
-    var script = document.getElementById("ytkAccessData");
-    if (script) {
+    var data = Object.assign({}, fallback);
+
+    // 가장 중요한 기준: 실제 Django 로그인 상태를 별도 JSON/폼 data에서 읽는다.
+    // ytk_access.is_premium 값이 잘못 true로 내려와도 비로그인 사용자는 절대 검색되지 않게 한다.
+    var authScript = document.getElementById("ytkAuthData");
+    if (authScript) {
       try {
-        return Object.assign({}, fallback, JSON.parse(script.textContent || "{}"));
+        var authData = JSON.parse(authScript.textContent || "{}");
+        data.is_authenticated = authData.is_authenticated;
+        data.is_premium = authData.is_premium;
       } catch (e) {}
     }
 
-    var globalAccess = window.BITGAK_ACCESS || {};
-    return Object.assign({}, fallback, {
-      is_authenticated: !!globalAccess.is_authenticated,
-      is_premium: !!globalAccess.is_premium,
-      can_search: !!globalAccess.is_premium,
-      pricing_url: "/stocks/pricing/"
+    var accessScript = document.getElementById("ytkAccessData");
+    if (accessScript) {
+      try {
+        var serverData = JSON.parse(accessScript.textContent || "{}");
+        data.daily_limit = serverData.daily_limit;
+        data.used_today = serverData.used_today;
+        data.remaining_today = serverData.remaining_today;
+        data.pricing_url = serverData.pricing_url || data.pricing_url;
+        // 여기서는 is_authenticated / is_premium을 덮어쓰지 않는다.
+      } catch (e) {}
+    }
+
+    var form = document.getElementById("ytkKeywordSearchForm");
+    if (form && form.dataset) {
+      if (form.dataset.isAuthenticated !== undefined) data.is_authenticated = form.dataset.isAuthenticated;
+      if (form.dataset.isPremium !== undefined) data.is_premium = form.dataset.isPremium;
+      if (form.dataset.remaining !== undefined) data.remaining_today = form.dataset.remaining;
+      if (form.dataset.dailyLimit !== undefined) data.daily_limit = form.dataset.dailyLimit;
+      if (form.dataset.pricingUrl) data.pricing_url = form.dataset.pricingUrl;
+    }
+
+    data.is_authenticated = normalizeBool(data.is_authenticated);
+    data.is_premium = data.is_authenticated && normalizeBool(data.is_premium);
+    data.daily_limit = normalizeNumber(data.daily_limit, fallback.daily_limit);
+    data.used_today = normalizeNumber(data.used_today, fallback.used_today);
+    data.remaining_today = normalizeNumber(data.remaining_today, fallback.remaining_today);
+    data.can_search = data.is_authenticated && (data.is_premium || data.remaining_today > 0);
+    data.pricing_url = data.pricing_url || "/stocks/pricing/";
+    return data;
+  }
+
+  function buildLoginHref() {
+    var next = encodeURIComponent(window.location.pathname + window.location.search);
+    return "/accounts/login/?next=" + next;
+  }
+
+  function initYtkAccessModal() {
+    var modal = document.querySelector("[data-ytk-modal]");
+    if (!modal) return;
+
+    modal.querySelectorAll("[data-ytk-modal-close]").forEach(function (button) {
+      button.addEventListener("click", function () {
+        modal.hidden = true;
+        document.documentElement.classList.remove("ytk-modal-open");
+      });
     });
+
+    modal.addEventListener("click", function (event) {
+      if (event.target === modal) {
+        modal.hidden = true;
+        document.documentElement.classList.remove("ytk-modal-open");
+      }
+    });
+
+    document.addEventListener("keydown", function (event) {
+      if (event.key === "Escape" && !modal.hidden) {
+        modal.hidden = true;
+        document.documentElement.classList.remove("ytk-modal-open");
+      }
+    });
+  }
+
+  function setModalText(selector, value) {
+    var node = document.querySelector(selector);
+    if (node) node.textContent = value || "";
   }
 
   function openYtkAccess(kind, options) {
     options = options || {};
 
-    if (window.BitgakAccessLock && typeof window.BitgakAccessLock.open === "function") {
-      window.BitgakAccessLock.open(kind, options);
+    var modal = document.querySelector("[data-ytk-modal]");
+    if (!modal) {
+      if (kind === "login") {
+        alert(options.message || "로그인 후 사용할 수 있습니다.");
+        window.location.href = options.href || buildLoginHref();
+        return;
+      }
+      alert(options.message || "프리미엄 전용 또는 무료 사용량 제한 기능입니다.");
+      if (options.href) window.location.href = options.href;
       return;
     }
 
-    // bitgak_access_guard.js가 로드되지 않은 상황에서도 페이지가 깨지지 않도록 안전 fallback만 둔다.
-    if (kind === "login") {
-      alert(options.message || "로그인 후 사용할 수 있습니다.");
-      var next = encodeURIComponent(window.location.pathname + window.location.search);
-      window.location.href = options.href || ("/accounts/login/?next=" + next);
-      return;
+    var defaults = kind === "premium" ? {
+      badge: "프리미엄 안내",
+      icon: "✨",
+      title: "오늘 무료 검색 3회를 모두 사용했습니다",
+      message: "프리미엄으로 전환하면 유튜브 키워드 분석, 제목 아이디어, 태그, 엑셀 다운로드를 제한 없이 사용할 수 있습니다.",
+      primaryText: "프리미엄 보기",
+      href: "/stocks/pricing/",
+      points: ["키워드 무제한 검색", "제목·태그 아이디어", "엑셀 다운로드", "구독대비조회수 분석"]
+    } : {
+      badge: "무료 회원",
+      icon: "🔐",
+      title: "로그인 후 사용할 수 있습니다",
+      message: "검색어 입력과 카테고리 선택은 미리 볼 수 있습니다. 실제 분석 결과 확인은 무료 로그인 후 하루 3회까지 가능합니다.",
+      primaryText: "무료 로그인",
+      href: buildLoginHref(),
+      points: ["예시 결과까지 미리보기", "무료 회원 하루 3회 실제 분석", "결과 확인과 엑셀 다운로드", "프리미엄은 무제한 검색"]
+    };
+
+    var data = Object.assign({}, defaults, options);
+    var primary = modal.querySelector("[data-ytk-modal-primary]");
+    var points = modal.querySelector("[data-ytk-modal-points]");
+
+    setModalText("[data-ytk-modal-badge]", data.badge);
+    setModalText("[data-ytk-modal-icon]", data.icon);
+    setModalText("[data-ytk-modal-title]", data.title);
+    setModalText("[data-ytk-modal-message]", data.message);
+
+    if (primary) {
+      primary.textContent = data.primaryText || defaults.primaryText;
+      primary.setAttribute("href", data.href || defaults.href);
     }
 
-    alert(options.message || "프리미엄 전용 또는 무료 사용량 제한 기능입니다.");
-    if (options.href) {
-      window.location.href = options.href;
+    if (points) {
+      points.innerHTML = "";
+      (data.points || defaults.points || []).forEach(function (text) {
+        var li = document.createElement("li");
+        li.textContent = text;
+        points.appendChild(li);
+      });
     }
+
+    modal.hidden = false;
+    document.documentElement.classList.add("ytk-modal-open");
+  }
+
+  function initAccessActionLinks() {
+    document.querySelectorAll("[data-ytk-open-login]").forEach(function (link) {
+      link.addEventListener("click", function (event) {
+        event.preventDefault();
+        var access = readPageAccess();
+
+        if (access.is_authenticated) {
+          if (!access.is_premium && Number(access.remaining_today || 0) <= 0) {
+            openYtkAccess("premium", { href: access.pricing_url || "/stocks/pricing/" });
+            return;
+          }
+          var form = document.getElementById("ytkSearchForm");
+          if (form && form.scrollIntoView) {
+            form.scrollIntoView({ behavior: "smooth", block: "start" });
+          }
+          return;
+        }
+
+        openYtkAccess("login", {
+          href: link.getAttribute("href") || buildLoginHref(),
+          title: "무료 로그인 후 실제 분석을 볼 수 있습니다",
+          message: "지금 보이는 결과는 미리보기입니다. 검색어와 카테고리를 바꿔 실제 분석 결과를 확인하려면 무료 로그인이 필요합니다.",
+          primaryText: "무료 로그인",
+          points: ["예시 결과까지 미리보기", "무료 회원 하루 3회 실제 분석", "제목·태그 아이디어 확인", "프리미엄은 무제한 검색"]
+        });
+      });
+    });
+
+    document.querySelectorAll("[data-ytk-open-premium]").forEach(function (link) {
+      link.addEventListener("click", function (event) {
+        var access = readPageAccess();
+        if (access.is_premium) return;
+        event.preventDefault();
+        openYtkAccess("premium", { href: link.getAttribute("href") || "/stocks/pricing/" });
+      });
+    });
+  }
+
+  function getKeywordInputValue() {
+    var input = document.getElementById("keyword");
+    return input ? String(input.value || "").trim() : "";
+  }
+
+  function validateKeywordInput() {
+    var keyword = getKeywordInputValue();
+    if (!keyword) return { ok: true };
+
+    var compact = keyword.replace(/\s+/g, "");
+    var visible = compact.replace(/[\-_.·,，。!！?？~^()\[\]{}:;"'`|\\/]+/g, "");
+
+    if (visible.length < 2) {
+      return {
+        ok: false,
+        title: "검색어를 조금 더 구체적으로 입력해주세요",
+        message: "한 글자나 기호만으로는 의미 있는 유튜브 키워드 분석을 만들기 어렵습니다. 예: 삼성전자, 반도체 관련주, 전력망 수혜주처럼 입력해보세요."
+      };
+    }
+
+    if (/^[ㄱ-ㅎㅏ-ㅣ]+$/.test(visible)) {
+      return {
+        ok: false,
+        title: "완성된 검색어가 필요합니다",
+        message: "초성이나 자음만 입력하면 최근영상·수요도 같은 지표가 왜곡될 수 있습니다. 예: ㅇㄴㄴㄴ 대신 삼성전자, 코스피 전망처럼 입력해주세요."
+      };
+    }
+
+    if (!/[가-힣a-zA-Z0-9]/.test(visible)) {
+      return {
+        ok: false,
+        title: "분석 가능한 검색어를 입력해주세요",
+        message: "한글 단어, 영문, 숫자가 포함된 검색어만 분석할 수 있습니다."
+      };
+    }
+
+    if (/^(.)\1{3,}$/.test(visible)) {
+      return {
+        ok: false,
+        title: "반복 문자 검색어는 분석할 수 없습니다",
+        message: "의미 없는 반복 문자는 유튜브 키워드 지표가 비정상적으로 보일 수 있습니다. 실제 영상 주제에 가까운 검색어를 입력해주세요."
+      };
+    }
+
+    if (visible.length > 60) {
+      return {
+        ok: false,
+        title: "검색어가 너무 깁니다",
+        message: "키워드 분석은 짧은 주제어 기준으로 가장 잘 작동합니다. 60자 이내로 줄여서 입력해주세요."
+      };
+    }
+
+    return { ok: true };
+  }
+
+  function blockWithKeywordMessage(validation) {
+    openYtkAccess("login", {
+      badge: "검색어 확인",
+      icon: "🔎",
+      title: validation.title || "검색어를 확인해주세요",
+      message: validation.message || "분석 가능한 검색어를 입력해주세요.",
+      primaryText: "확인",
+      href: "#ytkSearchForm",
+      points: ["완성된 단어로 입력", "초성·자음만 입력 금지", "예: 삼성전자, 코스피 전망, 반도체 관련주"]
+    });
+  }
+
+  function shouldBlockSearch(event) {
+    var access = readPageAccess();
+
+    if (!access.is_authenticated) {
+      if (event) {
+        event.preventDefault();
+        if (event.stopImmediatePropagation) event.stopImmediatePropagation();
+        event.stopPropagation();
+      }
+      openYtkAccess("login", {
+        badge: "무료 회원",
+        icon: "🔐",
+        title: "로그인 후 실제 분석을 볼 수 있습니다",
+        message: "지금 화면은 예시 결과입니다. 검색어를 입력하거나 카테고리를 바꿔 실제 키워드·제목·태그 결과를 보려면 무료 로그인이 필요합니다.",
+        primaryText: "무료 로그인",
+        href: buildLoginHref(),
+        points: ["예시 결과까지 미리보기", "무료 회원 하루 3회 실제 분석", "제목·태그 아이디어 확인", "프리미엄은 무제한 검색"]
+      });
+      return true;
+    }
+
+    if (!access.is_premium && Number(access.remaining_today || 0) <= 0) {
+      if (event) {
+        event.preventDefault();
+        if (event.stopImmediatePropagation) event.stopImmediatePropagation();
+        event.stopPropagation();
+      }
+      openYtkAccess("premium", {
+        badge: "프리미엄",
+        icon: "✨",
+        title: "오늘 무료 검색 3회를 모두 사용했습니다",
+        message: "프리미엄으로 전환하면 유튜브 키워드 분석, 제목 아이디어, 태그, 엑셀 다운로드를 제한 없이 사용할 수 있습니다.",
+        primaryText: "프리미엄 보기",
+        href: access.pricing_url || "/stocks/pricing/",
+        points: ["키워드 무제한 검색", "제목·태그 아이디어", "엑셀 다운로드", "구독대비조회수 분석"]
+      });
+      return true;
+    }
+
+    return false;
   }
 
   function initSearchAccessGuard() {
@@ -58,35 +319,28 @@
     if (!form) return;
 
     form.addEventListener("submit", function (event) {
-      var access = readPageAccess();
+      shouldBlockSearch(event);
+    }, true);
 
-      if (!access.is_authenticated) {
-        event.preventDefault();
-        openYtkAccess("login", {
-          badge: "무료 회원",
-          icon: "🔐",
-          title: "로그인 후 사용할 수 있습니다",
-          message: "유튜브 키워드 분석기는 로그인 후 사용할 수 있습니다. 무료 회원은 하루 3회까지 검색할 수 있습니다.",
-          primaryText: "무료 로그인",
-          points: ["유튜브 키워드 검색 가능", "무료 회원 하루 3회", "엑셀 다운로드는 로그인 필요", "프리미엄은 무제한 검색"]
-        });
-        return false;
+    document.addEventListener("submit", function (event) {
+      if (event.target && event.target.id === "ytkKeywordSearchForm") {
+        shouldBlockSearch(event);
       }
+    }, true);
 
-      if (!access.is_premium && Number(access.remaining_today || 0) <= 0) {
-        event.preventDefault();
-        openYtkAccess("premium", {
-          badge: "프리미엄",
-          icon: "✨",
-          title: "오늘 무료 검색 3회를 모두 사용했습니다",
-          message: "프리미엄으로 전환하면 유튜브 키워드 분석, 제목 아이디어, 태그, 엑셀 다운로드를 제한 없이 사용할 수 있습니다.",
-          primaryText: "프리미엄 보기",
-          href: access.pricing_url || "/stocks/pricing/",
-          points: ["키워드 무제한 검색", "제목·태그 아이디어", "엑셀 다운로드", "구독대비조회수 분석"]
-        });
-        return false;
+    var submitButton = form.querySelector(".ytk-submit-btn");
+    if (submitButton) {
+      submitButton.addEventListener("click", function (event) {
+        shouldBlockSearch(event);
+      }, true);
+    }
+
+    document.addEventListener("click", function (event) {
+      var button = event.target && event.target.closest ? event.target.closest("#ytkKeywordSearchForm .ytk-submit-btn") : null;
+      if (button) {
+        shouldBlockSearch(event);
       }
-    });
+    }, true);
   }
 
   function initExcelAccessGuard() {
@@ -466,6 +720,8 @@
   }
 
   document.addEventListener("DOMContentLoaded", function () {
+    initYtkAccessModal();
+    initAccessActionLinks();
     initCustomSelects();
     initSearchAccessGuard();
     initExcelAccessGuard();
@@ -473,6 +729,25 @@
 
     document.querySelectorAll(".ytk-copy-btn").forEach(function (button) {
       button.addEventListener("click", function () {
+        var access = readPageAccess();
+        if (!access.is_authenticated) {
+          openYtkAccess("login", {
+            title: "로그인 후 복사할 수 있습니다",
+            message: "키워드, 제목, 태그 복사는 로그인 후 사용할 수 있습니다. 무료 회원은 하루 3회 분석 결과를 확인할 수 있습니다.",
+            primaryText: "무료 로그인",
+            href: buildLoginHref(),
+            points: ["키워드 결과 복사", "제목 아이디어 복사", "태그 복사", "프리미엄은 무제한 분석"]
+          });
+          return;
+        }
+        if (!access.is_premium && Number(access.remaining_today || 0) <= 0) {
+          openYtkAccess("premium", {
+            title: "오늘 무료 검색 3회를 모두 사용했습니다",
+            message: "프리미엄으로 전환하면 결과 복사와 키워드 분석을 제한 없이 사용할 수 있습니다.",
+            href: access.pricing_url || "/stocks/pricing/"
+          });
+          return;
+        }
         var targetId = button.getAttribute("data-copy-target");
         copyTextById(targetId, button);
       });

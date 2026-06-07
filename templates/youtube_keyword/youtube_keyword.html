@@ -8,25 +8,33 @@
 <meta name="description" content="유튜브 키워드 분석기. 쇼츠용 키워드와 일반 유튜브 영상 키워드, 제목 아이디어, 태그를 추천합니다.">
 <meta name="keywords" content="유튜브 키워드, 쇼츠 키워드, 유튜브 제목 추천, 유튜브 태그 추천, 콘텐츠 아이디어, BitgakView">
 <meta name="robots" content="index, follow">
-<link rel="stylesheet" href="{% static 'youtube_keyword/css/youtube_keyword.css' %}?v=20260605-mobile-v12">
+<link rel="stylesheet" href="{% static 'youtube_keyword/css/youtube_keyword.css' %}?v=20260607-force-login-guard-v4">
 {% endblock %}
 
 {% block content %}
 <div class="ytk-shell">
-  <nav class="ytk-nav" aria-label="유튜브 키워드 분석기 네비게이션">
+  <nav class="ytk-nav" aria-label="BitgakView 네비게이션">
     <a class="ytk-brand" href="/stocks/">
       <span class="ytk-logo">B</span>
-      <span>
+      <span class="ytk-brand-text">
         <strong>BitgakView</strong>
-        <em>AI Tools</em>
+        <em>빗각뷰 · 빗각연구소</em>
       </span>
     </a>
 
     <div class="ytk-nav-links">
       <a href="/stocks/">홈</a>
-      <a href="/stocks/005930/">차트</a>
+      <a href="/stocks/features/">소개</a>
+      <a href="/stocks/pricing/">가격소개</a>
+      <a href="/stocks/#marketSection">시장지표</a>
+      <a href="{% url 'stocks:detail' '005930' %}">차트</a>
       <a href="{% url 'insights:list' %}">빗각관점</a>
-      <a class="active" href="{% url 'youtube_keyword:index' %}">유튜브 키워드</a>
+      <a class="active" href="{% url 'youtube_keyword:index' %}">AI 도구</a>
+    </div>
+
+    <div class="ytk-nav-actions">
+      <a class="ytk-login-btn" href="/accounts/login/?next={{ request.get_full_path|urlencode }}">로그인</a>
+      <a class="ytk-start-btn" href="{% url 'stocks:detail' '005930' %}">무료로 시작</a>
     </div>
   </nav>
 
@@ -49,8 +57,8 @@
       method="get"
       action="{% url 'youtube_keyword:index' %}"
       autocomplete="off"
-      data-is-authenticated="{{ ytk_access.is_authenticated|yesno:'1,0' }}"
-      data-is-premium="{{ ytk_access.is_premium|yesno:'1,0' }}"
+      data-is-authenticated="{{ request.user.is_authenticated|yesno:'1,0' }}"
+      data-is-premium="{% if request.user.is_authenticated and ytk_access.is_premium %}1{% else %}0{% endif %}"
       data-remaining="{{ ytk_access.remaining_today }}"
       data-daily-limit="{{ ytk_access.daily_limit }}"
       data-pricing-url="{{ ytk_access.pricing_url }}"
@@ -61,7 +69,7 @@
           id="keyword"
           type="text"
           name="keyword"
-          value="{{ keyword }}"
+          value="{% if request.user.is_authenticated %}{{ keyword }}{% endif %}"
           placeholder="비워두면 선택한 카테고리 인기 키워드를 조회합니다"
           autocomplete="off"
         >
@@ -112,48 +120,205 @@
   </section>
 
 
-  <section class="ytk-access-status {% if ytk_access.is_premium %}is-premium{% elif not ytk_access.is_authenticated or access_block_kind == 'premium' %}is-locked{% endif %}">
-    {% if not ytk_access.is_authenticated %}
+  {% if not request.user.is_authenticated and request.GET %}
+    <section class="ytk-preview-callout ytk-locked-query-note">
       <div>
-        <strong>로그인 후 사용할 수 있습니다</strong>
-        <span>무료 회원은 하루 {{ ytk_access.daily_limit }}회까지 유튜브 키워드 검색을 사용할 수 있습니다.</span>
+        <strong>실제 분석은 로그인 후 열립니다</strong>
+        <span>비로그인 상태에서는 예시 결과만 보여드립니다. 검색어를 입력하고 분석하기를 누르면 무료 로그인 안내가 열립니다.</span>
       </div>
-      <a href="/accounts/login/?next={{ request.get_full_path|urlencode }}">무료 로그인</a>
+      <button type="button" data-ytk-open-login>무료 로그인하고 분석하기</button>
+    </section>
+  {% endif %}
+
+  <section class="ytk-access-status {% if request.user.is_authenticated and ytk_access.is_premium %}is-premium{% elif request.user.is_authenticated and access_block_kind == 'premium' %}is-locked{% else %}is-preview{% endif %}">
+    {% if not request.user.is_authenticated %}
+      <div>
+        <strong>예시 결과까지 미리 볼 수 있습니다</strong>
+        <span>검색어 입력이나 카테고리 변경은 자유롭게 볼 수 있고, 분석하기를 누르면 무료 로그인 안내가 열립니다. 무료 회원은 하루 {{ ytk_access.daily_limit }}회까지 분석할 수 있습니다.</span>
+      </div>
+      <a href="/accounts/login/?next={{ request.get_full_path|urlencode }}" data-ytk-open-login>무료 로그인</a>
     {% elif ytk_access.is_premium %}
       <div>
         <strong>프리미엄 무제한 사용 중</strong>
         <span>오늘 검색 {{ ytk_access.used_today }}회 · 유튜브 키워드 분석과 엑셀 다운로드를 제한 없이 사용할 수 있습니다.</span>
       </div>
-      <a href="/stocks/pricing/">프리미엄 확인</a>
+      <a href="/stocks/pricing/" data-ytk-open-premium>프리미엄 확인</a>
     {% elif access_block_kind == 'premium' %}
       <div>
         <strong>오늘 무료 검색 {{ ytk_access.daily_limit }}회를 모두 사용했습니다</strong>
-        <span>프리미엄으로 전환하면 유튜브 키워드 검색을 제한 없이 사용할 수 있습니다.</span>
+        <span>프리미엄으로 전환하면 유튜브 키워드 분석, 제목 아이디어, 태그, 엑셀 다운로드를 제한 없이 사용할 수 있습니다.</span>
       </div>
-      <a href="/stocks/pricing/">프리미엄 보기</a>
+      <a href="/stocks/pricing/" data-ytk-open-premium>프리미엄 보기</a>
     {% else %}
       <div>
         <strong>무료 회원 사용량</strong>
         <span>오늘 {{ ytk_access.used_today }}회 사용 · 남은 검색 {{ ytk_access.remaining_today }}회</span>
       </div>
-      <a href="/stocks/pricing/">프리미엄 전환</a>
+      <a href="/stocks/pricing/" data-ytk-open-premium>프리미엄 전환</a>
     {% endif %}
   </section>
 
-  {% if access_message and not result %}
-    <section class="ytk-upgrade-card">
-      <strong>{{ access_message }}</strong>
-      <p>비로그인 사용자는 검색 결과를 볼 수 없고, 무료 로그인 후 하루 3회까지 사용할 수 있습니다. 프리미엄 또는 관리자 승인을 받으면 제한 없이 사용할 수 있습니다.</p>
-      <div>
-        {% if not ytk_access.is_authenticated %}
-          <a href="/accounts/login/?next={{ request.get_full_path|urlencode }}">무료 로그인</a>
-        {% endif %}
-        <a href="/stocks/pricing/">프리미엄 보기</a>
+  {% if not result or not request.user.is_authenticated %}
+
+    <section class="ytk-summary ytk-preview-summary" aria-label="유튜브 키워드 분석 미리보기">
+      <div class="ytk-summary-card">
+        <span>검색 기준</span>
+        <strong>주식 인기 키워드</strong>
       </div>
+      <div class="ytk-summary-card">
+        <span>분석 유형</span>
+        <strong>쇼츠용 키워드</strong>
+      </div>
+      <div class="ytk-summary-card">
+        <span>카테고리</span>
+        <strong>주식</strong>
+      </div>
+      <div class="ytk-summary-card">
+        <span>추천 키워드</span>
+        <strong>24개</strong>
+      </div>
+      <div class="ytk-summary-card">
+        <span>사용 상태</span>
+        <strong>{% if request.user.is_authenticated %}{{ ytk_access.remaining_today }}회 남음{% else %}로그인 필요{% endif %}</strong>
+      </div>
+    </section>
+
+    <section class="ytk-preview-callout">
+      <div>
+        <strong>미리보기 화면입니다</strong>
+        <span>검색어를 입력하거나 카테고리를 바꾼 뒤 <b>분석하기</b>를 누르면 로그인 안내가 열립니다. 무료 회원은 하루 {{ ytk_access.daily_limit }}회까지 실제 분석 결과를 확인할 수 있습니다.</span>
+      </div>
+      {% if not request.user.is_authenticated %}
+        <button type="button" data-ytk-open-login>무료 로그인하고 분석하기</button>
+      {% elif not ytk_access.is_premium and ytk_access.remaining_today <= 0 %}
+        <button type="button" data-ytk-open-premium>프리미엄 보기</button>
+      {% else %}
+        <a href="#ytkSearchForm">검색어 입력하기</a>
+      {% endif %}
+    </section>
+
+    <section class="ytk-result-grid ytk-preview-grid" aria-label="유튜브 키워드 결과 예시">
+      <div class="ytk-panel ytk-table-panel">
+        <div class="ytk-panel-head">
+          <div>
+            <h2>추천 키워드 미리보기</h2>
+            <p>실제 분석을 실행하면 검색어와 선택한 카테고리에 맞춰 키워드, 제목 아이디어, 태그를 다시 계산합니다.</p>
+          </div>
+          <div class="ytk-panel-actions">
+            <button type="button" class="ytk-copy-btn" data-ytk-open-login>키워드 복사</button>
+            <button type="button" class="ytk-excel-btn" data-ytk-open-login>엑셀 다운로드</button>
+          </div>
+        </div>
+
+        <div class="ytk-table-wrap">
+          <table class="ytk-table ytk-preview-table">
+            <colgroup>
+              <col class="ytk-col-keyword">
+              <col class="ytk-col-views">
+              <col class="ytk-col-avg">
+              <col class="ytk-col-recent">
+              <col class="ytk-col-speed">
+              <col class="ytk-col-ratio">
+              <col class="ytk-col-algo">
+              <col class="ytk-col-demand">
+              <col class="ytk-col-comp">
+              <col class="ytk-col-opportunity">
+            </colgroup>
+            <thead>
+              <tr>
+                <th class="ytk-keyword-head">키워드</th>
+                <th><button type="button" class="ytk-sort-btn active desc" data-ytk-open-login>예상조회 <i></i></button></th>
+                <th><button type="button" class="ytk-sort-btn" data-ytk-open-login>상위평균 <i></i></button></th>
+                <th><button type="button" class="ytk-sort-btn" data-ytk-open-login>최근영상 <i></i></button></th>
+                <th><button type="button" class="ytk-sort-btn" data-ytk-open-login>조회속도 <i></i></button></th>
+                <th><button type="button" class="ytk-sort-btn" data-ytk-open-login>구독대비조회수 <i></i></button></th>
+                <th><button type="button" class="ytk-sort-btn" data-ytk-open-login>알고리즘 <i></i></button></th>
+                <th><button type="button" class="ytk-sort-btn" data-ytk-open-login>수요도 <i></i></button></th>
+                <th><button type="button" class="ytk-sort-btn" data-ytk-open-login>경쟁강도 <i></i></button></th>
+                <th><button type="button" class="ytk-sort-btn" data-ytk-open-login>기회점수 <i></i></button></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr class="ytk-preview-row" data-ytk-open-login>
+                <td class="ytk-keyword-cell"><strong>주식 급등주</strong><span>조회속도 빠름 · 수요 94</span></td>
+                <td>16.8만</td><td>24.7만</td><td>9개</td><td><span class="ytk-speed-pill speed-3">빠름</span></td><td>5.3배</td><td><span class="ytk-algorithm-pill signal-3">강함</span></td><td>94</td><td>27</td><td><strong>90</strong></td>
+              </tr>
+              <tr class="ytk-preview-row" data-ytk-open-login>
+                <td class="ytk-keyword-cell"><strong>반도체 관련주</strong><span>조회속도 빠름 · 수요 93</span></td>
+                <td>15.1만</td><td>22.7만</td><td>10개</td><td><span class="ytk-speed-pill speed-3">빠름</span></td><td>4.0배</td><td><span class="ytk-algorithm-pill signal-3">강함</span></td><td>93</td><td>30</td><td><strong>85</strong></td>
+              </tr>
+              <tr class="ytk-preview-row" data-ytk-open-login>
+                <td class="ytk-keyword-cell"><strong>전력망 수혜주</strong><span>조회속도 보통 · 수요 89</span></td>
+                <td>12.4만</td><td>18.3만</td><td>8개</td><td><span class="ytk-speed-pill speed-2">보통</span></td><td>3.6배</td><td><span class="ytk-algorithm-pill signal-2">양호</span></td><td>89</td><td>34</td><td><strong>79</strong></td>
+              </tr>
+              <tr class="ytk-preview-row" data-ytk-open-login>
+                <td class="ytk-keyword-cell"><strong>코스피 전망</strong><span>조회속도 보통 · 수요 86</span></td>
+                <td>10.9만</td><td>17.8만</td><td>12개</td><td><span class="ytk-speed-pill speed-2">보통</span></td><td>2.9배</td><td><span class="ytk-algorithm-pill signal-2">양호</span></td><td>86</td><td>41</td><td><strong>72</strong></td>
+              </tr>
+              <tr class="ytk-preview-row" data-ytk-open-login>
+                <td class="ytk-keyword-cell"><strong>삼성전자 주가</strong><span>조회속도 보통 · 수요 91</span></td>
+                <td>13.6만</td><td>20.1만</td><td>18개</td><td><span class="ytk-speed-pill speed-2">보통</span></td><td>2.5배</td><td><span class="ytk-algorithm-pill signal-1">관찰</span></td><td>91</td><td>52</td><td><strong>68</strong></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <aside class="ytk-side ytk-preview-side">
+        <div class="ytk-panel ytk-selected-panel">
+          <div class="ytk-selected-kicker">선택 키워드 예시</div>
+          <strong>주식 급등주</strong>
+          <span>예상조회 16.8만 · 조회속도 빠름 · 구독대비조회수 5.3배 · 알고리즘 강함 · 기회 90</span>
+        </div>
+
+        <div class="ytk-panel">
+          <div class="ytk-panel-head">
+            <div>
+              <h2>제목 아이디어</h2>
+              <p>후킹형, 검색형, 안정형으로 나눠서 보여줍니다.</p>
+            </div>
+            <button type="button" class="ytk-copy-btn" data-ytk-open-login>복사</button>
+          </div>
+          <div class="ytk-title-groups">
+            <div class="ytk-title-group">
+              <h3>후킹형</h3>
+              <ol>
+                <li>오늘 시장에서 사람들이 놓친 급등주 신호</li>
+                <li>주식 급등주를 볼 때 먼저 확인할 기준선</li>
+              </ol>
+            </div>
+            <div class="ytk-title-group">
+              <h3>검색형</h3>
+              <ol>
+                <li>주식 급등주 찾는 법, 차트에서 먼저 볼 것</li>
+                <li>급등주 후보를 볼 때 조심해야 할 구간</li>
+              </ol>
+            </div>
+          </div>
+        </div>
+
+        <div class="ytk-panel">
+          <div class="ytk-panel-head">
+            <div>
+              <h2>태그</h2>
+              <p>실제 분석 후 키워드에 맞춰 자동 구성됩니다.</p>
+            </div>
+            <button type="button" class="ytk-copy-btn" data-ytk-open-login>복사</button>
+          </div>
+          <div class="ytk-tag-groups">
+            <div class="ytk-tag-group">
+              <h3>핵심 태그</h3>
+              <div class="ytk-tags">
+                <span>#주식급등주</span><span>#국내주식</span><span>#주식차트</span><span>#빗각뷰</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </aside>
     </section>
   {% endif %}
 
-  {% if result %}
+  {% if result and request.user.is_authenticated %}
     <section class="ytk-summary">
       <div class="ytk-summary-card">
         <span>검색 기준</span>
@@ -319,12 +484,29 @@
 
     {{ result.rows|json_script:"ytkRowsData" }}
   {% endif %}
+
+  <div class="ytk-modal-backdrop" data-ytk-modal hidden>
+    <div class="ytk-modal-card" role="dialog" aria-modal="true" aria-labelledby="ytkModalTitle">
+      <button class="ytk-modal-close" type="button" aria-label="닫기" data-ytk-modal-close>×</button>
+      <div class="ytk-modal-badge" data-ytk-modal-badge>무료 회원</div>
+      <div class="ytk-modal-icon" data-ytk-modal-icon>🔐</div>
+      <h2 id="ytkModalTitle" data-ytk-modal-title>로그인 후 사용할 수 있습니다</h2>
+      <p data-ytk-modal-message>유튜브 키워드 분석기는 로그인 후 사용할 수 있습니다.</p>
+      <ul class="ytk-modal-points" data-ytk-modal-points></ul>
+      <div class="ytk-modal-actions">
+        <a class="ytk-modal-primary" href="/accounts/login/?next={{ request.get_full_path|urlencode }}" data-ytk-modal-primary>무료 로그인</a>
+        <button class="ytk-modal-secondary" type="button" data-ytk-modal-close>나중에</button>
+      </div>
+    </div>
+  </div>
 </div>
 {% endblock %}
 
 {% block extra_js %}
+
+<script id="ytkAuthData" type="application/json">{"is_authenticated": {% if request.user.is_authenticated %}true{% else %}false{% endif %}, "is_premium": {% if request.user.is_authenticated and ytk_access.is_premium %}true{% else %}false{% endif %}}</script>
 {{ ytk_access|json_script:"ytkAccessData" }}
 {{ ytk_access|json_script:"bitgak-access-data" }}
-<script src="{% static 'access/js/bitgak_access_guard.js' %}?v=20260605-ytk-modal-v12"></script>
-<script src="{% static 'youtube_keyword/js/youtube_keyword.js' %}?v=20260605-ytk-modal-v12"></script>
+<script src="{% static 'access/js/bitgak_access_guard.js' %}?v=20260607-force-login-guard-v4"></script>
+<script src="{% static 'youtube_keyword/js/youtube_keyword.js' %}?v=20260607-force-login-guard-v4"></script>
 {% endblock %}

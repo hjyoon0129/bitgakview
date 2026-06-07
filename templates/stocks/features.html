@@ -1,17 +1,46 @@
 {% extends "base.html" %}
 
-{% block title %}서비스 소개 - BitgakView{% endblock %}
+{% block title %}빗각뷰 소개 | 빗각연구소에서 본 종목을 차트 기준까지 이어가는 한국 주식 차트 플랫폼{% endblock %}
 {% block body_class %}landing-body{% endblock %}
 
 {% block extra_css %}
+<meta name="description" content="빗각뷰(BitgakView)는 빗각연구소 유튜브에서 본 종목을 바로 검색하고, 한국 주식 차트 기준선·평단가·포트폴리오·관심종목을 이어서 관리할 수 있는 차트 플랫폼입니다. 초기 가입자와 유튜브 구독자를 위한 프리미엄 혜택을 안내합니다.">
+<meta name="keywords" content="빗각뷰, BitgakView, 빗각연구소, 한국 주식 차트, 빗각분석, 종목검색, 시장지표, 관심종목, 평단가 계산, 포트폴리오">
+<meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large">
+<link rel="canonical" href="https://bitgakview.com/stocks/features/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="빗각뷰">
+<meta property="og:title" content="빗각뷰 소개 | 빗각연구소와 함께 보는 한국 주식 차트 플랫폼">
+<meta property="og:description" content="빗각연구소에서 본 종목을 빗각뷰에서 검색하고, 차트 기준과 평단가·포트폴리오를 저장해 다음 분석까지 이어가세요. 초기 사용자 프리미엄 혜택도 안내합니다.">
+<meta property="og:url" content="https://bitgakview.com/stocks/features/">
+<meta property="og:locale" content="ko_KR">
+
 <style>
+  :root {
+    --bv-bg: #07101d;
+    --bv-card: rgba(8, 18, 34, 0.90);
+    --bv-card-2: rgba(6, 14, 27, 0.94);
+    --bv-line: rgba(96, 165, 250, 0.22);
+    --bv-line-strong: rgba(56, 189, 248, 0.42);
+    --bv-text: #f3f8ff;
+    --bv-muted: #9fb5d4;
+    --bv-soft: #c7d7ee;
+    --bv-blue: #38bdf8;
+    --bv-cyan: #2dd4bf;
+    --bv-yellow: #facc15;
+    --bv-radius-xl: 28px;
+    --bv-radius-lg: 22px;
+    --bv-shadow: 0 24px 80px rgba(0, 0, 0, 0.30);
+  }
 
   .landing-body {
+    min-height: 100vh;
     background:
-      radial-gradient(circle at top left, rgba(45, 212, 191, 0.12), transparent 27%),
-      radial-gradient(circle at top right, rgba(59, 130, 246, 0.12), transparent 27%),
-      linear-gradient(180deg, #07101d 0%, #07101d 42%, #091322 100%) !important;
-    color: #eaf2ff;
+      radial-gradient(circle at top left, rgba(45, 212, 191, 0.13), transparent 28%),
+      radial-gradient(circle at top right, rgba(59, 130, 246, 0.16), transparent 32%),
+      linear-gradient(180deg, #06101b 0%, #07101d 48%, #091322 100%) !important;
+    color: var(--bv-text);
+    overflow-x: hidden;
   }
 
   .landing-body > header,
@@ -25,127 +54,118 @@
   }
 
   .landing-shell {
-    width: min(1500px, calc(100vw - 40px));
+    width: min(1560px, calc(100vw - 72px));
     margin: 0 auto;
-    padding: 22px 0 56px;
+    padding: 22px 0 70px;
   }
-
 
   /* =========================================================
-     Home navbar patch
-     기존 홈 화면(검색 + 시장지표)은 유지하고 상단 네브바만 박스형으로 정리
+     Unified Navbar - home/features/pricing 동일 사이즈
      ========================================================= */
-
-  .stock-search-body > header,
-  .stock-search-body .site-header,
-  .stock-search-body .global-header,
-  .stock-search-body .main-header,
-  .stock-search-body .top-navbar,
-  .stock-search-body .navbar:not(.home-nav-card),
-  .stock-search-body .app-header:not(.home-nav-card) {
-    display: none !important;
-  }
-
   .home-nav-wrap {
     position: sticky;
     top: 12px;
     z-index: 9999;
-    width: min(1500px, calc(100vw - 40px));
-    margin: 0 auto 20px;
+    width: 100%;
+    margin: 0 auto 26px;
   }
 
   .home-nav-card {
-    min-height: 66px;
-    padding: 10px 12px;
-    border-radius: 22px;
-    border: 1px solid rgba(96, 165, 250, 0.20);
+    min-height: 74px;
+    padding: 12px 14px;
+    border-radius: 26px;
+    border: 1px solid var(--bv-line);
     background:
-      radial-gradient(circle at 16% 0%, rgba(45, 212, 191, 0.10), transparent 34%),
-      linear-gradient(180deg, rgba(10, 18, 32, 0.92), rgba(5, 11, 21, 0.94));
-    box-shadow:
-      0 22px 60px rgba(0, 0, 0, 0.26),
-      inset 0 1px 0 rgba(255,255,255,0.05);
-    backdrop-filter: blur(14px);
+      radial-gradient(circle at 12% 0%, rgba(45, 212, 191, 0.12), transparent 35%),
+      linear-gradient(135deg, rgba(15, 46, 65, 0.92), rgba(10, 21, 38, 0.96) 46%, rgba(13, 26, 48, 0.95));
+    box-shadow: 0 20px 55px rgba(0, 0, 0, 0.25);
+    backdrop-filter: blur(16px);
     display: grid;
-    grid-template-columns: auto minmax(0, 1fr) auto;
-    gap: 16px;
+    grid-template-columns: 270px minmax(0, 1fr) auto;
     align-items: center;
+    gap: 18px;
   }
 
   .home-brand {
     display: inline-flex;
     align-items: center;
-    gap: 10px;
-    min-width: 156px;
-    color: #ffffff;
+    gap: 12px;
     text-decoration: none;
+    color: var(--bv-text);
+    min-width: 0;
   }
 
   .home-logo {
-    width: 34px;
-    height: 34px;
-    border-radius: 12px;
-    background: linear-gradient(135deg, #2dd4bf, #38bdf8);
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    color: #03111d;
-    font-size: 15px;
+    width: 42px;
+    height: 42px;
+    border-radius: 14px;
+    display: grid;
+    place-items: center;
+    font-size: 16px;
     font-weight: 1000;
-    box-shadow: 0 12px 28px rgba(45, 212, 191, 0.24);
+    color: #062033;
+    background: linear-gradient(135deg, #2dd4bf, #60a5fa);
+    box-shadow: 0 14px 32px rgba(45, 212, 191, 0.22);
+    flex: 0 0 auto;
   }
 
   .home-brand-text {
     display: flex;
     flex-direction: column;
-    line-height: 1.05;
+    line-height: 1.1;
+    min-width: 0;
   }
 
   .home-brand-name {
-    color: #ffffff;
-    font-size: 15px;
+    font-size: 18px;
     font-weight: 1000;
     letter-spacing: -0.04em;
+    color: #ffffff;
   }
 
   .home-brand-sub {
     margin-top: 4px;
-    color: #7dd3fc;
-    font-size: 10px;
+    font-size: 11px;
     font-weight: 900;
-    letter-spacing: -0.02em;
+    color: #7dd3fc;
   }
 
   .home-nav-links {
-    display: inline-flex;
+    display: flex;
     justify-content: center;
     align-items: center;
-    gap: 6px;
+    gap: 8px;
     min-width: 0;
   }
 
   .home-nav-link {
-    height: 38px;
-    padding: 0 13px;
-    border-radius: 13px;
-    color: #a8c2e8;
+    min-height: 42px;
+    padding: 0 18px;
+    border-radius: 16px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    font-size: 13px;
-    font-weight: 1000;
+    color: #dbeafe;
     text-decoration: none;
+    font-size: 15px;
+    font-weight: 950;
     white-space: nowrap;
-    transition: 0.16s ease;
+    border: 1px solid transparent;
+    transition: background .16s ease, border-color .16s ease, transform .16s ease;
   }
 
   .home-nav-link:hover,
   .home-nav-link.active {
-    color: #ffffff;
-    background: rgba(56, 189, 248, 0.10);
+    color: #fff;
+    background: rgba(37, 99, 235, 0.20);
+    border-color: rgba(96, 165, 250, 0.28);
   }
 
-  .home-nav-actions {
+  .home-nav-link:hover {
+    transform: translateY(-1px);
+  }
+
+  .home-auth-actions {
     display: inline-flex;
     align-items: center;
     justify-content: flex-end;
@@ -154,359 +174,620 @@
 
   .home-login-btn,
   .home-start-btn {
-    height: 40px;
-    padding: 0 15px;
-    border-radius: 14px;
+    height: 46px;
+    padding: 0 20px;
+    border-radius: 16px;
+    border: 1px solid rgba(96, 165, 250, 0.35);
+    background: rgba(15, 23, 42, 0.78);
+    color: #f8fbff;
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 950;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    color: #dbeafe;
-    text-decoration: none;
-    font-size: 13px;
-    font-weight: 1000;
     white-space: nowrap;
   }
 
-  .home-login-btn {
-    border: 1px solid rgba(96, 165, 250, 0.24);
-    background: rgba(15, 23, 42, 0.60);
-  }
-
   .home-start-btn {
-    border: 1px solid rgba(125, 211, 252, 0.42);
-    background: linear-gradient(135deg, #2563eb, #0ea5e9);
+    border-color: rgba(45, 212, 191, 0.28);
+    background: linear-gradient(135deg, #2874f0, #16b8d9);
     color: #ffffff;
-    box-shadow: 0 14px 30px rgba(37, 99, 235, 0.24);
+    box-shadow: 0 14px 32px rgba(37, 99, 235, 0.20);
   }
 
-  .home-login-btn:hover,
-  .home-start-btn:hover {
-    transform: translateY(-1px);
-    filter: brightness(1.06);
-  }
-
-  .search-page {
-    padding-top: 0;
-  }
-
-  @media (max-width: 980px) {
-    .home-nav-wrap {
-      top: 8px;
-      width: min(100%, calc(100vw - 20px));
-      margin-bottom: 14px;
-    }
-
-    .home-nav-card {
-      grid-template-columns: 1fr auto;
-      gap: 10px;
-    }
-
-    .home-nav-links {
-      grid-column: 1 / -1;
-      justify-content: flex-start;
-      overflow-x: auto;
-      padding-top: 2px;
-    }
-
-    .home-brand {
-      min-width: 0;
-    }
-
-    .home-brand-sub,
-    .home-start-btn {
-      display: none;
-    }
-  }
-
-
-  .landing-hero,
-  .feature-card,
-  .pricing-card {
-    background: linear-gradient(180deg, rgba(13, 22, 39, 0.92), rgba(10, 18, 32, 0.96));
-    border: 1px solid rgba(148, 163, 184, 0.14);
-    border-radius: 26px;
-    box-shadow: 0 24px 80px rgba(0, 0, 0, 0.28);
-  }
-
-  .landing-hero {
-    padding: 42px;
-    margin-bottom: 18px;
+  /* =========================================================
+     Features page
+     ========================================================= */
+  .feature-hero {
     position: relative;
     overflow: hidden;
+    border: 1px solid var(--bv-line);
+    border-radius: var(--bv-radius-xl);
+    background:
+      radial-gradient(circle at 82% 18%, rgba(45, 212, 239, 0.18), transparent 34%),
+      radial-gradient(circle at 0% 100%, rgba(45, 212, 191, 0.12), transparent 32%),
+      linear-gradient(135deg, rgba(7, 18, 34, 0.98), rgba(13, 43, 63, 0.92));
+    box-shadow: var(--bv-shadow);
+    padding: 34px;
+    display: grid;
+    grid-template-columns: minmax(0, 1.2fr) 430px;
+    gap: 28px;
+    align-items: stretch;
   }
 
-  .landing-hero::before {
+  .feature-hero::after {
     content: "";
     position: absolute;
-    top: -120px;
-    right: -80px;
-    width: 380px;
-    height: 380px;
-    border-radius: 999px;
-    background: radial-gradient(circle, rgba(56, 189, 248, 0.22), rgba(56, 189, 248, 0.04) 58%, transparent 72%);
+    right: -120px;
+    top: -130px;
+    width: 420px;
+    height: 420px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(56, 189, 248, 0.16), transparent 66%);
     pointer-events: none;
   }
 
-  .eyebrow {
+  .hero-copy,
+  .hero-flow-card {
     position: relative;
-    z-index: 2;
-    display: inline-flex;
-    align-items: center;
-    padding: 8px 12px;
-    border-radius: 999px;
-    background: rgba(56, 189, 248, 0.09);
-    color: #bae6fd;
-    border: 1px solid rgba(56, 189, 248, 0.24);
-    font-size: 12px;
-    font-weight: 1000;
+    z-index: 1;
+  }
+
+  .hero-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
     margin-bottom: 18px;
   }
 
-  .landing-title {
-    position: relative;
-    z-index: 2;
-    margin: 0;
-    color: #ffffff;
-    font-size: clamp(40px, 4.2vw, 68px);
-    line-height: 1.03;
-    letter-spacing: -0.07em;
+  .eyebrow,
+  .hero-mini-pill {
+    min-height: 34px;
+    padding: 0 14px;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
     font-weight: 1000;
+    line-height: 1;
+    white-space: nowrap;
   }
 
-  .landing-title span {
-    color: #38bdf8;
-    text-shadow: 0 0 22px rgba(56, 189, 248, 0.18);
+  .eyebrow {
+    color: #7dd3fc;
+    background: rgba(14, 116, 144, 0.24);
+    border: 1px solid rgba(45, 212, 239, 0.30);
+  }
+
+  .hero-mini-pill {
+    color: #fde68a;
+    background: rgba(250, 204, 21, 0.12);
+    border: 1px solid rgba(250, 204, 21, 0.30);
+  }
+
+  .landing-title {
+    margin: 0;
+    color: #ffffff;
+    font-size: clamp(40px, 4.2vw, 66px);
+    line-height: 1.04;
+    letter-spacing: -0.075em;
+    font-weight: 1000;
+    word-break: keep-all;
+  }
+
+  .landing-title .accent {
+    display: block;
+    color: var(--bv-blue);
+    text-shadow: 0 16px 48px rgba(56, 189, 248, 0.18);
   }
 
   .landing-desc {
-    position: relative;
-    z-index: 2;
-    margin: 16px 0 0;
-    max-width: 860px;
-    color: #b8c7dd;
+    margin: 20px 0 0;
+    max-width: 920px;
+    color: var(--bv-soft);
     font-size: 15px;
-    line-height: 1.75;
-    font-weight: 740;
+    font-weight: 850;
+    line-height: 1.72;
+    word-break: keep-all;
   }
 
-  .landing-cta-row {
-    position: relative;
-    z-index: 2;
+  .hero-cta-row {
     display: flex;
-    gap: 10px;
     flex-wrap: wrap;
-    margin-top: 26px;
+    gap: 10px;
+    margin-top: 24px;
   }
 
   .landing-cta {
-    min-height: 44px;
-    padding: 0 18px;
-    border-radius: 15px;
+    min-height: 48px;
+    padding: 0 20px;
+    border-radius: 16px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
     text-decoration: none;
-    color: #ffffff;
+    color: #04111f;
     font-size: 14px;
     font-weight: 1000;
-    background: linear-gradient(135deg, #2563eb, #0ea5e9);
-    border: 1px solid rgba(125, 211, 252, 0.42);
+    background: linear-gradient(135deg, #facc15, #2dd4bf 52%, #38bdf8);
+    border: 1px solid rgba(125, 211, 252, 0.35);
+    white-space: nowrap;
   }
 
   .landing-cta.secondary {
+    color: #eaf2ff;
     background: rgba(15, 23, 42, 0.68);
-    border-color: rgba(96, 165, 250, 0.24);
-    color: #dbeafe;
+    border-color: rgba(96, 165, 250, 0.28);
   }
 
-  .feature-grid,
-  .pricing-grid {
+  .hero-flow-card {
+    border: 1px solid rgba(96, 165, 250, 0.18);
+    border-radius: 24px;
+    background: rgba(3, 10, 22, 0.58);
+    padding: 22px;
+    align-self: center;
+  }
+
+  .hero-flow-card h2 {
+    margin: 0 0 14px;
+    font-size: 20px;
+    font-weight: 1000;
+    letter-spacing: -0.045em;
+    color: #ffffff;
+  }
+
+  .flow-list {
+    display: grid;
+    gap: 10px;
+  }
+
+  .flow-item {
+    display: grid;
+    grid-template-columns: 50px minmax(0, 1fr);
+    gap: 14px;
+    align-items: center;
+    min-height: 68px;
+    padding: 12px 14px;
+    border-radius: 17px;
+    background: rgba(2, 8, 23, 0.62);
+    border: 1px solid rgba(96, 165, 250, 0.14);
+  }
+
+  .flow-num {
+    width: 42px;
+    height: 42px;
+    min-width: 42px;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    place-self: center;
+    color: #04111f;
+    background: linear-gradient(135deg, #facc15, #2dd4bf 55%, #38bdf8);
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 11px;
+    font-weight: 1000;
+    line-height: 1;
+    letter-spacing: -0.03em;
+    font-variant-numeric: tabular-nums;
+    box-shadow: 0 8px 18px rgba(45, 212, 191, 0.18);
+    flex: 0 0 42px;
+  }
+
+  .flow-item strong {
+    display: block;
+    color: #ffffff;
+    font-size: 13px;
+    font-weight: 1000;
+    line-height: 1.2;
+  }
+
+  .flow-item > div > span {
+    display: block;
+    margin-top: 4px;
+    color: #8fd3ff;
+    font-size: 11px;
+    font-weight: 900;
+    line-height: 1.35;
+    word-break: keep-all;
+  }
+
+  .hero-benefit-box {
+    margin-top: 14px;
+    padding: 14px;
+    border-radius: 18px;
+    border: 1px solid rgba(250, 204, 21, 0.24);
+    background: rgba(250, 204, 21, 0.08);
+  }
+
+  .hero-benefit-box strong {
+    display: block;
+    color: #fde68a;
+    font-size: 13px;
+    font-weight: 1000;
+    line-height: 1.25;
+  }
+
+  .hero-benefit-box span {
+    display: block;
+    margin-top: 6px;
+    color: #c7d7ee;
+    font-size: 12px;
+    font-weight: 850;
+    line-height: 1.45;
+    word-break: keep-all;
+  }
+
+  .section-block {
+    margin-top: 24px;
+    border: 1px solid var(--bv-line);
+    border-radius: var(--bv-radius-xl);
+    background: rgba(8, 18, 34, 0.84);
+    box-shadow: var(--bv-shadow);
+    padding: 28px;
+  }
+
+  .section-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: end;
+    gap: 16px;
+    margin-bottom: 18px;
+  }
+
+  .section-kicker {
+    display: block;
+    color: #7dd3fc;
+    font-size: 12px;
+    font-weight: 1000;
+    margin-bottom: 8px;
+  }
+
+  .section-head h2 {
+    margin: 0;
+    color: #ffffff;
+    font-size: 30px;
+    font-weight: 1000;
+    letter-spacing: -0.055em;
+    line-height: 1.22;
+  }
+
+  .section-head p {
+    margin: 0;
+    max-width: 520px;
+    color: var(--bv-muted);
+    font-size: 13px;
+    font-weight: 850;
+    line-height: 1.55;
+  }
+
+  .feature-grid {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 16px;
+    gap: 14px;
   }
 
-  .feature-card,
-  .pricing-card {
-    padding: 22px;
-    min-height: 220px;
+  .feature-card {
+    min-height: 190px;
+    padding: 20px;
+    border-radius: 22px;
+    border: 1px solid rgba(96, 165, 250, 0.16);
+    background: rgba(3, 10, 22, 0.62);
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+  }
+
+  .feature-card.is-main {
+    border-color: rgba(45, 212, 239, 0.32);
+    background:
+      radial-gradient(circle at top right, rgba(45, 212, 239, 0.10), transparent 38%),
+      rgba(3, 10, 22, 0.66);
   }
 
   .feature-icon {
     width: 42px;
     height: 42px;
     border-radius: 15px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
+    display: grid;
+    place-items: center;
     background: rgba(56, 189, 248, 0.12);
     color: #7dd3fc;
-    font-size: 20px;
+    font-size: 18px;
     font-weight: 1000;
     margin-bottom: 14px;
   }
 
-  .feature-card h3,
-  .pricing-card h3 {
+  .feature-card h3 {
     margin: 0;
     color: #ffffff;
-    font-size: 19px;
+    font-size: 18px;
     font-weight: 1000;
     letter-spacing: -0.04em;
   }
 
-  .feature-card p,
-  .pricing-card p {
+  .feature-card p {
     margin: 10px 0 0;
     color: #a8bfdc;
-    font-size: 14px;
-    line-height: 1.65;
-    font-weight: 760;
-  }
-
-  .pricing-card.recommended {
-    border-color: rgba(56, 189, 248, 0.40);
-    box-shadow: 0 24px 70px rgba(14, 165, 233, 0.14);
-  }
-
-  .pricing-price {
-    margin-top: 14px;
-    color: #38bdf8;
-    font-size: 30px;
-    font-weight: 1000;
-    letter-spacing: -0.05em;
-  }
-
-  .pricing-price small {
-    color: #94a3b8;
-    font-size: 12px;
-    font-weight: 900;
-  }
-
-  .pricing-card ul {
-    margin: 18px 0 0;
-    padding: 0;
-    list-style: none;
-    display: grid;
-    gap: 10px;
-  }
-
-  .pricing-card li {
-    color: #b8c7dd;
     font-size: 13px;
+    line-height: 1.62;
+    font-weight: 820;
+    word-break: keep-all;
+  }
+
+  .split-panel {
+    display: grid;
+    grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+    gap: 16px;
+    align-items: stretch;
+  }
+
+  .story-card,
+  .mini-check-card {
+    border-radius: 22px;
+    border: 1px solid rgba(96, 165, 250, 0.16);
+    background: rgba(3, 10, 22, 0.62);
+    padding: 22px;
+  }
+
+  .story-card h3,
+  .mini-check-card h3 {
+    margin: 0;
+    color: #ffffff;
+    font-size: 20px;
+    font-weight: 1000;
+    letter-spacing: -0.045em;
+  }
+
+  .story-card p {
+    margin: 12px 0 0;
+    color: var(--bv-soft);
+    font-size: 14px;
+    line-height: 1.7;
     font-weight: 820;
   }
 
-  .pricing-card li::before {
+  .check-grid {
+    margin-top: 16px;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .check-item {
+    min-height: 58px;
+    padding: 12px 13px;
+    border-radius: 16px;
+    background: rgba(14, 116, 144, 0.10);
+    border: 1px solid rgba(45, 212, 239, 0.16);
+    color: #dbeafe;
+    font-size: 13px;
+    font-weight: 900;
+    line-height: 1.35;
+  }
+
+  .check-item::before {
     content: "✓";
-    margin-right: 8px;
-    color: #22d3ee;
+    display: inline-block;
+    margin-right: 7px;
+    color: #67e8f9;
     font-weight: 1000;
   }
 
-  @media (max-width: 1180px) {
+  .ai-section {
+    scroll-margin-top: 112px;
+  }
+
+  @media (max-width: 1320px) {
+    .landing-shell { width: min(1500px, calc(100vw - 48px)); }
+    .home-nav-card { grid-template-columns: 245px minmax(0, 1fr) auto; gap: 12px; }
+    .home-nav-link { padding: 0 13px; font-size: 14px; }
+    .feature-hero { grid-template-columns: 1fr; }
+    .hero-flow-card { max-width: 720px; }
+  }
+
+  @media (max-width: 980px) {
     .landing-shell {
-      width: min(100%, calc(100vw - 28px));
-      padding-top: 18px;
+      width: min(100%, calc(100vw - 22px));
+      padding-top: 14px;
     }
 
-    .feature-grid,
-    .pricing-grid {
-      grid-template-columns: 1fr;
+    .home-nav-wrap {
+      top: 8px;
+      margin-bottom: 16px;
     }
+
+    .home-nav-card {
+      grid-template-columns: 1fr auto;
+      grid-template-areas:
+        "brand auth"
+        "links links";
+      gap: 12px;
+      padding: 14px;
+      border-radius: 20px;
+      min-height: auto;
+    }
+
+    .home-brand { grid-area: brand; min-width: 0; }
+    .home-auth-actions { grid-area: auth; }
+    .home-nav-links {
+      grid-area: links;
+      justify-content: flex-start;
+      overflow-x: auto;
+      scrollbar-width: none;
+      padding-top: 2px;
+    }
+    .home-nav-links::-webkit-scrollbar { display: none; }
+    .home-nav-link { flex: 0 0 auto; min-height: 38px; padding: 0 12px; font-size: 13px; }
+    .home-start-btn { display: none; }
+
+    .feature-hero,
+    .section-block { padding: 22px 18px; border-radius: 22px; }
+    .landing-title { font-size: 38px; }
+    .landing-desc { font-size: 13px; line-height: 1.66; }
+    .feature-grid { grid-template-columns: 1fr; }
+    .split-panel { grid-template-columns: 1fr; }
+    .section-head { flex-direction: column; align-items: flex-start; }
+    .section-head h2 { font-size: 24px; }
+    .check-grid { grid-template-columns: 1fr; }
   }
-
-  @media (max-width: 720px) {
-    .landing-hero {
-      padding: 26px 18px;
-    }
-
-    .landing-title {
-      font-size: 38px;
-    }
-  }
-
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="landing-shell">
-  <nav class="home-nav-wrap" aria-label="BitgakView 네비게이션">
-  <div class="home-nav-card">
-    <a class="home-brand" href="{% url 'stocks:search' %}">
-      <span class="home-logo">B</span>
-      <span class="home-brand-text">
-        <span class="home-brand-name">BitgakView</span>
-        <span class="home-brand-sub">Korea Stock Chart</span>
-      </span>
-    </a>
+  <nav class="home-nav-wrap" aria-label="빗각뷰 네비게이션">
+    <div class="home-nav-card">
+      <a class="home-brand" href="/stocks/">
+        <span class="home-logo">B</span>
+        <span class="home-brand-text">
+          <span class="home-brand-name">BitgakView</span>
+          <span class="home-brand-sub">빗각뷰 · 빗각연구소</span>
+        </span>
+      </a>
 
-    <div class="home-nav-links">
-      <a class="home-nav-link" href="{% url 'stocks:search' %}">홈</a>
-      <a class="home-nav-link {% if active_nav == 'features' %}active{% endif %}" href="/stocks/features/">소개</a>
-      <a class="home-nav-link {% if active_nav == 'pricing' %}active{% endif %}" href="/stocks/pricing/">가격소개</a>
-      <a class="home-nav-link" href="{% url 'stocks:detail' '005930' %}">차트</a>
+      <div class="home-nav-links">
+        <a class="home-nav-link" href="/stocks/">홈</a>
+        <a class="home-nav-link active" href="/stocks/features/">소개</a>
+        <a class="home-nav-link" href="/stocks/pricing/">가격소개</a>
+        <a class="home-nav-link" href="/stocks/#marketSection">시장지표</a>
+        <a class="home-nav-link" href="/stocks/005930/">차트</a>
+        <a class="home-nav-link" href="{% url 'insights:list' %}">빗각관점</a>
+        <a class="home-nav-link" href="/tools/youtube-keyword/">AI 도구</a>
+      </div>
+
+      <div class="home-auth-actions">
+        {% if request.user.is_authenticated %}
+          <a class="home-login-btn" href="/accounts/logout/">로그아웃</a>
+        {% else %}
+          <a class="home-login-btn" href="/accounts/login/?next={{ request.get_full_path|urlencode }}">로그인</a>
+        {% endif %}
+        <a class="home-start-btn" href="/stocks/005930/">무료로 시작</a>
+      </div>
+    </div>
+  </nav>
+
+  <section class="feature-hero">
+    <div class="hero-copy">
+      <div class="hero-pills">
+        <span class="eyebrow">빗각뷰 · BitgakView 소개</span>
+        <span class="hero-mini-pill">초기 가입자 100명 · 프리미엄 1년 혜택</span>
+      </div>
+      <h1 class="landing-title">
+        빗각연구소에서 본 종목을<br>
+        <span class="accent">BitgakView에서 기록으로 이어가세요</span>
+      </h1>
+      <p class="landing-desc">
+        빗각뷰(BitgakView)는 빗각연구소 콘텐츠에서 본 종목을 바로 검색하고,
+        한국 주식 차트·시장지표·빗각 드로잉·평단가 계산·포트폴리오를 한 화면에서 이어서 확인하는 차트 플랫폼입니다.
+        유튜브에서 관심이 생긴 종목을 그냥 지나치지 않고, 내가 본 차트 기준을 저장해 다음 분석에 다시 활용할 수 있도록 설계했습니다.
+      </p>
+      <div class="hero-cta-row">
+        <a class="landing-cta" href="/stocks/005930/">무료 차트 시작하기</a>
+        <a class="landing-cta secondary" href="/stocks/pricing/">초기 혜택 보기</a>
+        <a class="landing-cta secondary" href="{% url 'insights:list' %}">최근 빗각관점 보기</a>
+      </div>
     </div>
 
-    <div class="home-nav-actions">
-      <a class="home-login-btn" href="/accounts/login/">로그인</a>
-      <a class="home-start-btn" href="{% url 'stocks:detail' '005930' %}">무료로 시작</a>
-    </div>
-  </div>
-</nav>
+    <aside class="hero-flow-card" aria-label="빗각뷰 사용 흐름">
+      <h2>빗각연구소 구독자 흐름</h2>
+      <div class="flow-list">
+        <div class="flow-item">
+          <span class="flow-num">01</span>
+          <div><strong>유튜브에서 종목 발견</strong><span>쇼츠·라이브에서 본 종목을 기억</span></div>
+        </div>
+        <div class="flow-item">
+          <span class="flow-num">02</span>
+          <div><strong>빗각뷰에서 바로 검색</strong><span>종목명·코드로 차트 화면 이동</span></div>
+        </div>
+        <div class="flow-item">
+          <span class="flow-num">03</span>
+          <div><strong>기준선과 평단 저장</strong><span>빗각 드로잉·평단가·관심종목 관리</span></div>
+        </div>
+        <div class="flow-item">
+          <span class="flow-num">04</span>
+          <div><strong>다음 분석에 다시 활용</strong><span>저장한 기준을 그대로 이어서 확인</span></div>
+        </div>
+      </div>
+      <div class="hero-benefit-box">
+        <strong>초기 가입자 100명 프리미엄 1년 혜택 진행</strong>
+        <span>빗각연구소 유튜브를 통해 들어온 구독자에게도 프리미엄 혜택 안내를 함께 제공합니다.</span>
+      </div>
+    </aside>
+  </section>
 
-  <section class="landing-hero">
-    <div class="eyebrow">BitgakView 소개</div>
-    <h1 class="landing-title">
-      한국 주식 차트에<br>
-      <span>평단가와 포트폴리오를 더하다</span>
-    </h1>
-    <p class="landing-desc">
-      BitgakView는 한국 주식 투자자가 자주 쓰는 종목 검색, 차트 확인, 보조지표 분석,
-      드로잉, 평단가 계산, 포트폴리오 비중 확인을 한 화면에서 빠르게 처리하기 위한 차트 서비스입니다.
-    </p>
-    <div class="landing-cta-row">
-      <a class="landing-cta" href="{% url 'stocks:detail' '005930' %}">무료로 차트 시작하기</a>
-      <a class="landing-cta secondary" href="/stocks/pricing/">가격소개 보기</a>
+  <section class="section-block">
+    <div class="section-head">
+      <div>
+        <span class="section-kicker">BITGAKVIEW POINT</span>
+        <h2>영상에서 시작된 관심을 차트 기록으로 정리합니다</h2>
+      </div>
+      <p>빗각연구소에서 본 종목을 찾고, 시장 위치를 보고, 차트 기준을 남기고, 내 평단과 비중까지 확인하는 흐름을 한 화면에서 연결합니다.</p>
+    </div>
+
+    <div class="feature-grid">
+      <article class="feature-card is-main">
+        <div class="feature-icon">⌕</div>
+        <h3>빠른 종목 검색</h3>
+        <p>삼성전자, 하이닉스, 카카오처럼 자주 보는 한국 주식을 종목명·코드 기반으로 빠르게 찾아 차트로 이동합니다.</p>
+      </article>
+      <article class="feature-card is-main">
+        <div class="feature-icon">⌁</div>
+        <h3>시장지표와 차트</h3>
+        <p>KOSPI·KOSDAQ과 주요 해외지표를 함께 보며 지금 시장 위치를 먼저 확인하고 종목 차트로 이어갑니다.</p>
+      </article>
+      <article class="feature-card is-main">
+        <div class="feature-icon">◩</div>
+        <h3>빗각 드로잉 저장</h3>
+        <p>추세선, 수평선, 피보나치 채널 등 내가 본 기준을 저장해 다음 접속 때 다시 불러오는 흐름을 목표로 합니다.</p>
+      </article>
+      <article class="feature-card">
+        <div class="feature-icon">₩</div>
+        <h3>평단가 계산</h3>
+        <p>매수가와 수량을 입력해 평균단가, 투자금, 수익률을 계산하고 차트 위 판단 기준과 함께 확인합니다.</p>
+      </article>
+      <article class="feature-card">
+        <div class="feature-icon">◔</div>
+        <h3>포트폴리오 비중</h3>
+        <p>보유 종목, 현금 비중, 종목별 비중을 정리해 한 종목에 과도하게 쏠리지 않았는지 점검합니다.</p>
+      </article>
+      <article class="feature-card">
+        <div class="feature-icon">☆</div>
+        <h3>관심종목 관리</h3>
+        <p>자주 보는 종목을 관심종목으로 고정하고, 빗각연구소에서 본 종목을 다시 찾기 쉽게 관리합니다.</p>
+      </article>
     </div>
   </section>
 
-  <section class="feature-grid">
-    <article class="feature-card">
-      <div class="feature-icon">⌕</div>
-      <h3>빠른 종목 검색</h3>
-      <p>종목명, 코드, 초성, 별칭 기반 검색을 지원합니다. 검색 후 가장 관련도 높은 종목 차트로 바로 이동할 수 있습니다.</p>
-    </article>
+  <section class="section-block ai-section" id="ai-tools">
+    <div class="section-head">
+      <div>
+        <span class="section-kicker">AI & CONTENT WORKFLOW</span>
+        <h2>AI 도구와 콘텐츠 흐름도 함께 확장합니다</h2>
+      </div>
+      <p>현재는 차트와 저장 기능 중심으로 제공하고, 이후 쇼츠 소재 정리·종목 메모·분석 루틴 보조 기능을 단계적으로 연결할 계획입니다.</p>
+    </div>
 
-    <article class="feature-card">
-      <div class="feature-icon">⌁</div>
-      <h3>차트와 보조지표</h3>
-      <p>일봉, 주봉, 월봉과 1시간~4시간봉을 확인하고 이동평균, RSI, MACD+RSI, Stochastic을 함께 볼 수 있습니다.</p>
-    </article>
-
-    <article class="feature-card">
-      <div class="feature-icon">✚</div>
-      <h3>드로잉 도구</h3>
-      <p>수평선, 수직선, 추세선, 연장선, 피보나치 채널 등 차트 위에서 필요한 분석선을 직접 표시할 수 있습니다.</p>
-    </article>
-
-    <article class="feature-card">
-      <div class="feature-icon">₩</div>
-      <h3>평단가 계산기</h3>
-      <p>분할 매수/매도 계획을 입력하면 보유수량, 총 매수금, 평균단가, 수익률을 즉시 계산합니다.</p>
-    </article>
-
-    <article class="feature-card">
-      <div class="feature-icon">◔</div>
-      <h3>포트폴리오 비중</h3>
-      <p>기본 투자원금을 설정하고 저장한 종목의 비중, 현금 비중, 업종별 비중을 원형 차트로 확인할 수 있습니다.</p>
-    </article>
-
-    <article class="feature-card">
-      <div class="feature-icon">☆</div>
-      <h3>관심종목 그룹</h3>
-      <p>자주 보는 종목을 그룹으로 관리하고 차트 화면에서 빠르게 이동할 수 있도록 구성했습니다.</p>
-    </article>
+    <div class="split-panel">
+      <article class="story-card">
+        <h3>빗각연구소와 연결되는 차트 플랫폼</h3>
+        <p>
+          빗각연구소에서 본 종목을 그냥 지나치지 않고, 빗각뷰에서 검색해 기준선을 남겨두는 구조를 목표로 합니다.
+          영상은 관심을 만들고, 빗각뷰는 그 관심을 기록과 관리로 이어주는 역할을 합니다.
+        </p>
+      </article>
+      <article class="mini-check-card">
+        <h3>준비 중인 확장 방향</h3>
+        <div class="check-grid">
+          <div class="check-item">유튜브에서 본 종목 메모 흐름</div>
+          <div class="check-item">차트 기준선 저장 고도화</div>
+          <div class="check-item">관심종목·포트폴리오 연동</div>
+          <div class="check-item">AI 기반 콘텐츠/키워드 보조 도구</div>
+        </div>
+      </article>
+    </div>
   </section>
 </div>
 {% endblock %}
