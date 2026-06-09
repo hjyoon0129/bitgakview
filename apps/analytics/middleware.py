@@ -5,7 +5,7 @@ from urllib.parse import unquote
 from django.conf import settings
 from django.core.cache import cache
 from django.db.models import F
-from django.http import HttpResponseForbidden
+from django.http import HttpResponse, HttpResponseForbidden
 from django.utils import timezone
 
 from .models import VisitLog
@@ -32,11 +32,25 @@ BLOCK_PATH_KEYWORDS = [
     "/db.sql", "/dump.sql",
 ]
 
-# 아래 경로는 통계에도 넣지 않음: 서버 부하와 노이즈 절감
+# 아래 경로는 통계에도 넣지 않고 rate limit 카운트에도 넣지 않음.
+# 차트/자동저장/API 요청은 한 화면에서 짧은 시간에 많이 발생하므로
+# 방문자 분석용 미들웨어에서 제외해야 정상 사용자가 막히지 않는다.
 IGNORE_PATH_PREFIXES = [
-    "/static/", "/media/", "/favicon.ico", "/robots.txt", "/sitemap.xml",
+    "/static/",
+    "/media/",
+    "/favicon.ico",
+    "/robots.txt",
+    "/sitemap.xml",
     "/google331e49c0cbe99fbe.html",
-    "/stocks/api/",  # 차트/종목 API는 요청이 많으므로 제외
+
+    # 주식/차트 API
+    "/stocks/api/",
+
+    # 인사이트 차트 자동저장/드래프트 API
+    # 예: /insights/api/chart-draft/
+    "/insights/api/",
+
+    # 그 외 공통 API
     "/api/",
 ]
 
@@ -48,6 +62,9 @@ IGNORE_EXTENSIONS = {
 # 원시 로그를 저장하지 않고, 같은 IP+경로는 일정 시간에 1번만 집계 카운트 증가
 HUMAN_AGG_DEDUP_SECONDS = int(getattr(settings, "VISITLOG_HUMAN_DEDUP_SECONDS", 600))
 BLOCKED_AGG_DEDUP_SECONDS = int(getattr(settings, "VISITLOG_BLOCKED_DEDUP_SECONDS", 3600))
+
+# 사람 페이지 기준 1분 요청 제한.
+# API 요청은 IGNORE_PATH_PREFIXES에서 먼저 제외되므로 여기에 포함되지 않음.
 RATE_LIMIT_PER_MINUTE = int(getattr(settings, "VISITLOG_RATE_LIMIT_PER_MINUTE", 90))
 
 AGG_HASH = "__aggregate__"
@@ -120,11 +137,29 @@ def cache_safe_key(*parts):
 
 
 def is_rate_limited(ip):
+    """
+    IP 기준 간단한 1분 rate limit.
+
+    기존 코드처럼 매 요청마다 cache.set(..., 60)을 하면 TTL이 계속 연장되어
+    사용자가 짧게 많이 요청한 뒤에도 제한 시간이 밀릴 수 있다.
+    cache.add로 최초 TTL을 고정하고, 이후에는 incr로 카운트만 증가시킨다.
+    """
     if not ip:
         return False
+
     key = f"visit_rate:{ip}"
-    count = cache.get(key, 0) + 1
-    cache.set(key, count, 60)
+
+    # 최초 요청이면 1분 TTL로 시작
+    if cache.add(key, 1, 60):
+        return False
+
+    try:
+        count = cache.incr(key)
+    except ValueError:
+        # 캐시 백엔드 타이밍 문제로 키가 사라진 경우 안전하게 재생성
+        cache.set(key, 1, 60)
+        return False
+
     return count > RATE_LIMIT_PER_MINUTE
 
 
@@ -228,6 +263,7 @@ class VisitLogMiddleware:
     - 개별 요청 row를 계속 쌓지 않음
     - VisitLog 관리자에서는 집계 통계만 볼 수 있음
     - 봇/공격 경로 차단은 유지
+    - API/정적파일/차트 자동저장 요청은 방문 통계와 rate limit에서 제외
     """
 
     def __init__(self, get_response):
@@ -239,6 +275,9 @@ class VisitLogMiddleware:
         user_agent = request.META.get("HTTP_USER_AGENT", "")
         ip = get_client_ip(request)
 
+        # 통계 제외 경로는 rate limit도 적용하지 않음.
+        # /insights/api/chart-draft/ 같은 자동저장 API가 여기서 빠져야
+        # 정상 사용자가 Too many requests로 막히지 않는다.
         if should_ignore_logging(path_lower):
             return self.get_response(request)
 
@@ -289,7 +328,7 @@ class VisitLogMiddleware:
                 status_code=429,
                 dedup_seconds=BLOCKED_AGG_DEDUP_SECONDS,
             )
-            return HttpResponseForbidden("Too many requests")
+            return HttpResponse("Too many requests", status=429)
 
         response = self.get_response(request)
 
