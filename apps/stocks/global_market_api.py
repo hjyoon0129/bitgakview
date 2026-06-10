@@ -20,12 +20,18 @@ YAHOO_SYMBOLS = {
 
 INDEX_KEYS = ["kospi", "kosdaq", "nasdaq100", "sp500"]
 YAHOO_HOSTS = ["query1.finance.yahoo.com", "query2.finance.yahoo.com"]
-YAHOO_TIMEOUT_SECONDS = 4
+YAHOO_TIMEOUT_SECONDS = 3
 FRESH_CACHE_KEY = "bitgakview:global_market_temperature:v17:fresh"
 STALE_CACHE_KEY = "bitgakview:global_market_temperature:v17:stale"
 REFRESH_LOCK_KEY = "bitgakview:global_market_temperature:v17:refresh_lock"
-FRESH_TTL_SECONDS = 60 * 10
-STALE_TTL_SECONDS = 60 * 60
+
+# 시장지표 체감 속도 개선 정책
+# - fresh: 3분 동안 즉시 반환
+# - stale: fresh 만료 후에도 30분 동안 오래된 값을 먼저 보여주고 백그라운드 갱신
+# - cron에서 3분마다 ?refresh=1 호출하면 사용자는 대부분 fresh-hit만 받게 됨
+FRESH_TTL_SECONDS = 60 * 3
+STALE_TTL_SECONDS = 60 * 30
+REFRESH_LOCK_TTL_SECONDS = 45
 
 
 def _fetch_yahoo_chart(symbol, range_value="10y", interval="1d"):
@@ -334,6 +340,9 @@ def _build_payload():
         "source": "Yahoo Finance chart API",
         "cache_state": "fresh",
         "cache_backend": "django-cache",
+        "fresh_ttl_seconds": FRESH_TTL_SECONDS,
+        "stale_ttl_seconds": STALE_TTL_SECONDS,
+        "refresh_lock_ttl_seconds": REFRESH_LOCK_TTL_SECONDS,
         "updated_at": updated_at,
         "indices": indices,
         "future": future,
@@ -371,7 +380,7 @@ def _refresh_cache_background():
 
 
 def _maybe_start_background_refresh():
-    if not cache.add(REFRESH_LOCK_KEY, True, 45):
+    if not cache.add(REFRESH_LOCK_KEY, True, REFRESH_LOCK_TTL_SECONDS):
         return
     thread = threading.Thread(target=_refresh_cache_background, daemon=True)
     thread.start()
@@ -386,6 +395,9 @@ def global_market_temperature_api(request):
             payload = dict(cached)
             payload["cache_state"] = "fresh-hit"
             payload["cache_backend"] = "django-cache"
+            payload["fresh_ttl_seconds"] = FRESH_TTL_SECONDS
+            payload["stale_ttl_seconds"] = STALE_TTL_SECONDS
+            payload["refresh_lock_ttl_seconds"] = REFRESH_LOCK_TTL_SECONDS
             return JsonResponse(payload)
 
         stale = cache.get(STALE_CACHE_KEY)
@@ -393,6 +405,9 @@ def global_market_temperature_api(request):
             payload = dict(stale)
             payload["cache_state"] = "stale"
             payload["cache_backend"] = "django-cache"
+            payload["fresh_ttl_seconds"] = FRESH_TTL_SECONDS
+            payload["stale_ttl_seconds"] = STALE_TTL_SECONDS
+            payload["refresh_lock_ttl_seconds"] = REFRESH_LOCK_TTL_SECONDS
             _maybe_start_background_refresh()
             return JsonResponse(payload)
 
@@ -406,6 +421,9 @@ def global_market_temperature_api(request):
             payload = dict(stale)
             payload["cache_state"] = "stale-error"
             payload["cache_backend"] = "django-cache"
+            payload["fresh_ttl_seconds"] = FRESH_TTL_SECONDS
+            payload["stale_ttl_seconds"] = STALE_TTL_SECONDS
+            payload["refresh_lock_ttl_seconds"] = REFRESH_LOCK_TTL_SECONDS
             payload.setdefault("errors", {})["refresh"] = str(exc)
             return JsonResponse(payload)
         return JsonResponse({"ok": False, "message": str(exc)}, status=503)

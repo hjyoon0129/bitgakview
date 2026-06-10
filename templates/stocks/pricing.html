@@ -1,17 +1,17 @@
 {% extends "base.html" %}
 
-{% block title %}빗각뷰 가격소개 | 초기 가입자 100명 프리미엄 1년 혜택 안내{% endblock %}
+{% block title %}빗각뷰 가격소개 | 프리미엄 월 9,900원 · 6개월 49,500원{% endblock %}
 {% block body_class %}landing-body{% endblock %}
 
 {% block extra_css %}
-<meta name="description" content="빗각뷰(BitgakView) 가격소개 페이지입니다. 초기 가입자 100명에게 프리미엄 1년 혜택을 제공하는 이벤트를 진행하며, 빗각연구소 유튜브 구독자도 프리미엄 혜택을 신청할 수 있습니다.">
+<meta name="description" content="빗각뷰(BitgakView) 가격소개 페이지입니다. 프리미엄 월 9,900원, 6개월 49,500원으로 한국 주식 차트 저장, 빗각 드로잉, 평단가 계산, 포트폴리오 관리를 이용할 수 있습니다. 초기 가입자 100명에게는 프리미엄 1년 혜택을 제공합니다.">
 <meta name="keywords" content="빗각뷰 가격, BitgakView 가격, 빗각뷰 프리미엄, 빗각연구소, 한국 주식 차트, 빗각분석, 초기 가입자 혜택, 프리미엄 1년 무료, 평단가 계산, 관심종목">
 <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large">
 <link rel="canonical" href="https://bitgakview.com/stocks/pricing/">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="빗각뷰">
 <meta property="og:title" content="빗각뷰 가격소개 | 초기 가입자 100명 프리미엄 1년 혜택">
-<meta property="og:description" content="초기 가입자 100명에게 프리미엄 1년 혜택을 제공하고, 빗각연구소 유튜브 구독자에게도 프리미엄 혜택을 안내합니다. 이후 1개월·6개월 이용권으로 차트 저장과 포트폴리오 관리를 이어가세요.">
+<meta property="og:description" content="초기 가입자 100명에게 프리미엄 1년 혜택을 제공하고, 이후 프리미엄 월 9,900원 또는 6개월 49,500원 이용권으로 차트 저장과 포트폴리오 관리를 이어가세요.">
 <meta property="og:url" content="https://bitgakview.com/stocks/pricing/">
 <meta property="og:locale" content="ko_KR">
 
@@ -369,7 +369,7 @@
 
   .pricing-card {
     position: relative;
-    min-height: 388px;
+    min-height: 402px;
     padding: 26px;
     border-radius: 26px;
     border: 1px solid rgba(96, 165, 250, 0.18);
@@ -618,7 +618,7 @@
         <span class="home-logo">B</span>
         <span class="home-brand-text">
           <span class="home-brand-name">BitgakView</span>
-          <span class="home-brand-sub">빗각뷰 · 빗각연구소</span>
+          <span class="home-brand-sub">빗각뷰 · 한국 주식 차트</span>
         </span>
       </a>
 
@@ -656,7 +656,7 @@
       <p class="landing-desc">
         빗각뷰는 초기 가입자 100명에게 프리미엄 1년 혜택을 제공하는 이벤트를 진행하고 있습니다.
         빗각연구소 유튜브를 통해 들어온 구독자에게도 프리미엄 혜택을 안내하며,
-        정식 오픈 후에는 1개월 이용권과 6개월 할인 이용권 중심으로 운영할 계획입니다.
+        정식 오픈 후에는 월 9,900원의 1개월 이용권과 6개월 49,500원 할인 이용권 중심으로 운영할 계획입니다.
       </p>
       <div class="hero-cta-row">
         <a class="landing-cta" href="/accounts/login/?next={{ request.get_full_path|urlencode }}">초기 혜택 신청하기</a>
@@ -693,8 +693,8 @@
     <article class="pricing-card featured">
       <div class="pricing-badge">월간</div>
       <h2>1개월 이용권</h2>
-      <div class="pricing-price">14,900원 <small>/ 월</small></div>
-      <p>이벤트 기간 이후에도 한 달 단위로 차트 저장과 포트폴리오 관리 기능을 이어가고 싶은 사용자를 위한 플랜입니다.</p>
+      <div class="pricing-price">9,900원 <small>/ 월</small></div>
+      <p>이벤트 기간 이후에도 부담 없이 한 달 단위로 차트 저장과 포트폴리오 관리 기능을 이어가고 싶은 사용자를 위한 기본 플랜입니다.</p>
       <ul>
         <li>차트와 보조지표 기능 전체</li>
         <li>빗각 드로잉과 설정 저장 기능</li>
@@ -707,9 +707,9 @@
     <article class="pricing-card hot">
       <div class="pricing-badge">6개월 할인</div>
       <h2>6개월 이용권</h2>
-      <div class="pricing-price">72,000원 <small>/ 6개월</small></div>
-      <div class="pricing-save">월 12,000원 기준 · 1개월권 대비 총 17,400원 절약</div>
-      <p>관심종목과 포트폴리오를 장기간 관리하며 차트 기준을 꾸준히 쌓아가려는 사용자에게 맞춘 할인 플랜입니다.</p>
+      <div class="pricing-price">49,500원 <small>/ 6개월</small></div>
+      <div class="pricing-save">월 8,250원 기준 · 1개월권 대비 총 9,900원 절약</div>
+      <p>관심종목과 포트폴리오를 장기간 관리하며 차트 기준을 꾸준히 쌓아가려는 사용자에게 맞춘 할인 플랜입니다. 월간 결제보다 1개월분을 절약하는 구조입니다.</p>
       <ul>
         <li>1개월 이용권 기능 전체 포함</li>
         <li>포트폴리오 장기 관리에 적합</li>

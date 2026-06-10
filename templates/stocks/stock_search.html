@@ -1,13 +1,19 @@
 {% extends "base.html" %}
 {% load static insight_tags %}
 
-{% block title %}빗각뷰 | 한국 주식 차트·종목검색·빗각분석{% endblock %}
+{% block title %}빗각뷰(BitgakView) | 한국 주식 차트·종목검색·빗각분석{% endblock %}
 {% block body_class %}stock-search-body{% endblock %}
 
 {% block extra_css %}
-<meta name="description" content="빗각뷰는 한국 주식 차트, 종목검색, 빗각분석, 시장지표를 제공하는 차트 플랫폼입니다.">
-<meta name="keywords" content="빗각뷰, BitgakView, bitgakview, 빗각연구소, 한국 주식, 주식 차트, 빗각분석, 종목검색, 코스피, 코스닥, 시장지표, 관심종목, 평단가 계산">
+<meta name="description" content="빗각뷰(BitgakView)는 한국 주식 차트, 종목검색, 빗각분석, 시장지표, 관심종목 저장, 평단가 계산, 포트폴리오 관리, 분할매수 전략 도구를 제공하는 투자 참고용 플랫폼입니다.">
+<meta name="keywords" content="빗각뷰, BitgakView, bitgakview, 빗각연구소, 빗각분석, 한국 주식 차트, 주식 차트, 종목검색, 코스피, 코스닥, 시장지표, 관심종목, 평단가 계산, 포트폴리오, 분할매수">
 <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1">
+<meta name="googlebot" content="index, follow">
+<meta name="naverbot" content="index, follow">
+<meta name="author" content="빗각뷰">
+<meta name="application-name" content="빗각뷰">
+<meta name="apple-mobile-web-app-title" content="빗각뷰">
+<meta name="subject" content="빗각뷰 한국 주식 차트·종목검색·빗각분석">
 
 <meta name="naver-site-verification" content="0731d69ed94b6877157d63b4a631eb0593daea24">
 <meta name="google-site-verification" content="JT-Rk8ciQQYitTZyVdDkGwpyNaVNri9IFSi5rBCZfwE">
@@ -16,60 +22,125 @@
 
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="빗각뷰">
-<meta property="og:title" content="빗각뷰 | 한국 주식 차트 플랫폼">
-<meta property="og:description" content="한국 주식 차트, 종목검색, 빗각분석, 시장지표를 한 화면에서 확인하세요.">
+<meta property="og:title" content="빗각뷰(BitgakView) | 한국 주식 차트·종목검색·빗각분석">
+<meta property="og:description" content="빗각뷰는 한국 주식 차트, 종목검색, 빗각분석, 시장지표, 관심종목 저장, 평단가 계산, 포트폴리오 관리 도구를 제공하는 투자 참고용 플랫폼입니다.">
 <meta property="og:url" content="https://bitgakview.com/">
 <meta property="og:locale" content="ko_KR">
 
 <meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="빗각뷰 | 한국 주식 차트 플랫폼">
-<meta name="twitter:description" content="한국 주식 차트, 종목검색, 빗각분석, 시장지표를 한 화면에서 확인하세요.">
+<meta name="twitter:title" content="빗각뷰(BitgakView) | 한국 주식 차트·종목검색·빗각분석">
+<meta name="twitter:description" content="한국 주식 차트, 종목검색, 빗각분석, 시장지표, 평단가 계산, 포트폴리오 관리를 빗각뷰에서 확인하세요.">
 
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
-  "@type": "WebSite",
-  "name": "빗각뷰",
-  "alternateName": [
-    "BitgakView",
-    "bitgakview",
-    "빗각연구소"
-  ],
-  "url": "https://bitgakview.com/",
-  "inLanguage": "ko-KR",
-  "description": "빗각뷰는 한국 주식 차트, 종목검색, 빗각분석, 시장지표를 제공하는 차트 플랫폼입니다.",
-  "potentialAction": {
-    "@type": "SearchAction",
-    "target": "https://bitgakview.com/?q={search_term_string}",
-    "query-input": "required name=search_term_string"
-  },
-  "publisher": {
-    "@type": "Organization",
-    "name": "빗각뷰",
-    "alternateName": [
-      "BitgakView",
-      "bitgakview",
-      "빗각연구소"
-    ],
-    "url": "https://bitgakview.com/"
-  }
-}
-</script>
-
-<script type="application/ld+json">
-{
-  "@context": "https://schema.org",
-  "@type": "Organization",
-  "name": "빗각뷰",
-  "alternateName": [
-    "BitgakView",
-    "bitgakview",
-    "빗각연구소"
-  ],
-  "url": "https://bitgakview.com/",
-  "description": "한국 주식 차트와 빗각분석을 제공하는 차트 플랫폼입니다.",
-  "sameAs": [
-    "https://www.youtube.com/channel/UCWVSHc0gbcDSVLVbtt75Agg"
+  "@graph": [
+    {
+      "@type": "Organization",
+      "@id": "https://bitgakview.com/#organization",
+      "name": "빗각뷰",
+      "alternateName": [
+        "BitgakView",
+        "bitgakview",
+        "빗각View",
+        "빗각연구소"
+      ],
+      "url": "https://bitgakview.com/",
+      "description": "빗각뷰는 한국 주식 차트와 빗각분석, 종목검색, 시장지표, 관심종목 저장, 평단가 계산, 포트폴리오 관리 도구를 제공하는 투자 참고용 플랫폼입니다.",
+      "sameAs": [
+        "https://www.youtube.com/channel/UCWVSHc0gbcDSVLVbtt75Agg"
+      ]
+    },
+    {
+      "@type": "WebSite",
+      "@id": "https://bitgakview.com/#website",
+      "name": "빗각뷰",
+      "alternateName": [
+        "BitgakView",
+        "bitgakview",
+        "빗각View",
+        "빗각연구소"
+      ],
+      "url": "https://bitgakview.com/",
+      "inLanguage": "ko-KR",
+      "publisher": {
+        "@id": "https://bitgakview.com/#organization"
+      },
+      "potentialAction": {
+        "@type": "SearchAction",
+        "target": "https://bitgakview.com/?q={search_term_string}",
+        "query-input": "required name=search_term_string"
+      }
+    },
+    {
+      "@type": "WebPage",
+      "@id": "https://bitgakview.com/#webpage",
+      "url": "https://bitgakview.com/",
+      "name": "빗각뷰(BitgakView) | 한국 주식 차트·종목검색·빗각분석",
+      "isPartOf": {
+        "@id": "https://bitgakview.com/#website"
+      },
+      "about": {
+        "@id": "https://bitgakview.com/#organization"
+      },
+      "inLanguage": "ko-KR",
+      "description": "빗각뷰(BitgakView)는 한국 주식 차트, 종목검색, 빗각분석, 시장지표, 관심종목 저장, 평단가 계산, 포트폴리오 관리 도구를 제공하는 투자 참고용 플랫폼입니다."
+    },
+    {
+      "@type": "WebApplication",
+      "@id": "https://bitgakview.com/#webapplication",
+      "name": "빗각뷰",
+      "alternateName": "BitgakView",
+      "url": "https://bitgakview.com/",
+      "applicationCategory": "FinanceApplication",
+      "operatingSystem": "Web",
+      "inLanguage": "ko-KR",
+      "description": "한국 주식 차트, 종목검색, 빗각분석, 시장지표, 평단가 계산, 포트폴리오 관리를 제공하는 웹 기반 투자 참고용 차트 도구입니다.",
+      "publisher": {
+        "@id": "https://bitgakview.com/#organization"
+      },
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "KRW",
+        "availability": "https://schema.org/InStock"
+      }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "@id": "https://bitgakview.com/#breadcrumb",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "빗각뷰",
+          "item": "https://bitgakview.com/"
+        }
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "@id": "https://bitgakview.com/#faq",
+      "inLanguage": "ko-KR",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "빗각뷰는 어떤 서비스인가요?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "빗각뷰(BitgakView)는 한국 주식 차트, 종목검색, 빗각분석, 시장지표, 관심종목 저장, 평단가 계산, 포트폴리오 관리를 제공하는 투자 참고용 웹 서비스입니다."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "빗각연구소 유튜브에서 본 종목을 빗각뷰에서 확인할 수 있나요?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "빗각연구소 유튜브에서 본 한국 주식 종목을 빗각뷰에서 검색하고 차트 기준, 관심종목, 평단가 계산 결과를 저장해 다시 확인할 수 있습니다."
+          }
+        }
+      ]
+    }
   ]
 }
 </script>
@@ -1885,7 +1956,7 @@
     margin: 0 !important;
     font-size: clamp(44px, 4.35vw, 72px) !important;
     line-height: 1.04 !important;
-    letter-spacing: -0.076em !important;
+    letter-spacing: -0.035em !important;
     word-break: keep-all !important;
   }
 
@@ -4999,12 +5070,12 @@
           </div>
 
           <h1 class="home-title">
-            <span class="home-title-main">지금이 매수 타이밍일까?</span>
-            <span class="home-title-accent-wrap">BitgakView로 시장부터 확인하세요</span>
+            <span class="home-title-main">빗각뷰로 한국 주식 차트를</span>
+            <span class="home-title-accent-wrap">시장부터 확인하세요</span>
           </h1>
 
           <p class="home-desc">
-            <span>빗각뷰에서 삼성전자·하이닉스처럼 관심 종목을 검색하고, 시장지표와 차트를 함께 보며 평단가 계산·포트폴리오·분할매수 계획까지 이어서 확인하세요.</span>
+            <span>빗각뷰(BitgakView)는 삼성전자·하이닉스처럼 관심 종목을 검색하고, 시장지표와 차트를 함께 보며 평단가 계산·포트폴리오·분할매수 계획까지 이어서 확인하는 한국 주식 차트 플랫폼입니다.</span>
             <span>빗각연구소 유튜브에서 본 종목도 빗각뷰에서 바로 검색하고, 로그인하면 관심종목·빗각 드로잉·평단가 계산 결과를 저장해 다음에도 그대로 확인할 수 있습니다.</span>
           </p>
 
@@ -5049,7 +5120,7 @@
           </div>
 
           <div class="home-hero-bottom">
-            <div class="home-search-label">종목 바로 검색</div>
+            <div class="home-search-label">빗각뷰 종목 바로 검색</div>
             <div class="home-search-action-row">
               <form class="home-search-form" action="/" method="get" autocomplete="off">
                 <div class="home-search-input-wrap">
@@ -5100,20 +5171,7 @@
         {% endif %}
       </section>
 
-<!--      <section class="home-brand-seo-card" aria-label="빗각뷰와 빗각연구소 안내">-->
-<!--        <h2>빗각뷰는 빗각연구소에서 사용하는 한국 주식 차트 플랫폼입니다</h2>-->
-<!--        <p>-->
-<!--          한국 주식 종목검색, 빗각분석, 시장지표, 관심종목 저장을 한 화면에서 확인하세요.<br>-->
-<!--          빗각연구소 유튜브에서 본 종목도 빗각뷰에서 검색하고 차트 기준을 저장할 수 있습니다.-->
-<!--        </p>-->
-<!--        <div class="home-brand-keywords" aria-label="빗각뷰 관련 키워드">-->
-<!--          <span>빗각뷰</span>-->
-<!--          <span>BitgakView</span>-->
-<!--          <span>빗각연구소</span>-->
-<!--          <span>한국 주식 차트</span>-->
-<!--          <span>빗각분석</span>-->
-<!--        </div>-->
-<!--      </section>-->
+
 
       <section id="marketSection" class="home-panel">
         <div class="home-panel-head">
