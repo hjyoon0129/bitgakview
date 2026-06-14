@@ -1,19 +1,67 @@
 {% extends "base.html" %}
 
-{% block title %}빗각뷰 가격소개 | 프리미엄 월 9,900원 · 6개월 49,500원{% endblock %}
+{% block title %}빗각뷰 가격소개 | 초기 가입자 100명 프리미엄 1년 무료{% endblock %}
 {% block body_class %}landing-body{% endblock %}
 
 {% block extra_css %}
-<meta name="description" content="빗각뷰(BitgakView) 가격소개 페이지입니다. 프리미엄 월 9,900원, 6개월 49,500원으로 한국 주식 차트 저장, 빗각 드로잉, 평단가 계산, 포트폴리오 관리를 이용할 수 있습니다. 초기 가입자 100명에게는 프리미엄 1년 혜택을 제공합니다.">
-<meta name="keywords" content="빗각뷰 가격, BitgakView 가격, 빗각뷰 프리미엄, 빗각연구소, 한국 주식 차트, 빗각분석, 초기 가입자 혜택, 프리미엄 1년 무료, 평단가 계산, 관심종목">
+<meta name="description" content="빗각뷰(BitgakView)는 초기 가입자 100명에게 프리미엄 기능을 1년 무료로 제공합니다. 프리미엄은 정상 유료 서비스이며, 이벤트 종료 후에는 월 9,900원 또는 6개월 49,500원 이용권으로 차트 저장, 빗각 드로잉, 평단가 계산, 포트폴리오 관리를 이용할 수 있습니다.">
+<meta name="keywords" content="빗각뷰 가격, BitgakView 가격, 빗각뷰 프리미엄, 빗각연구소, 한국 주식 차트, 빗각분석, 초기 가입자 혜택, 초기 100명 프리미엄 무료, 프리미엄 1년 무료, 평단가 계산, 관심종목">
 <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large">
 <link rel="canonical" href="https://bitgakview.com/stocks/pricing/">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="빗각뷰">
-<meta property="og:title" content="빗각뷰 가격소개 | 초기 가입자 100명 프리미엄 1년 혜택">
-<meta property="og:description" content="초기 가입자 100명에게 프리미엄 1년 혜택을 제공하고, 이후 프리미엄 월 9,900원 또는 6개월 49,500원 이용권으로 차트 저장과 포트폴리오 관리를 이어가세요.">
+<meta property="og:title" content="빗각뷰 가격소개 | 초기 가입자 100명 프리미엄 1년 무료">
+<meta property="og:description" content="프리미엄은 정상 유료 서비스입니다. 단, 초기 가입자 100명에게는 차트 저장, 빗각 드로잉, 평단가 계산, 포트폴리오 관리 기능을 1년 무료로 제공합니다. 이후 유료 이용권은 월 9,900원 또는 6개월 49,500원입니다.">
 <meta property="og:url" content="https://bitgakview.com/stocks/pricing/">
 <meta property="og:locale" content="ko_KR">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="빗각뷰 가격소개 | 초기 가입자 100명 프리미엄 1년 무료">
+<meta name="twitter:description" content="초기 가입자 100명은 프리미엄 기능을 1년 무료로 사용합니다. 이후 유료 이용권은 월 9,900원 또는 6개월 49,500원입니다.">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebPage",
+  "name": "빗각뷰 가격소개",
+  "description": "빗각뷰는 초기 가입자 100명에게 프리미엄 기능을 1년 무료로 제공합니다. 이벤트 종료 후 프리미엄은 월 9,900원 또는 6개월 49,500원 유료 이용권으로 운영됩니다.",
+  "url": "https://bitgakview.com/stocks/pricing/",
+  "inLanguage": "ko-KR",
+  "isPartOf": {
+    "@type": "WebSite",
+    "name": "빗각뷰",
+    "url": "https://bitgakview.com/"
+  },
+  "about": {
+    "@type": "SoftwareApplication",
+    "name": "BitgakView",
+    "applicationCategory": "FinanceApplication",
+    "operatingSystem": "Web",
+    "offers": [
+      {
+        "@type": "Offer",
+        "name": "초기 가입자 100명 프리미엄 1년 무료",
+        "price": "0",
+        "priceCurrency": "KRW",
+        "description": "초기 가입자 100명에게 프리미엄 기능을 1년 무료로 제공합니다."
+      },
+      {
+        "@type": "Offer",
+        "name": "프리미엄 1개월 이용권",
+        "price": "9900",
+        "priceCurrency": "KRW",
+        "description": "이벤트 종료 후 이용 가능한 프리미엄 월간 유료 이용권입니다."
+      },
+      {
+        "@type": "Offer",
+        "name": "프리미엄 6개월 이용권",
+        "price": "49500",
+        "priceCurrency": "KRW",
+        "description": "이벤트 종료 후 이용 가능한 프리미엄 6개월 유료 할인 이용권입니다."
+      }
+    ]
+  }
+}
+</script>
+
 
 <style>
   :root {
@@ -491,6 +539,82 @@
     background: linear-gradient(135deg, #facc15, #2dd4bf 52%, #38bdf8);
   }
 
+
+
+  .premium-inline-form { margin: 0; display: inline-flex; }
+  .premium-inline-form.full { width: 100%; margin-top: auto; }
+  .premium-submit-btn {
+    min-height: 48px;
+    padding: 0 20px;
+    border: 0;
+    border-radius: 16px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+    color: #04111f;
+    font-size: 14px;
+    font-weight: 1000;
+    background: linear-gradient(135deg, #facc15, #2dd4bf 52%, #38bdf8);
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .premium-inline-form.full .premium-submit-btn { width: 100%; min-height: 46px; }
+  .premium-status-card {
+    margin-top: 18px;
+    padding: 18px 20px;
+    border-radius: 22px;
+    border: 1px solid rgba(45, 212, 191, 0.26);
+    background: radial-gradient(circle at 0% 0%, rgba(45, 212, 191, 0.10), transparent 34%), rgba(3, 10, 22, 0.58);
+    color: #dbeafe;
+  }
+  .premium-status-card strong {
+    display: block;
+    color: #ffffff;
+    font-size: 18px;
+    font-weight: 1000;
+    letter-spacing: -0.04em;
+  }
+  .premium-status-card p {
+    margin: 8px 0 0;
+    color: #c7d7ee;
+    font-size: 13px;
+    font-weight: 850;
+    line-height: 1.62;
+    word-break: keep-all;
+  }
+  .premium-status-card .admin-reply {
+    margin-top: 12px;
+    padding: 13px 14px;
+    border-radius: 16px;
+    background: rgba(15, 23, 42, 0.62);
+    border: 1px solid rgba(96, 165, 250, 0.18);
+    color: #fde68a;
+    font-size: 13px;
+    font-weight: 900;
+    line-height: 1.55;
+  }
+  .premium-status-actions {
+    margin-top: 14px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .premium-link-btn {
+    min-height: 44px;
+    padding: 0 16px;
+    border-radius: 15px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+    color: #eaf2ff;
+    background: rgba(15, 23, 42, 0.68);
+    border: 1px solid rgba(96, 165, 250, 0.28);
+    font-size: 13px;
+    font-weight: 1000;
+  }
+
   .event-note {
     margin-top: 12px;
     color: #fde68a;
@@ -552,6 +676,43 @@
     font-weight: 1000;
   }
 
+  .seo-summary-card {
+    margin-top: 18px;
+    padding: 18px 20px;
+    border-radius: 22px;
+    border: 1px solid rgba(45, 212, 191, 0.26);
+    background:
+      radial-gradient(circle at 0% 0%, rgba(45, 212, 191, 0.10), transparent 34%),
+      rgba(3, 10, 22, 0.58);
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 14px;
+    align-items: center;
+  }
+
+  .seo-summary-card strong {
+    min-height: 36px;
+    padding: 0 14px;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: #062033;
+    background: linear-gradient(135deg, #facc15, #2dd4bf 52%, #38bdf8);
+    font-size: 13px;
+    font-weight: 1000;
+    white-space: nowrap;
+  }
+
+  .seo-summary-card p {
+    margin: 0;
+    color: #dbeafe;
+    font-size: 14px;
+    font-weight: 900;
+    line-height: 1.62;
+    word-break: keep-all;
+  }
+
   @media (max-width: 1320px) {
     .landing-shell { width: min(1500px, calc(100vw - 48px)); }
     .home-nav-card { grid-template-columns: 245px minmax(0, 1fr) auto; gap: 12px; }
@@ -606,6 +767,8 @@
     .landing-desc { font-size: 13px; line-height: 1.66; }
     .pricing-card { padding: 22px 18px; border-radius: 22px; min-height: 360px; }
     .pricing-price { font-size: 34px; }
+    .seo-summary-card { grid-template-columns: 1fr; padding: 16px; }
+    .seo-summary-card strong { justify-self: start; }
   }
 </style>
 {% endblock %}
@@ -647,61 +810,126 @@
     <div class="pricing-copy">
       <div class="hero-pills">
         <span class="eyebrow">빗각뷰 가격소개</span>
-        <span class="hero-mini-pill">초기 가입자 100명 · 프리미엄 1년 혜택</span>
+        <span class="hero-mini-pill">초기 가입자 100명 · 프리미엄 1년 무료</span>
       </div>
       <h1 class="landing-title">
         초기 가입자 100명에게<br>
-        <span class="accent">프리미엄 1년 혜택을 제공합니다</span>
+        <span class="accent">프리미엄 1년 무료 혜택을 제공합니다</span>
       </h1>
       <p class="landing-desc">
-        빗각뷰는 초기 가입자 100명에게 프리미엄 1년 혜택을 제공하는 이벤트를 진행하고 있습니다.
-        빗각연구소 유튜브를 통해 들어온 구독자에게도 프리미엄 혜택을 안내하며,
-        정식 오픈 후에는 월 9,900원의 1개월 이용권과 6개월 49,500원 할인 이용권 중심으로 운영할 계획입니다.
+        빗각뷰 프리미엄은 정상적으로는 유료 이용권입니다. 다만 초기 가입자 100명에게는
+        차트 저장, 빗각 드로잉, 평단가 계산, 포트폴리오 관리 기능을 1년간 무료로 제공합니다.
+        이벤트 이후에는 월 9,900원의 1개월 이용권과 6개월 49,500원 할인 이용권 중심으로 운영할 계획입니다.
       </p>
       <div class="hero-cta-row">
-        <a class="landing-cta" href="/accounts/login/?next={{ request.get_full_path|urlencode }}">초기 혜택 신청하기</a>
+        {% if request.user.is_authenticated %}
+          {% if premium_status == "approved" %}
+            <a class="landing-cta" href="{% url 'stocks:premium_choice' %}">프리미엄 선택하기</a>
+          {% elif premium_status == "pending" %}
+            <a class="landing-cta" href="{% url 'stocks:premium_status' %}">신청 검토중 확인하기</a>
+          {% else %}
+            <form class="premium-inline-form" method="post" action="{% url 'stocks:premium_apply' %}">
+              {% csrf_token %}
+              <input type="hidden" name="source" value="pricing_hero">
+              <button class="premium-submit-btn" type="submit">프리미엄 1년 무료 신청하기</button>
+            </form>
+          {% endif %}
+        {% else %}
+          <a class="landing-cta" href="/accounts/login/?next={% url 'stocks:pricing' %}">로그인하고 1년 무료 신청하기</a>
+        {% endif %}
         <a class="landing-cta secondary" href="/stocks/features/">기능 소개 보기</a>
       </div>
     </div>
 
     <aside class="beta-summary-card">
       <span>이벤트 진행 중</span>
-      <strong>프리미엄 1년</strong>
+      <strong>프리미엄 1년 무료</strong>
       <p>
-        초기 가입자 100명에게 프리미엄 혜택을 1년간 제공합니다.
+        초기 가입자 100명은 유료 결제 없이 프리미엄 기능을 1년간 사용할 수 있습니다.
         빗각연구소 유튜브 구독자도 안내된 방식으로 신청하면 초기 혜택 대상에 포함될 수 있습니다.
       </p>
     </aside>
+  </section>
+
+  <section class="seo-summary-card" aria-label="빗각뷰 프리미엄 무료 혜택 요약">
+    <strong>핵심 정리</strong>
+    <p>
+      빗각뷰 프리미엄은 정상 유료 서비스입니다. 단, 초기 가입자 100명은 프리미엄 기능을 1년 무료로 사용할 수 있고,
+      이벤트 종료 후에는 월 9,900원 또는 6개월 49,500원 유료 이용권으로 계속 이용할 수 있습니다.
+    </p>
+  </section>
+
+  <section class="premium-status-card" aria-label="내 프리미엄 신청 상태">
+    <strong>내 프리미엄 신청 상태: {{ premium_status_label|default:"미신청" }}</strong>
+    <p>
+      현재 승인 {{ premium_approved_count|default:0 }}명 / {{ premium_free_limit|default:100 }}명,
+      대기 {{ premium_pending_count|default:0 }}명입니다. 로그인 후 신청 버튼을 눌러야 관리자 승인 목록에 올라갑니다.
+    </p>
+    {% if premium_admin_reply %}
+      <div class="admin-reply">관리자 답장: {{ premium_admin_reply }}</div>
+    {% endif %}
+    <div class="premium-status-actions">
+      {% if request.user.is_authenticated %}
+        {% if premium_status == "approved" %}
+          <a class="premium-link-btn" href="{% url 'stocks:premium_choice' %}">프리미엄 선택 화면으로 이동</a>
+          <a class="premium-link-btn" href="/stocks/005930/">차트 시작하기</a>
+        {% elif premium_status == "pending" %}
+          <a class="premium-link-btn" href="{% url 'stocks:premium_status' %}">신청 내용 확인</a>
+        {% else %}
+          <form class="premium-inline-form" method="post" action="{% url 'stocks:premium_apply' %}">
+            {% csrf_token %}
+            <input type="hidden" name="source" value="pricing_status_card">
+            <button class="premium-submit-btn" type="submit">프리미엄 1년 무료 신청</button>
+          </form>
+        {% endif %}
+      {% else %}
+        <a class="premium-link-btn" href="/accounts/login/?next={% url 'stocks:pricing' %}">로그인 후 신청하기</a>
+      {% endif %}
+    </div>
   </section>
 
   <section class="pricing-grid" aria-label="빗각뷰 이용권 안내">
     <article class="pricing-card hot">
       <div class="pricing-badge">초기 100명</div>
       <h2>초기 가입자 혜택</h2>
-      <div class="pricing-price">1년 <small>/ 프리미엄 혜택</small></div>
-      <p>빗각뷰를 먼저 사용해보는 초기 가입자 100명에게 프리미엄 기능을 1년간 제공하는 이벤트입니다.</p>
+      <div class="pricing-price">무료 <small>/ 프리미엄 1년</small></div>
+      <p>빗각뷰를 먼저 사용해보는 초기 가입자 100명에게 유료 프리미엄 기능을 1년간 무료로 제공하는 이벤트입니다.</p>
       <ul>
         <li>차트 저장과 관심종목 관리</li>
         <li>빗각 드로잉과 평단가 계산</li>
         <li>포트폴리오 관리 기능 체험</li>
-        <li>빗각연구소 구독자 혜택 신청 가능</li>
+        <li>빗각연구소 구독자도 혜택 신청 가능</li>
       </ul>
-      <div class="event-note">유튜브에서 빗각연구소를 보고 들어온 구독자에게도 초기 프리미엄 혜택을 안내합니다.</div>
-      <a class="plan-cta" href="/accounts/login/?next={{ request.get_full_path|urlencode }}">프리미엄 혜택 신청하기</a>
+      <div class="event-note">프리미엄은 정상 유료 서비스이지만, 초기 100명에게는 1년 무료 혜택을 먼저 적용합니다.</div>
+      {% if request.user.is_authenticated %}
+        {% if premium_status == "approved" %}
+          <a class="plan-cta" href="{% url 'stocks:premium_choice' %}">프리미엄 선택하기</a>
+        {% elif premium_status == "pending" %}
+          <a class="plan-cta" href="{% url 'stocks:premium_status' %}">신청 검토중</a>
+        {% else %}
+          <form class="premium-inline-form full" method="post" action="{% url 'stocks:premium_apply' %}">
+            {% csrf_token %}
+            <input type="hidden" name="source" value="pricing_free_card">
+            <button class="premium-submit-btn" type="submit">1년 무료 혜택 신청하기</button>
+          </form>
+        {% endif %}
+      {% else %}
+        <a class="plan-cta" href="/accounts/login/?next={% url 'stocks:pricing' %}">로그인하고 신청하기</a>
+      {% endif %}
     </article>
 
     <article class="pricing-card featured">
       <div class="pricing-badge">월간</div>
       <h2>1개월 이용권</h2>
       <div class="pricing-price">9,900원 <small>/ 월</small></div>
-      <p>이벤트 기간 이후에도 부담 없이 한 달 단위로 차트 저장과 포트폴리오 관리 기능을 이어가고 싶은 사용자를 위한 기본 플랜입니다.</p>
+      <p>초기 100명 무료 혜택이 종료된 뒤에도 부담 없이 한 달 단위로 차트 저장과 포트폴리오 관리 기능을 이어가고 싶은 사용자를 위한 유료 플랜입니다.</p>
       <ul>
         <li>차트와 보조지표 기능 전체</li>
         <li>빗각 드로잉과 설정 저장 기능</li>
         <li>평단가 계산과 포트폴리오 관리</li>
         <li>관심종목 그룹 관리</li>
       </ul>
-      <a class="plan-cta" href="/accounts/login/?next={{ request.get_full_path|urlencode }}">로그인하고 준비하기</a>
+      {% if request.user.is_authenticated %}<a class="plan-cta" href="{% url 'stocks:premium_choice' %}">유료 이용권 확인하기</a>{% else %}<a class="plan-cta" href="/accounts/login/?next={% url 'stocks:pricing' %}">로그인 후 확인하기</a>{% endif %}
     </article>
 
     <article class="pricing-card hot">
@@ -709,29 +937,30 @@
       <h2>6개월 이용권</h2>
       <div class="pricing-price">49,500원 <small>/ 6개월</small></div>
       <div class="pricing-save">월 8,250원 기준 · 1개월권 대비 총 9,900원 절약</div>
-      <p>관심종목과 포트폴리오를 장기간 관리하며 차트 기준을 꾸준히 쌓아가려는 사용자에게 맞춘 할인 플랜입니다. 월간 결제보다 1개월분을 절약하는 구조입니다.</p>
+      <p>무료 혜택 이후에도 관심종목과 포트폴리오를 장기간 관리하며 차트 기준을 꾸준히 쌓아가려는 사용자에게 맞춘 유료 할인 플랜입니다. 월간 결제보다 1개월분을 절약하는 구조입니다.</p>
       <ul>
         <li>1개월 이용권 기능 전체 포함</li>
         <li>포트폴리오 장기 관리에 적합</li>
         <li>업종별·종목별 비중 관리</li>
         <li>수익률 분석 기능 확장 예정</li>
       </ul>
-      <a class="plan-cta" href="/accounts/login/?next={{ request.get_full_path|urlencode }}">초기 혜택 확인하기</a>
+      {% if request.user.is_authenticated %}<a class="plan-cta" href="{% url 'stocks:premium_choice' %}">6개월 할인 확인하기</a>{% else %}<a class="plan-cta" href="/accounts/login/?next={% url 'stocks:pricing' %}">로그인 후 확인하기</a>{% endif %}
     </article>
   </section>
 
   <section class="notice-block">
     <div>
-      <h2>초기 혜택은 정식 결제 전까지 우선 적용됩니다</h2>
+      <h2>초기 100명은 프리미엄 1년 무료, 이후에는 유료 이용권입니다</h2>
       <p>
         현재 가격표는 정식 오픈 전 기준 안내입니다.
-        초기 가입자 100명과 빗각연구소 유튜브 구독자 혜택은 신청 시점과 운영 상황에 따라 순차 적용될 수 있습니다.
+        프리미엄은 정상 유료 서비스이며, 초기 가입자 100명에게만 1년 무료 혜택을 우선 적용합니다.
+        혜택은 신청 시점과 운영 상황에 따라 순차 적용될 수 있습니다.
       </p>
     </div>
     <div class="notice-list">
       <div class="notice-item">빗각뷰는 매수·매도 추천 서비스가 아니라 차트 관찰과 기록을 돕는 플랫폼입니다.</div>
-      <div class="notice-item">초기 가입자 100명 프리미엄 1년 혜택은 로그인 후 신청 또는 안내된 방식에 따라 적용됩니다.</div>
-      <div class="notice-item">빗각연구소 유튜브 구독자 혜택은 이벤트 안내 문구와 신청 방식에 따라 순차 적용됩니다.</div>
+      <div class="notice-item">초기 가입자 100명 프리미엄 1년 무료 혜택은 로그인 후 신청 또는 안내된 방식에 따라 적용됩니다.</div>
+      <div class="notice-item">초기 무료 혜택 종료 후 계속 이용하려면 월 9,900원 또는 6개월 49,500원 유료 이용권을 선택하면 됩니다.</div>
     </div>
   </section>
 </div>

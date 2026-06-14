@@ -441,6 +441,8 @@
       var userDirtyTimer = null;
       var lastStableDrawings = [];
       var intervalSwitchingUntil = 0;
+      var pendingInsightSnapshot = null;
+      var pendingApplyTimer = null;
 
       function norm(value) {
         value = String(value || "1d").trim();
@@ -545,8 +547,68 @@
         fixed.preserveVisibleRange = false;
         fixed.preservePriceRange = false;
         fixed.resetViewportOnLoad = true;
-        fixed.viewportStrippedReason = "insight-frame-bridge-v11";
+        fixed.viewportStrippedReason = "insight-frame-bridge-v12";
         return fixed;
+      }
+
+      function scheduleDrawingRefresh() {
+        [0, 60, 160, 360, 720, 1200, 1800].forEach(function (delay) {
+          setTimeout(function () {
+            try {
+              var a = api();
+              if (a && typeof a.forceDrawingRelayout === "function") a.forceDrawingRelayout();
+              if (a && typeof a.refreshDrawingLayer === "function") a.refreshDrawingLayer();
+              if (a && typeof a.renderDrawings === "function") a.renderDrawings();
+              if (a && typeof a.redrawDrawings === "function") a.redrawDrawings();
+            } catch (e) {}
+          }, delay);
+        });
+      }
+
+      function applyInsightSnapshotToChart(rawSnapshot, reason) {
+        if (!rawSnapshot || typeof rawSnapshot !== "object") return false;
+        var snapshot = stripViewport(clone(rawSnapshot) || rawSnapshot);
+        pendingInsightSnapshot = clone(snapshot) || snapshot;
+        if (hasDrawings(snapshot)) rememberStableDrawings(snapshot.drawings);
+
+        var a = api();
+        if (!a || !a.state) return false;
+
+        try {
+          a.state.insightSnapshotMode = true;
+          a.state.insightSnapshot = clone(snapshot) || snapshot;
+          if (Array.isArray(snapshot.drawings)) a.state.drawings = cloneDrawings(snapshot.drawings);
+          if (Array.isArray(snapshot.indicators)) a.state.indicators = clone(snapshot.indicators) || snapshot.indicators;
+        } catch (e) {}
+
+        var applied = false;
+        ["applyInsightSnapshot", "restoreInsightSnapshot", "loadInsightSnapshot", "applySnapshot", "restoreSnapshot"].forEach(function (method) {
+          if (applied) return;
+          try {
+            if (a && typeof a[method] === "function") {
+              a[method](clone(snapshot) || snapshot);
+              applied = true;
+            }
+          } catch (e) {}
+        });
+
+        try { if (Array.isArray(snapshot.drawings) && typeof a.setDrawings === "function") a.setDrawings(cloneDrawings(snapshot.drawings)); } catch (e) {}
+        try { if (Array.isArray(snapshot.drawings) && typeof a.replaceDrawings === "function") a.replaceDrawings(cloneDrawings(snapshot.drawings)); } catch (e) {}
+
+        scheduleDrawingRefresh();
+        return true;
+      }
+
+      function scheduleSnapshotApply(rawSnapshot, reason) {
+        if (!rawSnapshot || typeof rawSnapshot !== "object") return;
+        pendingInsightSnapshot = stripViewport(clone(rawSnapshot) || rawSnapshot);
+        clearTimeout(pendingApplyTimer);
+        [0, 120, 360, 760, 1300, 2100].forEach(function (delay) {
+          setTimeout(function () { applyInsightSnapshotToChart(pendingInsightSnapshot, reason || "scheduled-apply"); }, delay);
+        });
+        pendingApplyTimer = setTimeout(function () {
+          applyInsightSnapshotToChart(pendingInsightSnapshot, reason || "scheduled-final-apply");
+        }, 3200);
       }
 
       function captureSnapshot(intervalOverride) {
@@ -757,26 +819,30 @@
 
       document.addEventListener("bitgak:chart-data-loaded", function () {
         closeIntervalDropdownSoon();
-        try {
-          var a0 = api();
-          if (a0 && a0.state) {
-            // interval 전환 직후에는 저장 snapshot을 차트에 다시 덮지 않는다.
-            // 특히 거래량 pane이 있는 상태에서 재적용되면 메인 pane 높이 계산 전후가 섞여 드로잉이 틀어진다.
-            a0.state.insightSnapshotMode = false;
-            a0.state.insightSnapshot = null;
-          }
-        } catch (e) {}
+        var hadPendingSnapshot = !!pendingInsightSnapshot;
+        if (hadPendingSnapshot) {
+          scheduleSnapshotApply(pendingInsightSnapshot, "data-loaded-pending");
+        } else {
+          try {
+            var a0 = api();
+            if (a0 && a0.state) {
+              // interval 전환 직후에는 저장 snapshot을 차트에 다시 덮지 않는다.
+              // 단, 최초 수정/상세 진입의 저장 snapshot은 pendingInsightSnapshot으로 별도 재적용한다.
+              a0.state.insightSnapshotMode = false;
+              a0.state.insightSnapshot = null;
+            }
+          } catch (e) {}
+        }
         if (lastStableDrawings.length > 0) intervalSwitchingUntil = Math.max(intervalSwitchingUntil, Date.now() + 1800);
-        scheduleFinalSave("data-loaded", currentInterval(), 720);
-        [40, 120, 260, 520, 900].forEach(function (delay) {
+        if (hadPendingSnapshot) {
           setTimeout(function () {
-            try {
-              var a = api();
-              if (a && typeof a.forceDrawingRelayout === "function") a.forceDrawingRelayout();
-              else if (a && typeof a.refreshDrawingLayer === "function") a.refreshDrawingLayer();
-            } catch (e) {}
-          }, delay);
-        });
+            applyInsightSnapshotToChart(pendingInsightSnapshot, "data-loaded-final");
+            postDirty("data-loaded-initial", captureSnapshot(currentInterval()));
+          }, 1280);
+        } else {
+          scheduleFinalSave("data-loaded", currentInterval(), 720);
+        }
+        scheduleDrawingRefresh();
       });
 
       window.addEventListener("message", function (event) {
@@ -784,14 +850,19 @@
         if (!data || typeof data !== "object") return;
 
         if (data.type === "bitgak:apply-insight-snapshot" && data.snapshot) {
-          var rawSnapshot = clone(data.snapshot) || data.snapshot;
-          if (hasDrawings(rawSnapshot)) rememberStableDrawings(rawSnapshot.drawings);
-          var snapshot = stripViewport(rawSnapshot);
-          var a = api();
+          scheduleSnapshotApply(data.snapshot, "parent-message");
+          return;
+        }
+
+        if (data.type === "bitgak:capture-insight-snapshot-request") {
           try {
-            if (a && a.state) {
-              a.state.insightSnapshotMode = true;
-              a.state.insightSnapshot = clone(snapshot) || snapshot;
+            var responseSnapshot = captureSnapshot(currentInterval());
+            if (window.parent && window.parent !== window) {
+              window.parent.postMessage({
+                type: "bitgak:insight-snapshot-response",
+                requestId: data.requestId || "",
+                snapshot: responseSnapshot
+              }, "*");
             }
           } catch (e) {}
           return;
@@ -802,15 +873,22 @@
         }
       });
 
+      try {
+        if (window.__BITGAK_INITIAL_INSIGHT_SNAPSHOT__) {
+          scheduleSnapshotApply(window.__BITGAK_INITIAL_INSIGHT_SNAPSHOT__, "initial-bootstrap");
+        }
+      } catch (e) {}
+
       window.__BITGAK_INSIGHT_FRAME_BRIDGE__ = {
-        version: "v11",
+        version: "v12",
         switchInterval: triggerNativeIntervalSwitch,
-        capture: function () { return captureSnapshot(currentInterval()); }
+        capture: function () { return captureSnapshot(currentInterval()); },
+        applySnapshot: function (snapshot) { return scheduleSnapshotApply(snapshot, "external-bridge-call"); }
       };
     })();`;
   }
 
-  function buildStockFrameSrcdoc(frame, code, name, interval, mode) {
+  function buildStockFrameSrcdoc(frame, code, name, interval, mode, initialSnapshot) {
     var fixedCode = onlyCode(code);
     var fixedName = String(name || fixedCode || "").trim();
     var fixedInterval = normalizeIntervalForEmbed(interval || "1d");
@@ -834,6 +912,10 @@
       features: {}
     });
     var intervalLabel = { "1h": "1시간", "2h": "2시간", "3h": "3시간", "4h": "4시간", "1d": "일", "1w": "주", "1mo": "월" }[fixedInterval] || "일";
+    var initialSnapshotPayload = initialSnapshot && typeof initialSnapshot === "object"
+      ? stripInsightViewportOnly(Object.assign({}, initialSnapshot, { code: fixedCode, name: fixedName, interval: fixedInterval }), "srcdoc-initial-v12")
+      : null;
+    var initialSnapshotJson = initialSnapshotPayload ? escapeScriptJson(initialSnapshotPayload) : "null";
 
     return '<!doctype html>' +
       '<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><base href="' + escapeAttr(parentOrigin) + '/">' +
@@ -896,8 +978,10 @@
       '<div id="chartWrap" class="chart-wrap chart-wrap-v5"><div id="tvChart" class="tv-chart tv-chart-v5"></div><svg id="drawingLayer" class="drawing-layer"></svg><div id="chartIndicatorOverlay" class="chart-indicator-overlay"></div><div id="chartLoading" class="chart-loading">차트 데이터를 불러오는 중입니다...</div></div>' +
       '<div id="indicatorModal" class="indicator-modal" aria-hidden="true"><div class="indicator-panel"><div class="indicator-panel-head"><div><h2 id="indicatorModalTitle">지표 검색</h2><p id="indicatorModalSubtitle">차트에 추가할 지표를 검색하세요.</p></div><button class="modal-close" type="button" data-close-indicator>×</button></div><input id="indicatorSearchInput" class="indicator-search-input" type="search" placeholder="이동평균, 거래량, RSI, MACD 검색"><div class="indicator-search-layout"><div class="indicator-search-results"><div id="indicatorCatalog" class="indicator-catalog"></div></div></div><div id="indicatorSettingsBox" class="indicator-settings-box"><div class="indicator-settings-head"><h3 id="indicatorSettingsTitle">지표 설정</h3><button class="modal-close" type="button" data-close-indicator>×</button></div><div id="activeIndicatorList" class="active-indicator-list"></div><div class="indicator-settings-actions"><button id="applyIndicatorSettings" class="indicator-add-btn" type="button">적용</button></div></div></div></div>' +
       '</section></section></main></section>' +
-      '<script src="' + escapeAttr(lwUrl) + '"><\/script><script src="' + escapeAttr(coreUrl) + '"><\/script><script src="' + escapeAttr(indicatorsUrl) + '"><\/script>' +
+      '<script>window.__BITGAK_INITIAL_INSIGHT_SNAPSHOT__=' + initialSnapshotJson + ';<\/script>' +
+      '<script src="' + escapeAttr(lwUrl) + '"><\/script>' +
       '<script>' + insightFrameIntervalPreserveScript() + '<\/script>' +
+      '<script src="' + escapeAttr(coreUrl) + '"><\/script><script src="' + escapeAttr(indicatorsUrl) + '"><\/script>' +
       '<script>window.addEventListener("load",function(){try{parent.postMessage({type:"bitgak:stock-srcdoc-ready",code:"' + escapeAttr(fixedCode) + '"},"*");}catch(e){}});<\/script>' +
       '</body></html>';
   }
@@ -1254,6 +1338,21 @@
   window.addEventListener("message", function (event) {
     if (event.origin && event.origin !== window.location.origin && event.origin !== "null") return;
     var data = event.data || {};
+
+    if (data.type === "bitgak:stock-srcdoc-ready") {
+      var readyFrame = findInsightFrameBySource(event.source);
+      if (!readyFrame) return;
+      var readySnapshot = parseSnapshot(getSnapshotInputForFrame(readyFrame));
+      if (readySnapshot && snapshotMatchesStock(readySnapshot, readyFrame.dataset.currentCode || readySnapshot.code)) {
+        [0, 300, 900, 1700].forEach(function (delay) {
+          setTimeout(function () {
+            if (readyFrame.dataset.userChanged === "1" && delay > 0) return;
+            postSnapshotToFrame(readyFrame, readySnapshot);
+          }, delay);
+        });
+      }
+      return;
+    }
 
     if (data.type === "bitgak:insight-indicators-changed") {
       var indicatorFrame = findInsightFrameBySource(event.source);
@@ -1802,7 +1901,7 @@
       // /stocks/ 페이지를 iframe으로 직접 열면 X-Frame-Options 때문에 차단될 수 있다.
       // 그래서 같은 stock 차트 DOM과 스크립트를 srcdoc 안에 구성해서 본문 위에서 그대로 실행한다.
       frame.removeAttribute("src");
-      frame.srcdoc = buildStockFrameSrcdoc(frame, code, name, interval, "editor");
+      frame.srcdoc = buildStockFrameSrcdoc(frame, code, name, interval, "editor", snapshotForLoadedStock || parseSnapshot(snapshotInput));
     }
 
     async function maybeLoadInitialFrame() {
@@ -1924,7 +2023,7 @@
         }
       };
       frame.removeAttribute("src");
-      frame.srcdoc = buildStockFrameSrcdoc(frame, code, (snapshot && snapshot.name) || root.dataset.chartName || code, interval, "viewer");
+      frame.srcdoc = buildStockFrameSrcdoc(frame, code, (snapshot && snapshot.name) || root.dataset.chartName || code, interval, "viewer", snapshot);
     });
   }
 

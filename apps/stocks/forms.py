@@ -98,3 +98,29 @@ class BitgakSignupForm(forms.Form):
             email=self.cleaned_data["email"],
             password=self.cleaned_data["password1"],
         )
+
+
+# -----------------------------------------------------------------------------
+# Legacy compatibility
+# -----------------------------------------------------------------------------
+# 과거 잘못 덮어쓴 stocks.views가 InsightPostForm을 import하던 상태가 있었습니다.
+# 정상 stocks.views에서는 사용하지 않지만, 다른 오래된 import가 남아 있어도 서버가 죽지 않게
+# 안전한 호환 클래스를 제공합니다.
+try:
+    from apps.insights.models import InsightPost as _InsightPostModel
+except Exception:
+    try:
+        from .models import InsightPost as _InsightPostModel
+    except Exception:
+        _InsightPostModel = None
+
+
+if _InsightPostModel is not None:
+    class InsightPostForm(forms.ModelForm):
+        class Meta:
+            model = _InsightPostModel
+            fields = "__all__"
+else:
+    class InsightPostForm(forms.Form):
+        title = forms.CharField(label="제목", max_length=140, required=False)
+        content = forms.CharField(label="본문", widget=forms.Textarea, required=False)

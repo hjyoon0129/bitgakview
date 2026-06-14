@@ -1,109 +1,75 @@
-import json
+from django.utils import timezone
 
-from .models import UNLIMITED, UserAccess
-
-
-FREE_INDICATOR_LIMIT = 2
-FREE_WATCHLIST_LIMIT = 10
-FREE_GROUP_LIMIT = 1
-FREE_DRAWING_LIMIT = 10
+from .models import UserAccess, PremiumApplication
 
 
-def get_or_create_access(user):
-    if not user or not user.is_authenticated:
+def get_user_access(user):
+    if not getattr(user, "is_authenticated", False):
         return None
-
-    access, _ = UserAccess.objects.get_or_create(
-        user=user,
-        defaults={
-            "plan": UserAccess.PLAN_FREE,
-            "indicator_limit": FREE_INDICATOR_LIMIT,
-            "watchlist_limit": FREE_WATCHLIST_LIMIT,
-            "group_limit": FREE_GROUP_LIMIT,
-            "drawing_limit": FREE_DRAWING_LIMIT,
-        },
-    )
-
-    # 프리미엄 만료 시 무료 제한값으로 자연 복귀
-    if access.plan == UserAccess.PLAN_PREMIUM and not access.is_premium:
-        access.apply_free_limits(save=True)
-
+    access, _ = UserAccess.objects.get_or_create(user=user)
     return access
 
 
+def get_latest_premium_application(user):
+    if not getattr(user, "is_authenticated", False):
+        return None
+    return PremiumApplication.objects.filter(user=user).order_by("-created_at").first()
+
+
 def get_access_payload(user):
-    if not user or not user.is_authenticated:
+    if not getattr(user, "is_authenticated", False):
         return {
             "is_authenticated": False,
+            "plan": "anonymous",
             "is_premium": False,
-            "plan": "guest",
-            "premium_until": "",
+            "premium_until": None,
             "indicator_limit": 0,
             "watchlist_limit": 0,
             "group_limit": 0,
             "drawing_limit": 0,
-            "unlimited_value": UNLIMITED,
-            "features": {
-                "chart_search": True,
-                "chart_view": True,
-                "drawing": True,
-                "indicator_apply": False,
-                "watchlist": False,
-                "group_manage": False,
-                "avg_calculator": False,
-                "portfolio": False,
-            },
+            "premium_application": None,
         }
 
-    access = get_or_create_access(user)
-    is_premium = access.is_premium
+    access = get_user_access(user)
+    application = get_latest_premium_application(user)
 
-    if is_premium:
-        indicator_limit = UNLIMITED
-        watchlist_limit = UNLIMITED
-        group_limit = UNLIMITED
-        drawing_limit = UNLIMITED
-    else:
-        indicator_limit = access.indicator_limit or FREE_INDICATOR_LIMIT
-        watchlist_limit = access.watchlist_limit or FREE_WATCHLIST_LIMIT
-        group_limit = access.group_limit or FREE_GROUP_LIMIT
-        drawing_limit = access.drawing_limit or FREE_DRAWING_LIMIT
+    app_payload = None
+    if application:
+        app_payload = {
+            "id": application.id,
+            "plan": application.plan,
+            "plan_label": application.get_plan_display(),
+            "status": application.status,
+            "status_label": application.get_status_display(),
+            "source": application.source,
+            "user_message": application.user_message,
+            "admin_reply": application.admin_reply or application.default_reply(),
+            "created_at": application.created_at.isoformat() if application.created_at else None,
+            "approved_at": application.approved_at.isoformat() if application.approved_at else None,
+            "notice_seen": bool(application.notice_seen_at),
+            "show_modal": application.is_notice_unread,
+        }
 
     return {
         "is_authenticated": True,
-        "is_premium": is_premium,
-        "plan": "premium" if is_premium else "free",
-        "premium_until": access.premium_until.isoformat() if access.premium_until else "",
-        "indicator_limit": indicator_limit,
-        "watchlist_limit": watchlist_limit,
-        "group_limit": group_limit,
-        "drawing_limit": drawing_limit,
-        "unlimited_value": UNLIMITED,
-        "features": {
-            "chart_search": True,
-            "chart_view": True,
-            "drawing": True,
-            "indicator_apply": True,
-            "watchlist": True,
-            "group_manage": True,
-            "avg_calculator": is_premium,
-            "portfolio": is_premium,
-        },
+        "plan": access.plan,
+        "is_premium": access.is_premium,
+        "premium_until": access.premium_until.isoformat() if access.premium_until else None,
+        "indicator_limit": access.indicator_limit,
+        "watchlist_limit": access.watchlist_limit,
+        "group_limit": access.group_limit,
+        "drawing_limit": access.drawing_limit,
+        "premium_application": app_payload,
     }
 
 
-def get_access_json(user):
-    return json.dumps(get_access_payload(user), ensure_ascii=False)
-
-
-def is_premium_user(user):
-    access = get_or_create_access(user)
-    return bool(access and access.is_premium)
-
-
-def require_login_feature(user):
-    return bool(user and user.is_authenticated)
-
-
-def require_premium_feature(user):
-    return is_premium_user(user)
+def premium_stats():
+    approved = PremiumApplication.objects.filter(status=PremiumApplication.STATUS_APPROVED).count()
+    pending = PremiumApplication.objects.filter(status=PremiumApplication.STATUS_PENDING).count()
+    return {
+        "approved": approved,
+        "pending": pending,
+        "limit": 100,
+        "remaining": max(0, 100 - approved),
+        "now": timezone.now(),
+    }

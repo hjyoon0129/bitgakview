@@ -1,0 +1,145 @@
+{% extends "base.html" %}
+
+{% block title %}빗각뷰 프리미엄 신청 상태{% endblock %}
+{% block body_class %}landing-body{% endblock %}
+
+{% block extra_css %}
+<style>
+  .premium-page {
+    min-height: 100vh;
+    padding: 28px 16px 70px;
+    color: #eef7ff;
+    background:
+      radial-gradient(circle at top left, rgba(45, 212, 191, 0.13), transparent 30%),
+      radial-gradient(circle at top right, rgba(59, 130, 246, 0.16), transparent 34%),
+      linear-gradient(180deg, #06101b 0%, #07101d 45%, #091322 100%);
+  }
+  .premium-wrap { width: min(980px, calc(100vw - 32px)); margin: 0 auto; }
+  .premium-nav {
+    margin-bottom: 20px;
+    min-height: 68px;
+    padding: 10px 12px;
+    border-radius: 24px;
+    border: 1px solid rgba(74, 118, 176, 0.34);
+    background: linear-gradient(135deg, rgba(15, 46, 65, 0.92), rgba(10, 21, 38, 0.96));
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+  }
+  .premium-brand { color: #fff; text-decoration: none; font-weight: 1000; font-size: 18px; }
+  .premium-nav-links { display: flex; gap: 8px; flex-wrap: wrap; }
+  .premium-nav-links a {
+    min-height: 40px; padding: 0 14px; border-radius: 15px;
+    display: inline-flex; align-items: center; color: #dbeafe; text-decoration: none;
+    border: 1px solid rgba(96, 165, 250, 0.18); font-size: 13px; font-weight: 950;
+  }
+  .premium-card {
+    border: 1px solid rgba(96, 165, 250, 0.24);
+    border-radius: 30px;
+    background:
+      radial-gradient(circle at top right, rgba(45, 212, 191, 0.16), transparent 40%),
+      rgba(8, 18, 34, 0.92);
+    box-shadow: 0 24px 80px rgba(0,0,0,.34);
+    padding: 34px;
+  }
+  .premium-pill {
+    min-height: 34px; padding: 0 13px; border-radius: 999px;
+    display: inline-flex; align-items: center;
+    color: #fde68a; background: rgba(250,204,21,.12);
+    border: 1px solid rgba(250,204,21,.28); font-size: 12px; font-weight: 1000;
+  }
+  .premium-card h1 { margin: 18px 0 0; font-size: clamp(34px, 4vw, 52px); line-height: 1.06; letter-spacing: -.06em; }
+  .premium-card p { margin: 14px 0 0; color: #c7d7ee; font-size: 14px; font-weight: 850; line-height: 1.7; word-break: keep-all; }
+  .premium-status-box {
+    margin-top: 22px; padding: 20px; border-radius: 22px;
+    background: rgba(2, 8, 23, .56); border: 1px solid rgba(96,165,250,.18);
+  }
+  .premium-status-box strong { display:block; font-size: 20px; font-weight: 1000; color: #fff; }
+  .premium-admin-reply {
+    margin-top: 14px; padding: 15px 16px; border-radius: 18px;
+    color: #fde68a; background: rgba(250,204,21,.08);
+    border: 1px solid rgba(250,204,21,.26); font-size: 14px; font-weight: 900; line-height: 1.6;
+  }
+  .premium-actions { margin-top: 22px; display: flex; flex-wrap: wrap; gap: 10px; }
+  .premium-btn {
+    min-height: 52px; padding: 0 20px; border-radius: 17px; border: 0;
+    display: inline-flex; align-items: center; justify-content: center; text-decoration: none;
+    color: #04111f; background: linear-gradient(135deg, #facc15, #2dd4bf 52%, #38bdf8);
+    font-size: 14px; font-weight: 1000; cursor: pointer;
+  }
+  .premium-btn.secondary { color: #eaf2ff; background: rgba(15,23,42,.68); border: 1px solid rgba(96,165,250,.26); }
+  .premium-count {
+    margin-top: 18px; padding: 14px 16px; border-radius: 18px;
+    color: #dbeafe; background: rgba(15,23,42,.58); border: 1px solid rgba(96,165,250,.16);
+    font-size: 13px; font-weight: 900;
+  }
+  .premium-count-bar { height: 9px; margin-top: 10px; border-radius: 999px; background: rgba(15,23,42,.86); overflow:hidden; }
+  .premium-count-bar i { display:block; height:100%; width: {{ premium_progress_percent|default:0 }}%; background: linear-gradient(90deg, #facc15, #2dd4bf); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="premium-page">
+  <div class="premium-wrap">
+    <nav class="premium-nav">
+      <a class="premium-brand" href="/stocks/">BitgakView · 빗각뷰</a>
+      <div class="premium-nav-links">
+        <a href="/stocks/">홈</a>
+        <a href="/stocks/pricing/">가격소개</a>
+        <a href="/stocks/005930/">차트</a>
+      </div>
+    </nav>
+
+    <section class="premium-card">
+      <span class="premium-pill">초기 100명 프리미엄 1년 무료</span>
+      <h1>프리미엄 신청 상태</h1>
+      <p>
+        로그인 후 신청 버튼을 누른 사용자만 관리자 승인 목록에 올라갑니다.
+        관리자가 승인하면 이 화면에 답장 글이 표시되고, 프리미엄 선택 화면으로 이동할 수 있습니다.
+      </p>
+
+      {% if page_message %}
+        <div class="premium-admin-reply">{{ page_message }}</div>
+      {% endif %}
+
+      <div class="premium-status-box">
+        <strong>현재 상태: {{ premium_status_label|default:"미신청" }}</strong>
+        {% if premium_status == "approved" %}
+          <p>프리미엄 1년 무료 혜택이 승인되었습니다. 만료 예정일: {{ premium_approved_until|date:"Y.m.d H:i" }}</p>
+        {% elif premium_status == "pending" %}
+          <p>신청이 접수되어 관리자 검토를 기다리는 중입니다.</p>
+        {% elif premium_status == "rejected" %}
+          <p>신청이 반려되었습니다. 필요하면 다시 신청할 수 있습니다.</p>
+        {% else %}
+          <p>아직 프리미엄 1년 무료 혜택을 신청하지 않았습니다.</p>
+        {% endif %}
+        {% if premium_admin_reply %}
+          <div class="premium-admin-reply">관리자 답장: {{ premium_admin_reply }}</div>
+        {% endif %}
+      </div>
+
+      <div class="premium-count">
+        승인 {{ premium_approved_count|default:0 }}명 / {{ premium_free_limit|default:100 }}명 · 대기 {{ premium_pending_count|default:0 }}명 · 남은 승인 가능 {{ premium_remaining_count|default:100 }}명
+        <div class="premium-count-bar"><i></i></div>
+      </div>
+
+      <div class="premium-actions">
+        {% if premium_status == "approved" %}
+          <a class="premium-btn" href="{% url 'stocks:premium_choice' %}">프리미엄 선택 화면으로 이동</a>
+          <a class="premium-btn secondary" href="/stocks/005930/">차트 시작하기</a>
+        {% elif premium_status == "pending" %}
+          <a class="premium-btn secondary" href="/stocks/pricing/">가격소개로 돌아가기</a>
+        {% else %}
+          <form method="post" action="{% url 'stocks:premium_apply' %}">
+            {% csrf_token %}
+            <input type="hidden" name="source" value="premium_status_page">
+            <button class="premium-btn" type="submit">프리미엄 1년 무료 신청하기</button>
+          </form>
+          <a class="premium-btn secondary" href="/stocks/pricing/">가격소개 보기</a>
+        {% endif %}
+      </div>
+    </section>
+  </div>
+</div>
+{% endblock %}

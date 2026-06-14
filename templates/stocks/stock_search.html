@@ -5030,6 +5030,7 @@
 
 {% block content %}
 <div class="home-shell">
+  <script id="bitgak-premium-page-data" type="application/json">{"is_authenticated": {% if request.user.is_authenticated %}true{% else %}false{% endif %}, "username": "{{ request.user.username|default_if_none:''|escapejs }}"}</script>
   <nav class="home-nav-wrap" aria-label="빗각뷰 메인 네비게이션">
     <div class="home-nav-card">
       <a class="home-brand" href="/">
@@ -5165,9 +5166,11 @@
           </p>
         </div>
         {% if request.user.is_authenticated %}
-          <a class="home-promo-cta" href="/stocks/005930/">차트 시작하기</a>
+          <div class="home-promo-cta-slot" data-premium-promo-cta-zone>
+            <button class="home-promo-cta" type="button" data-premium-apply data-premium-source="home_promo_strip" style="border:0;cursor:pointer;">프리미엄 1년 무료 신청</button>
+          </div>
         {% else %}
-          <a class="home-promo-cta js-login-required" href="/stocks/005930/" data-gate-title="로그인하고 초기 혜택을 신청하세요" data-gate-desc="로그인 후 관심종목·빗각 드로잉·평단가 계산·포트폴리오·분할매수 계획을 저장하고 초기 사용자 혜택을 신청할 수 있습니다.">로그인하고 신청하기</a>
+          <a class="home-promo-cta js-login-required" href="/stocks/005930/" data-gate-title="로그인하고 초기 혜택을 신청하세요" data-gate-desc="로그인 후 프리미엄 1년 무료 신청 버튼을 누르면 관리자 승인 목록에 올라갑니다.">로그인하고 신청하기</a>
         {% endif %}
       </section>
 
@@ -5326,7 +5329,7 @@
     </div>
 
     <aside class="home-side-stack">
-      <section class="home-side-card home-member-card">
+      <section class="home-side-card home-member-card" data-premium-card-root data-user-authenticated="{% if request.user.is_authenticated %}1{% else %}0{% endif %}">
         <h3>🎁 회원 전용 혜택</h3>
 
         <div class="member-benefit-list">
@@ -5371,19 +5374,26 @@
           </div>
         </div>
 
-        <div class="member-progress-card">
+        <div class="member-progress-card none" data-premium-state-card>
           <div class="member-progress-head">
             <span>초기 사용자 혜택</span>
-            <b>선착순 100명 신청</b>
+            <b data-premium-count-label>승인 0/100명</b>
           </div>
-          <div class="member-progress-bar"><i></i></div>
-          <small>로그인 후 프리미엄 혜택을 요청하면 초기 사용자 혜택을 적용할 수 있습니다.</small>
+          <div class="member-progress-bar"><i data-premium-progress-bar style="width:0%;"></i></div>
+          {% if request.user.is_authenticated %}
+            <small data-premium-message>로그인 후 아래 버튼을 눌러야 관리자 승인 목록에 올라갑니다. 승인 후 1년 무료 혜택이 적용됩니다.</small>
+          {% else %}
+            <small data-premium-message>로그인 후 프리미엄 1년 무료 혜택을 신청할 수 있습니다.</small>
+          {% endif %}
+          <div class="member-status-reply" data-premium-admin-reply hidden></div>
         </div>
 
         {% if request.user.is_authenticated %}
-          <a class="member-cta-btn" href="/stocks/005930/?panel=portfolio">내 차트 시작하기</a>
+          <div data-premium-cta-zone>
+            <button class="member-cta-btn" type="button" data-premium-apply data-premium-source="home_member_card">프리미엄 1년 무료 신청</button>
+          </div>
         {% else %}
-          <a class="member-cta-btn js-login-required" href="/stocks/005930/?panel=portfolio" data-gate-title="로그인하고 내 차트를 저장하세요" data-gate-desc="로그인하면 관심종목, 빗각 드로잉, 평단가 계산, 포트폴리오, 분할매수 계획을 한 계정에 이어서 저장할 수 있습니다.">로그인하고 시작하기</a>
+          <a class="member-cta-btn js-login-required" href="/stocks/005930/?panel=portfolio" data-gate-title="로그인하고 프리미엄 혜택을 신청하세요" data-gate-desc="로그인 후 프리미엄 1년 무료 신청 버튼을 누르면 관리자 승인 목록에 올라갑니다.">로그인하고 신청하기</a>
 
         {% endif %}
       </section>
@@ -5663,6 +5673,7 @@
   })();
 </script>
 
+<script src="{% static 'stocks/js/premium_application_notice.js' %}?v=20260614-auth-final-v1"></script>
 <script src="{% static 'stocks/js/bitgak_search.js' %}?v=20260606-redis-v17"></script>
 
 

@@ -1,0 +1,65 @@
+{% load static %}
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>프리미엄 신청 상태 | BitgakView</title>
+  <style>
+    body{margin:0;background:#06111f;color:#fff;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+    .wrap{max-width:980px;margin:0 auto;padding:64px 22px}
+    .nav{display:flex;justify-content:space-between;align-items:center;border:1px solid rgba(92,165,255,.28);background:#0b1b2e;border-radius:22px;padding:16px 22px;margin-bottom:22px}
+    .nav a{color:#fff;text-decoration:none;border:1px solid rgba(148,163,184,.25);border-radius:14px;padding:10px 14px;font-weight:800}
+    .hero{border:1px solid rgba(92,165,255,.28);background:linear-gradient(135deg,#0c2237,#071426);border-radius:28px;padding:34px}
+    .badge{display:inline-flex;border:1px solid rgba(250,204,21,.5);background:rgba(250,204,21,.12);color:#fef08a;border-radius:999px;padding:8px 12px;font-weight:900;font-size:13px}
+    h1{font-size:44px;line-height:1.1;margin:22px 0}
+    .box{border:1px solid rgba(92,165,255,.22);border-radius:20px;padding:22px;background:#071426;margin-top:18px}
+    .btn{display:inline-flex;margin-top:22px;text-decoration:none;background:#0f1f36;color:#fff;border:1px solid rgba(148,163,184,.3);border-radius:14px;padding:14px 18px;font-weight:900}
+    .primary{background:linear-gradient(135deg,#d9f93f,#22d3ee);color:#06111f;border:0}
+    p{color:#dbeafe;line-height:1.7}
+  </style>
+  <script src="{% static 'js/bitgak_premium_application.js' %}" defer></script>
+</head>
+<body>
+  <div class="wrap">
+    <div class="nav">
+      <strong>BitgakView · 빗각뷰</strong>
+      <div>
+        <a href="/stocks/">홈</a>
+        <a href="/stocks/pricing/">가격소개</a>
+        <a href="/stocks/005930/">차트</a>
+      </div>
+    </div>
+
+    <section class="hero">
+      <span class="badge">초기 100명 프리미엄 1년 무료</span>
+      <h1>프리미엄 신청 상태</h1>
+      <p>로그인 후 신청 버튼을 누른 사용자는 관리자 승인 목록에 올라갑니다. 관리자가 승인하면 이 화면에 답장 글이 표시되고, 프리미엄 기능이 활성화됩니다.</p>
+
+      <div class="box">
+        {% if application %}
+          <h2>현재 상태: {{ application.get_status_display }}</h2>
+          <p>{{ application.admin_reply|default:application.default_reply }}</p>
+          {% if application.status == "approved" %}
+            <a class="btn primary" href="/stocks/pricing/">프리미엄 선택하기</a>
+          {% elif application.status == "pending" %}
+            <p>신청이 접수되어 관리자 검토를 기다리는 중입니다.</p>
+          {% else %}
+            <button type="button" class="btn primary js-premium-apply" data-premium-apply data-premium-plan="free_365" data-premium-source="premium_status_retry">다시 신청하기</button>
+          {% endif %}
+        {% else %}
+          <h2>현재 신청 내역 없음</h2>
+          <p>아직 프리미엄 1년 무료 신청이 접수되지 않았습니다.</p>
+          <button type="button" class="btn primary js-premium-apply" data-premium-apply data-premium-plan="free_365" data-premium-source="premium_status">프리미엄 1년 무료 신청하기</button>
+        {% endif %}
+      </div>
+
+      <div class="box">
+        <strong>승인 {{ stats.approved }}명 / 100명 · 대기 {{ stats.pending }}명 · 남은 승인 가능 {{ stats.remaining }}명</strong>
+      </div>
+
+      <a class="btn" href="/stocks/pricing/">가격소개로 돌아가기</a>
+    </section>
+  </div>
+</body>
+</html>

@@ -759,13 +759,13 @@
     return url.toString();
   }
 
-  const CHART_SESSION_CACHE_VERSION = "v16";
+  const CHART_SESSION_CACHE_VERSION = "v17-etf-global";
 
   function getChartSessionCacheKey(url) {
     return "bitgak:chart:payload:" + CHART_SESSION_CACHE_VERSION + ":" + code + ":" + state.interval + ":" + url;
   }
 
-  const INDEX_SESSION_CACHE_CODES = new Set(["KOSPI", "KOSDAQ", "NASDAQ", "NASDAQ100", "NQF", "SP500", "SOX"]);
+  const INDEX_SESSION_CACHE_CODES = new Set(["KOSPI", "KOSDAQ", "NASDAQ", "NASDAQ100", "NQF", "SP500", "SOX", "NVDA", "AAPL", "MSFT", "AMZN", "GOOGL", "GOOG", "META", "TSLA", "AMD", "AVGO", "TSM", "ASML", "MU", "INTC", "NFLX", "PLTR", "COIN", "MSTR", "BRK-B", "SPY", "VOO", "IVV", "QQQ", "TQQQ", "SQQQ", "SOXL", "SOXS", "SMH", "SOXX", "SCHD", "JEPI", "JEPQ", "VTI", "VT", "DIA", "IWM", "VGT", "XLK", "XLF", "XLE", "TLT", "GLD", "SLV", "IBIT", "ARKK"]);
 
   function isIndexLikeSessionCode() {
     return INDEX_SESSION_CACHE_CODES.has(String(code || "").toUpperCase());

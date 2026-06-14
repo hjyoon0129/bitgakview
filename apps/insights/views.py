@@ -284,6 +284,78 @@ def _set_chart_draft(request, payload, post=None):
     return draft
 
 
+
+def _normalized_chart_draft(request, post=None):
+    """
+    세션 draft가 비어 있는 drawings로 남아 있더라도, 수정 화면에서는
+    이미 발행된 글의 정상 chart_snapshot 드로잉을 우선 보존한다.
+    이전 iframe 자동저장 타이밍 때문에 drawings: [] draft가 생기면
+    수정 첫 진입에서 드로잉이 안 보이는 문제가 생길 수 있다.
+    """
+    draft = _get_chart_draft(request, post) if request else {}
+    if not isinstance(draft, dict):
+        draft = {}
+
+    if not draft:
+        return {}
+
+    if not post or not getattr(post, "chart_snapshot", ""):
+        return draft
+
+    existing_snapshot = _safe_snapshot_obj(post.chart_snapshot)
+    if not _snapshot_drawings(existing_snapshot):
+        return draft
+
+    snapshot = _safe_snapshot_obj(draft.get("chart_snapshot"))
+    merged_snapshot = _merge_snapshot_with_existing_drawings(snapshot, existing_snapshot, draft)
+
+    normalized = dict(draft)
+    chart_code = _clean_code(
+        normalized.get("chart_code")
+        or merged_snapshot.get("code")
+        or existing_snapshot.get("code")
+        or getattr(post, "chart_code", "")
+    )
+    chart_name = _trim(
+        normalized.get("chart_name")
+        or merged_snapshot.get("name")
+        or existing_snapshot.get("name")
+        or getattr(post, "chart_name", "")
+        or chart_code,
+        80,
+    )
+    chart_interval = _clean_interval(
+        normalized.get("chart_interval")
+        or merged_snapshot.get("interval")
+        or existing_snapshot.get("interval")
+        or getattr(post, "chart_interval", "1d")
+    )
+
+    if chart_code:
+        merged_snapshot["code"] = chart_code
+    if chart_name:
+        merged_snapshot["name"] = chart_name
+    merged_snapshot["interval"] = chart_interval
+
+    normalized["media_type"] = _clean_media_type(normalized.get("media_type") or "chart")
+    normalized["chart_code"] = chart_code
+    normalized["chart_name"] = chart_name
+    normalized["chart_interval"] = chart_interval
+    normalized["chart_api_url"] = _trim(
+        normalized.get("chart_api_url")
+        or merged_snapshot.get("apiUrl")
+        or getattr(post, "chart_api_url", ""),
+        240,
+    )
+    normalized["chart_snapshot"] = _safe_snapshot_text(merged_snapshot)
+
+    if normalized != draft:
+        key = _chart_draft_key(request, post)
+        request.session[key] = normalized
+        request.session.modified = True
+
+    return normalized
+
 def _clear_chart_draft(request, post=None):
     key = _chart_draft_key(request, post)
     if key in request.session:
@@ -362,7 +434,7 @@ def _form_context(form, post, mode, request=None):
         initial_chart_api_url = _trim(request.POST.get("chart_api_url"), 240)
         initial_chart_snapshot = _safe_snapshot_text(request.POST.get("chart_snapshot"))
     else:
-        draft = _get_chart_draft(request, post) if request else {}
+        draft = _normalized_chart_draft(request, post) if request else {}
         if draft:
             initial_media_type = draft.get("media_type", "chart")
             initial_chart_code = draft.get("chart_code", "")
@@ -496,7 +568,7 @@ def chart_draft_api(request, slug=None):
         post = get_object_or_404(InsightPost, slug=slug)
 
     if request.method == "GET":
-        draft = _get_chart_draft(request, post)
+        draft = _normalized_chart_draft(request, post) if post else _get_chart_draft(request, post)
         if not draft and post and post.media_type == InsightPost.MediaType.CHART:
             draft = {
                 "media_type": post.media_type,

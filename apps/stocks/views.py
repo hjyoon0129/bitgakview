@@ -8,10 +8,12 @@ import re
 
 from django.contrib.auth.decorators import login_required
 from django.core.cache import cache
+from django.db import DatabaseError
 from django.db.models import Q
 from django.http import JsonResponse
-from django.shortcuts import render
+from django.shortcuts import redirect, render
 from django.urls import reverse
+from django.utils import timezone
 from django.views.decorators.http import require_GET, require_http_methods
 
 class _LazyPandas:
@@ -89,7 +91,220 @@ pd = _LazyPandas()
 krx_stock = _LazyKrxStock()
 yf = _LazyYFinance()
 
-from .models import ChartDrawingState, ChartIndicatorState, ChartPiramidState, StockSymbol, UserStockStorage
+from .models import (
+    ChartDrawingState,
+    ChartIndicatorState,
+    ChartPiramidState,
+    PremiumAccess,
+    PremiumApplication,
+    StockSymbol,
+    UserStockStorage,
+)
+
+
+# -----------------------------------------------------------------------------
+# 마스터 전용 메뉴 권한
+# -----------------------------------------------------------------------------
+def _is_quant_master_user(user):
+    """
+    구글 소셜 로그인 계정은 username이 hjyoon0129가 아닐 수 있어서
+    username, email, socialaccount uid/extra_data.email까지 함께 검사합니다.
+    """
+    try:
+        if not user or not user.is_authenticated:
+            return False
+    except Exception:
+        return False
+
+    if getattr(user, "is_superuser", False) or getattr(user, "is_staff", False):
+        return True
+
+    candidates = []
+    for attr in ("username", "email", "first_name", "last_name"):
+        value = getattr(user, attr, "")
+        if value:
+            candidates.append(str(value))
+
+    try:
+        full_name = user.get_full_name()
+        if full_name:
+            candidates.append(str(full_name))
+    except Exception:
+        pass
+
+    try:
+        social_manager = getattr(user, "socialaccount_set", None)
+        if social_manager is not None:
+            for account in social_manager.all():
+                for attr in ("uid", "provider"):
+                    value = getattr(account, attr, "")
+                    if value:
+                        candidates.append(str(value))
+                extra = getattr(account, "extra_data", None) or {}
+                if isinstance(extra, dict):
+                    for key in ("email", "login", "name", "given_name", "family_name"):
+                        value = extra.get(key)
+                        if value:
+                            candidates.append(str(value))
+    except Exception:
+        pass
+
+    normalized = [value.strip().lower() for value in candidates if value]
+    return any("hjyoon0129" in value for value in normalized)
+
+
+
+
+# -----------------------------------------------------------------------------
+# 초기 가입자 100명 프리미엄 신청/승인 흐름
+# -----------------------------------------------------------------------------
+PREMIUM_FREE_LIMIT = 100
+
+
+def _empty_premium_context():
+    return {
+        "application": None,
+        "access": None,
+        "status": "none",
+        "status_label": "미신청",
+        "admin_reply": "",
+        "approved_until": None,
+        "is_premium_active": False,
+        "approved_count": 0,
+        "pending_count": 0,
+        "remaining_count": PREMIUM_FREE_LIMIT,
+        "progress_percent": 0,
+    }
+
+
+def _get_premium_context(user=None):
+    """홈/가격/신청 화면에서 공통으로 쓰는 프리미엄 신청 상태.
+
+    새 모델을 추가한 직후 migration 전에도 페이지가 죽지 않도록 DB 오류는 안전하게 무시합니다.
+    """
+    context = _empty_premium_context()
+    now = timezone.now()
+
+    try:
+        approved_count = PremiumApplication.objects.filter(
+            status=PremiumApplication.STATUS_APPROVED,
+            plan=PremiumApplication.PLAN_FREE_1Y,
+        ).count()
+        pending_count = PremiumApplication.objects.filter(
+            status=PremiumApplication.STATUS_PENDING,
+            plan=PremiumApplication.PLAN_FREE_1Y,
+        ).count()
+    except Exception:
+        return context
+
+    context["approved_count"] = approved_count
+    context["pending_count"] = pending_count
+    context["remaining_count"] = max(PREMIUM_FREE_LIMIT - approved_count, 0)
+    context["progress_percent"] = max(0, min(100, round((approved_count / PREMIUM_FREE_LIMIT) * 100)))
+
+    try:
+        if user and user.is_authenticated:
+            application = PremiumApplication.objects.filter(user=user).first()
+            access = PremiumAccess.objects.filter(user=user).first()
+            context["application"] = application
+            context["access"] = access
+            if application:
+                context["status"] = application.status
+                context["status_label"] = application.get_status_display()
+                context["admin_reply"] = application.admin_reply or ""
+                context["approved_until"] = application.approved_until
+            if access:
+                context["is_premium_active"] = access.is_valid(now)
+                if access.ends_at:
+                    context["approved_until"] = access.ends_at
+                if not context["admin_reply"] and access.note:
+                    context["admin_reply"] = access.note
+    except Exception:
+        pass
+
+    return context
+
+
+def _premium_template_context(request, **extra):
+    premium = _get_premium_context(request.user)
+    context = {
+        "premium_context": premium,
+        "premium_application": premium.get("application"),
+        "premium_access": premium.get("access"),
+        "premium_status": premium.get("status"),
+        "premium_status_label": premium.get("status_label"),
+        "premium_admin_reply": premium.get("admin_reply"),
+        "premium_approved_until": premium.get("approved_until"),
+        "premium_is_active": premium.get("is_premium_active"),
+        "premium_approved_count": premium.get("approved_count"),
+        "premium_pending_count": premium.get("pending_count"),
+        "premium_remaining_count": premium.get("remaining_count"),
+        "premium_progress_percent": premium.get("progress_percent"),
+        "premium_free_limit": PREMIUM_FREE_LIMIT,
+    }
+    context.update(extra)
+    return context
+
+
+@login_required
+@require_http_methods(["GET", "POST"])
+def premium_apply_view(request):
+    """로그인 사용자가 초기 100명 프리미엄 1년 무료 혜택을 신청하는 화면/처리."""
+    if request.method == "POST":
+        try:
+            application, created = PremiumApplication.objects.get_or_create(
+                user=request.user,
+                defaults={
+                    "plan": PremiumApplication.PLAN_FREE_1Y,
+                    "status": PremiumApplication.STATUS_PENDING,
+                    "source": request.POST.get("source") or request.GET.get("source") or "premium_apply",
+                    "user_agent": request.META.get("HTTP_USER_AGENT", "")[:3000],
+                    "user_message": (request.POST.get("message") or "").strip(),
+                },
+            )
+        except DatabaseError:
+            return render(request, "stocks/premium_status.html", _premium_template_context(
+                request,
+                db_not_ready=True,
+                page_message="프리미엄 신청 테이블이 아직 준비되지 않았습니다. 관리자에게 migration 적용을 요청해주세요.",
+            ), status=503)
+
+        if application.status == PremiumApplication.STATUS_APPROVED:
+            return redirect("stocks:premium_choice")
+
+        if not created:
+            # 반려/취소 후 다시 신청하면 승인 대기로 되돌립니다.
+            if application.status in {PremiumApplication.STATUS_REJECTED, PremiumApplication.STATUS_CANCELLED}:
+                application.status = PremiumApplication.STATUS_PENDING
+                application.source = request.POST.get("source") or application.source or "premium_reapply"
+                application.user_agent = request.META.get("HTTP_USER_AGENT", "")[:3000]
+                if request.POST.get("message"):
+                    application.user_message = request.POST.get("message", "").strip()
+                application.admin_reply = ""
+                application.processed_at = None
+                application.processed_by = None
+                application.approved_until = None
+                application.save()
+
+        return redirect(f"{reverse('stocks:premium_status')}?submitted=1")
+
+    return render(request, "stocks/premium_status.html", _premium_template_context(request))
+
+
+@login_required
+def premium_status_view(request):
+    return render(request, "stocks/premium_status.html", _premium_template_context(request))
+
+
+@login_required
+def premium_choice_view(request):
+    premium = _get_premium_context(request.user)
+    if not premium.get("is_premium_active") and premium.get("status") != PremiumApplication.STATUS_APPROVED:
+        return render(request, "stocks/premium_status.html", _premium_template_context(
+            request,
+            page_message="관리자 승인 후 프리미엄 선택 화면을 사용할 수 있습니다.",
+        ))
+    return render(request, "stocks/premium_choice.html", _premium_template_context(request))
 
 
 DERIVATIVE_KEYWORDS = [
@@ -195,16 +410,115 @@ GLOBAL_INDEX_SYMBOLS = {
 }
 
 
+# -----------------------------------------------------------------------------
+# 해외 대표 주식 / ETF 심볼
+# -----------------------------------------------------------------------------
+# StockSymbol DB에는 국내 종목만 들어있는 경우가 많아서, 엔비디아·테슬라·QQQ·SCHD 같은
+# 해외 주요 주식/ETF는 내부 코드 그대로 /stocks/NVDA/ 형태로 열고 Yahoo Finance에서
+# 차트 데이터를 가져옵니다. 검색어는 한글 별칭까지 함께 매칭합니다.
+GLOBAL_YAHOO_SYMBOLS = {
+    "NVDA": {"code": "NVDA", "name": "NVIDIA", "display_name": "엔비디아", "market": "NASDAQ", "asset_type": "us-stock", "yahoo_symbol": "NVDA", "aliases": ["엔비디아", "nvidia", "nvda", "젠슨황", "gpu", "ai 반도체"], "search_rank": 4890, "price_unit": "USD"},
+    "AAPL": {"code": "AAPL", "name": "Apple", "display_name": "애플", "market": "NASDAQ", "asset_type": "us-stock", "yahoo_symbol": "AAPL", "aliases": ["애플", "apple", "aapl", "아이폰"], "search_rank": 4880, "price_unit": "USD"},
+    "MSFT": {"code": "MSFT", "name": "Microsoft", "display_name": "마이크로소프트", "market": "NASDAQ", "asset_type": "us-stock", "yahoo_symbol": "MSFT", "aliases": ["마이크로소프트", "마소", "microsoft", "msft"], "search_rank": 4870, "price_unit": "USD"},
+    "AMZN": {"code": "AMZN", "name": "Amazon", "display_name": "아마존", "market": "NASDAQ", "asset_type": "us-stock", "yahoo_symbol": "AMZN", "aliases": ["아마존", "amazon", "amzn"], "search_rank": 4860, "price_unit": "USD"},
+    "GOOGL": {"code": "GOOGL", "name": "Alphabet Class A", "display_name": "알파벳 A", "market": "NASDAQ", "asset_type": "us-stock", "yahoo_symbol": "GOOGL", "aliases": ["구글", "알파벳", "google", "alphabet", "googl", "goog"], "search_rank": 4850, "price_unit": "USD"},
+    "GOOG": {"code": "GOOG", "name": "Alphabet Class C", "display_name": "알파벳 C", "market": "NASDAQ", "asset_type": "us-stock", "yahoo_symbol": "GOOG", "aliases": ["구글c", "알파벳c", "google c", "goog"], "search_rank": 4845, "price_unit": "USD"},
+    "META": {"code": "META", "name": "Meta Platforms", "display_name": "메타", "market": "NASDAQ", "asset_type": "us-stock", "yahoo_symbol": "META", "aliases": ["메타", "페이스북", "facebook", "meta"], "search_rank": 4840, "price_unit": "USD"},
+    "TSLA": {"code": "TSLA", "name": "Tesla", "display_name": "테슬라", "market": "NASDAQ", "asset_type": "us-stock", "yahoo_symbol": "TSLA", "aliases": ["테슬라", "tesla", "tsla", "일론머스크"], "search_rank": 4830, "price_unit": "USD"},
+    "AMD": {"code": "AMD", "name": "Advanced Micro Devices", "display_name": "AMD", "market": "NASDAQ", "asset_type": "us-stock", "yahoo_symbol": "AMD", "aliases": ["amd", "에이엠디", "어드밴스드마이크로디바이시스"], "search_rank": 4820, "price_unit": "USD"},
+    "AVGO": {"code": "AVGO", "name": "Broadcom", "display_name": "브로드컴", "market": "NASDAQ", "asset_type": "us-stock", "yahoo_symbol": "AVGO", "aliases": ["브로드컴", "broadcom", "avgo"], "search_rank": 4810, "price_unit": "USD"},
+    "TSM": {"code": "TSM", "name": "Taiwan Semiconductor", "display_name": "TSMC", "market": "NYSE", "asset_type": "us-stock", "yahoo_symbol": "TSM", "aliases": ["tsmc", "티에스엠씨", "대만반도체", "tsm"], "search_rank": 4805, "price_unit": "USD"},
+    "ASML": {"code": "ASML", "name": "ASML Holding", "display_name": "ASML", "market": "NASDAQ", "asset_type": "us-stock", "yahoo_symbol": "ASML", "aliases": ["asml", "에이에스엠엘", "노광장비"], "search_rank": 4800, "price_unit": "USD"},
+    "MU": {"code": "MU", "name": "Micron Technology", "display_name": "마이크론", "market": "NASDAQ", "asset_type": "us-stock", "yahoo_symbol": "MU", "aliases": ["마이크론", "micron", "mu"], "search_rank": 4790, "price_unit": "USD"},
+    "INTC": {"code": "INTC", "name": "Intel", "display_name": "인텔", "market": "NASDAQ", "asset_type": "us-stock", "yahoo_symbol": "INTC", "aliases": ["인텔", "intel", "intc"], "search_rank": 4780, "price_unit": "USD"},
+    "NFLX": {"code": "NFLX", "name": "Netflix", "display_name": "넷플릭스", "market": "NASDAQ", "asset_type": "us-stock", "yahoo_symbol": "NFLX", "aliases": ["넷플릭스", "netflix", "nflx"], "search_rank": 4770, "price_unit": "USD"},
+    "PLTR": {"code": "PLTR", "name": "Palantir", "display_name": "팔란티어", "market": "NASDAQ", "asset_type": "us-stock", "yahoo_symbol": "PLTR", "aliases": ["팔란티어", "palantir", "pltr"], "search_rank": 4760, "price_unit": "USD"},
+    "COIN": {"code": "COIN", "name": "Coinbase", "display_name": "코인베이스", "market": "NASDAQ", "asset_type": "us-stock", "yahoo_symbol": "COIN", "aliases": ["코인베이스", "coinbase", "coin"], "search_rank": 4750, "price_unit": "USD"},
+    "MSTR": {"code": "MSTR", "name": "MicroStrategy", "display_name": "마이크로스트래티지", "market": "NASDAQ", "asset_type": "us-stock", "yahoo_symbol": "MSTR", "aliases": ["마이크로스트래티지", "마이크로스트레티지", "microstrategy", "mstr"], "search_rank": 4740, "price_unit": "USD"},
+    "BRK-B": {"code": "BRK-B", "name": "Berkshire Hathaway Class B", "display_name": "버크셔 해서웨이 B", "market": "NYSE", "asset_type": "us-stock", "yahoo_symbol": "BRK-B", "aliases": ["버크셔", "버크셔해서웨이", "berkshire", "brk.b", "brkb", "brk-b"], "search_rank": 4730, "price_unit": "USD"},
+
+    "SPY": {"code": "SPY", "name": "SPDR S&P 500 ETF", "display_name": "SPY S&P500 ETF", "market": "NYSEARCA", "asset_type": "us-etf", "yahoo_symbol": "SPY", "aliases": ["spy", "s&p500 etf", "s&p 500 etf", "미국 s&p500 etf", "스파이"], "search_rank": 4690, "price_unit": "USD", "is_derivative": True},
+    "VOO": {"code": "VOO", "name": "Vanguard S&P 500 ETF", "display_name": "VOO S&P500 ETF", "market": "NYSEARCA", "asset_type": "us-etf", "yahoo_symbol": "VOO", "aliases": ["voo", "뱅가드 s&p500", "s&p500 etf"], "search_rank": 4680, "price_unit": "USD", "is_derivative": True},
+    "IVV": {"code": "IVV", "name": "iShares Core S&P 500 ETF", "display_name": "IVV S&P500 ETF", "market": "NYSEARCA", "asset_type": "us-etf", "yahoo_symbol": "IVV", "aliases": ["ivv", "아이셰어즈 s&p500", "s&p500 etf"], "search_rank": 4675, "price_unit": "USD", "is_derivative": True},
+    "QQQ": {"code": "QQQ", "name": "Invesco QQQ Trust", "display_name": "QQQ 나스닥100 ETF", "market": "NASDAQ", "asset_type": "us-etf", "yahoo_symbol": "QQQ", "aliases": ["qqq", "나스닥100 etf", "나스닥 etf", "인베스코 qqq"], "search_rank": 4670, "price_unit": "USD", "is_derivative": True},
+    "TQQQ": {"code": "TQQQ", "name": "ProShares UltraPro QQQ", "display_name": "TQQQ 나스닥100 3배", "market": "NASDAQ", "asset_type": "us-etf", "yahoo_symbol": "TQQQ", "aliases": ["tqqq", "나스닥 3배", "나스닥100 3배", "qqq 3배"], "search_rank": 4660, "price_unit": "USD", "is_derivative": True},
+    "SQQQ": {"code": "SQQQ", "name": "ProShares UltraPro Short QQQ", "display_name": "SQQQ 나스닥100 인버스 3배", "market": "NASDAQ", "asset_type": "us-etf", "yahoo_symbol": "SQQQ", "aliases": ["sqqq", "나스닥 인버스 3배", "나스닥 숏", "qqq 인버스"], "search_rank": 4655, "price_unit": "USD", "is_derivative": True},
+    "SOXL": {"code": "SOXL", "name": "Direxion Daily Semiconductor Bull 3X", "display_name": "SOXL 반도체 3배", "market": "NYSEARCA", "asset_type": "us-etf", "yahoo_symbol": "SOXL", "aliases": ["soxl", "반도체 3배", "필라델피아 반도체 3배", "반도체 레버리지"], "search_rank": 4650, "price_unit": "USD", "is_derivative": True},
+    "SOXS": {"code": "SOXS", "name": "Direxion Daily Semiconductor Bear 3X", "display_name": "SOXS 반도체 인버스 3배", "market": "NYSEARCA", "asset_type": "us-etf", "yahoo_symbol": "SOXS", "aliases": ["soxs", "반도체 인버스", "반도체 숏", "필라델피아 반도체 인버스"], "search_rank": 4645, "price_unit": "USD", "is_derivative": True},
+    "SMH": {"code": "SMH", "name": "VanEck Semiconductor ETF", "display_name": "SMH 반도체 ETF", "market": "NASDAQ", "asset_type": "us-etf", "yahoo_symbol": "SMH", "aliases": ["smh", "반도체 etf", "vaneck semiconductor"], "search_rank": 4640, "price_unit": "USD", "is_derivative": True},
+    "SOXX": {"code": "SOXX", "name": "iShares Semiconductor ETF", "display_name": "SOXX 반도체 ETF", "market": "NASDAQ", "asset_type": "us-etf", "yahoo_symbol": "SOXX", "aliases": ["soxx", "반도체 etf", "ishares semiconductor"], "search_rank": 4635, "price_unit": "USD", "is_derivative": True},
+    "SCHD": {"code": "SCHD", "name": "Schwab US Dividend Equity ETF", "display_name": "SCHD 미국 배당 ETF", "market": "NYSEARCA", "asset_type": "us-etf", "yahoo_symbol": "SCHD", "aliases": ["schd", "슈드", "미국배당", "미국 배당 etf", "배당성장"], "search_rank": 4630, "price_unit": "USD", "is_derivative": True},
+    "JEPI": {"code": "JEPI", "name": "JPMorgan Equity Premium Income ETF", "display_name": "JEPI 월배당 ETF", "market": "NYSEARCA", "asset_type": "us-etf", "yahoo_symbol": "JEPI", "aliases": ["jepi", "제피", "월배당", "커버드콜", "인컴 etf"], "search_rank": 4625, "price_unit": "USD", "is_derivative": True},
+    "JEPQ": {"code": "JEPQ", "name": "JPMorgan Nasdaq Equity Premium Income ETF", "display_name": "JEPQ 나스닥 월배당 ETF", "market": "NASDAQ", "asset_type": "us-etf", "yahoo_symbol": "JEPQ", "aliases": ["jepq", "제프큐", "나스닥 월배당", "나스닥 커버드콜"], "search_rank": 4620, "price_unit": "USD", "is_derivative": True},
+    "VTI": {"code": "VTI", "name": "Vanguard Total Stock Market ETF", "display_name": "VTI 미국 전체시장 ETF", "market": "NYSEARCA", "asset_type": "us-etf", "yahoo_symbol": "VTI", "aliases": ["vti", "미국 전체시장", "total stock market"], "search_rank": 4615, "price_unit": "USD", "is_derivative": True},
+    "VT": {"code": "VT", "name": "Vanguard Total World Stock ETF", "display_name": "VT 전세계 주식 ETF", "market": "NYSEARCA", "asset_type": "us-etf", "yahoo_symbol": "VT", "aliases": ["vt", "전세계 etf", "글로벌 주식 etf"], "search_rank": 4610, "price_unit": "USD", "is_derivative": True},
+    "DIA": {"code": "DIA", "name": "SPDR Dow Jones Industrial Average ETF", "display_name": "DIA 다우 ETF", "market": "NYSEARCA", "asset_type": "us-etf", "yahoo_symbol": "DIA", "aliases": ["dia", "다우 etf", "dow etf"], "search_rank": 4605, "price_unit": "USD", "is_derivative": True},
+    "IWM": {"code": "IWM", "name": "iShares Russell 2000 ETF", "display_name": "IWM 러셀2000 ETF", "market": "NYSEARCA", "asset_type": "us-etf", "yahoo_symbol": "IWM", "aliases": ["iwm", "러셀2000", "russell 2000 etf", "소형주 etf"], "search_rank": 4600, "price_unit": "USD", "is_derivative": True},
+    "VGT": {"code": "VGT", "name": "Vanguard Information Technology ETF", "display_name": "VGT 미국 기술주 ETF", "market": "NYSEARCA", "asset_type": "us-etf", "yahoo_symbol": "VGT", "aliases": ["vgt", "기술주 etf", "미국 기술주"], "search_rank": 4595, "price_unit": "USD", "is_derivative": True},
+    "XLK": {"code": "XLK", "name": "Technology Select Sector SPDR Fund", "display_name": "XLK 기술 섹터 ETF", "market": "NYSEARCA", "asset_type": "us-etf", "yahoo_symbol": "XLK", "aliases": ["xlk", "테크 etf", "기술 섹터"], "search_rank": 4590, "price_unit": "USD", "is_derivative": True},
+    "XLF": {"code": "XLF", "name": "Financial Select Sector SPDR Fund", "display_name": "XLF 금융 섹터 ETF", "market": "NYSEARCA", "asset_type": "us-etf", "yahoo_symbol": "XLF", "aliases": ["xlf", "금융 etf", "은행 etf"], "search_rank": 4585, "price_unit": "USD", "is_derivative": True},
+    "XLE": {"code": "XLE", "name": "Energy Select Sector SPDR Fund", "display_name": "XLE 에너지 섹터 ETF", "market": "NYSEARCA", "asset_type": "us-etf", "yahoo_symbol": "XLE", "aliases": ["xle", "에너지 etf", "원유 etf"], "search_rank": 4580, "price_unit": "USD", "is_derivative": True},
+    "TLT": {"code": "TLT", "name": "iShares 20+ Year Treasury Bond ETF", "display_name": "TLT 미국 장기채 ETF", "market": "NASDAQ", "asset_type": "us-etf", "yahoo_symbol": "TLT", "aliases": ["tlt", "미국 장기채", "장기국채", "채권 etf"], "search_rank": 4575, "price_unit": "USD", "is_derivative": True},
+    "GLD": {"code": "GLD", "name": "SPDR Gold Shares", "display_name": "GLD 금 ETF", "market": "NYSEARCA", "asset_type": "us-etf", "yahoo_symbol": "GLD", "aliases": ["gld", "금 etf", "gold etf"], "search_rank": 4570, "price_unit": "USD", "is_derivative": True},
+    "SLV": {"code": "SLV", "name": "iShares Silver Trust", "display_name": "SLV 은 ETF", "market": "NYSEARCA", "asset_type": "us-etf", "yahoo_symbol": "SLV", "aliases": ["slv", "은 etf", "silver etf"], "search_rank": 4565, "price_unit": "USD", "is_derivative": True},
+    "IBIT": {"code": "IBIT", "name": "iShares Bitcoin Trust ETF", "display_name": "IBIT 비트코인 ETF", "market": "NASDAQ", "asset_type": "us-etf", "yahoo_symbol": "IBIT", "aliases": ["ibit", "비트코인 etf", "bitcoin etf"], "search_rank": 4560, "price_unit": "USD", "is_derivative": True},
+    "ARKK": {"code": "ARKK", "name": "ARK Innovation ETF", "display_name": "ARKK 혁신 ETF", "market": "NYSEARCA", "asset_type": "us-etf", "yahoo_symbol": "ARKK", "aliases": ["arkk", "아크", "캐시우드", "혁신 etf"], "search_rank": 4555, "price_unit": "USD", "is_derivative": True},
+}
+
+
+def _all_global_symbol_items():
+    merged = {}
+    merged.update(GLOBAL_INDEX_SYMBOLS)
+    merged.update(GLOBAL_YAHOO_SYMBOLS)
+    return merged
+
+
+def _global_symbol_item(code):
+    code = _normalize_asset_code(code)
+    if code in GLOBAL_INDEX_SYMBOLS:
+        return GLOBAL_INDEX_SYMBOLS[code]
+    if code in GLOBAL_YAHOO_SYMBOLS:
+        return GLOBAL_YAHOO_SYMBOLS[code]
+    if _looks_like_yahoo_asset_code(code):
+        return {
+            "code": code,
+            "name": code,
+            "display_name": code,
+            "market": "US",
+            "asset_type": "us-stock",
+            "yahoo_symbol": code,
+            "yahoo_symbols": [code],
+            "aliases": [code.lower()],
+            "search_rank": 0,
+            "price_unit": "USD",
+        }
+    return None
+
+
+def _global_symbol_display_name(item):
+    return item.get("display_name") or item.get("name") or item.get("code") or ""
+
+
+def _looks_like_yahoo_asset_code(code):
+    value = str(code or "").strip().upper()
+    if not value or value in GLOBAL_INDEX_SYMBOLS:
+        return False
+    if re.fullmatch(r"[A-Z][A-Z0-9]{0,9}(-[A-Z0-9]{1,4})?", value):
+        return True
+    return False
+
+
+
 def _global_fallback_payloads():
     result = []
-    for item in GLOBAL_INDEX_SYMBOLS.values():
+    for item in _all_global_symbol_items().values():
         result.append({
             "code": item["code"],
-            "name": item["name"],
-            "market": item["market"],
+            "name": _global_symbol_display_name(item),
+            "market": item.get("market", "US"),
             "aliases": item.get("aliases", []),
             "search_rank": item.get("search_rank", 0),
-            "is_derivative": bool(item.get("is_derivative") or item.get("asset_type") == "future"),
+            "is_derivative": bool(item.get("is_derivative") or item.get("asset_type") in {"future", "us-etf"}),
             "asset_type": item.get("asset_type", "index"),
             "yahoo_symbol": item.get("yahoo_symbol", ""),
             "price_unit": item.get("price_unit", "pt"),
@@ -214,8 +528,8 @@ def _global_fallback_payloads():
 
 def _build_global_alias_map():
     aliases = {}
-    for code, item in GLOBAL_INDEX_SYMBOLS.items():
-        keys = [code, item.get("yahoo_symbol", ""), item.get("name", "")] + item.get("aliases", [])
+    for code, item in _all_global_symbol_items().items():
+        keys = [code, item.get("yahoo_symbol", ""), item.get("name", ""), item.get("display_name", "")] + item.get("aliases", [])
         for key in keys:
             raw = str(key or "").strip().upper()
             compact = re.sub(r"[\s_:\-./]+", "", raw)
@@ -233,6 +547,11 @@ def _build_global_alias_map():
         "US100": "NASDAQ100",
         "NQ": "NQF",
         "NQ=F": "NQF",
+        "BRKB": "BRK-B",
+        "BRK.B": "BRK-B",
+        "BRK-B": "BRK-B",
+        "GOOGLE": "GOOGL",
+        "ALPHABET": "GOOGL",
     })
     return aliases
 
@@ -290,7 +609,7 @@ def _clean_code(code):
 
 
 def _normalize_asset_code(code):
-    """KRX 6자리 종목코드와 글로벌 지수 내부코드를 함께 정규화합니다."""
+    """KRX 6자리 종목코드, 국내 지수, 해외 Yahoo 심볼을 함께 정규화합니다."""
     raw = str(code or "").strip()
 
     if not raw:
@@ -304,11 +623,20 @@ def _normalize_asset_code(code):
     if compact in GLOBAL_INDEX_ALIAS_MAP:
         return GLOBAL_INDEX_ALIAS_MAP[compact]
 
-    return _clean_code(raw)
+    digits = "".join(ch for ch in raw if ch.isdigit())
+    if digits:
+        return _clean_code(raw)
+
+    normalized = upper.replace(".", "-")
+    if re.fullmatch(r"[A-Z][A-Z0-9]{0,9}(-[A-Z0-9]{1,4})?", normalized):
+        return normalized
+
+    return ""
 
 
 def _is_global_asset_code(code):
-    return _normalize_asset_code(code) in GLOBAL_INDEX_SYMBOLS
+    asset_code = _normalize_asset_code(code)
+    return bool(asset_code and _global_symbol_item(asset_code))
 
 
 def _empty_ohlcv():
@@ -320,20 +648,146 @@ def _is_derivative_name(name):
     return any(keyword.upper().replace(" ", "") in text for keyword in DERIVATIVE_KEYWORDS)
 
 
+
+def _krx_etf_aliases(name):
+    text = str(name or "").strip()
+    aliases = []
+    compact = text.replace(" ", "")
+    if compact and compact != text:
+        aliases.append(compact)
+
+    brand_map = {
+        "KODEX": ["코덱스", "삼성자산운용"],
+        "TIGER": ["타이거", "미래에셋"],
+        "ACE": ["에이스", "한국투자신탁운용", "한투"],
+        "SOL": ["쏠", "신한자산운용"],
+        "KBSTAR": ["케이비스타", "KB자산운용"],
+        "RISE": ["라이즈", "KB자산운용"],
+        "ARIRANG": ["아리랑", "한화자산운용"],
+        "HANARO": ["하나로", "NH아문디"],
+        "TIMEFOLIO": ["타임폴리오"],
+        "KOSEF": ["코세프", "키움"],
+        "PLUS": ["플러스", "한화"],
+        "WON": ["원", "우리자산운용"],
+    }
+    upper = text.upper()
+    for brand, values in brand_map.items():
+        if upper.startswith(brand):
+            aliases.extend(values)
+            aliases.append(brand.lower())
+            break
+
+    for token in ["ETF", "ETN", "미국", "나스닥", "S&P500", "반도체", "2차전지", "방산", "조선", "은행", "금융", "배당", "월배당", "커버드콜", "채권", "국채", "인버스", "레버리지"]:
+        if token.upper() in upper:
+            aliases.append(token)
+
+    # 중복 제거
+    result = []
+    for alias in aliases:
+        alias = str(alias or "").strip()
+        if alias and alias not in result:
+            result.append(alias)
+    return result
+
+
+def _get_krx_etf_payloads():
+    """오늘 기준 KRX ETF 전체 목록을 pykrx에서 실시간으로 가져와 검색 fallback으로 사용합니다."""
+    today_key = datetime.today().strftime("%Y%m%d")
+    cache_key = f"stocks:krx-etf-payloads:v3:{today_key}"
+    cached = cache.get(cache_key)
+    if cached is not None:
+        return cached
+
+    payload = []
+    try:
+        try:
+            tickers = krx_stock.get_etf_ticker_list(today_key)
+        except TypeError:
+            tickers = krx_stock.get_etf_ticker_list()
+        except Exception:
+            tickers = krx_stock.get_etf_ticker_list()
+
+        for ticker in tickers or []:
+            code = _clean_code(ticker)
+            if not code:
+                continue
+            try:
+                name = krx_stock.get_etf_ticker_name(code)
+            except Exception:
+                name = code
+            name = str(name or code).strip()
+            payload.append({
+                "code": code,
+                "name": name,
+                "market": "ETF-KR",
+                "href": _safe_reverse_stock_detail(code),
+                "aliases": _krx_etf_aliases(name),
+                "search_rank": 620,
+                "is_derivative": True,
+                "asset_type": "etf",
+                "price_unit": "원",
+            })
+    except Exception:
+        payload = []
+
+    cache.set(cache_key, payload, 60 * 60 * 6)
+    return payload
+
+
+def _get_krx_etf_payload_by_code(code):
+    code = _clean_code(code)
+    if not code:
+        return None
+    for item in _get_krx_etf_payloads():
+        if item.get("code") == code:
+            return item
+    return None
+
+
+def _query_krx_etf_payloads(q, limit=40):
+    q = _normalize_search_text(q)
+    q_digits = "".join(ch for ch in q if ch.isdigit())
+    if not q and not q_digits:
+        return []
+
+    matched = []
+    for item in _get_krx_etf_payloads():
+        target = _normalize_search_text(
+            " ".join([
+                item.get("name", ""),
+                item.get("code", ""),
+                item.get("market", ""),
+                item.get("asset_type", ""),
+                "국내ETF ETF exchange traded fund",
+                " ".join(item.get("aliases", [])),
+            ])
+        )
+        if q in target or (q_digits and q_digits in str(item.get("code", ""))):
+            matched.append(item)
+
+    matched.sort(key=lambda item: int(item.get("search_rank") or 0), reverse=True)
+    return matched[: max(1, min(int(limit or 40), 120))]
+
+
 def _fallback_stock(code):
     asset_code = _normalize_asset_code(code)
 
-    if asset_code in GLOBAL_INDEX_SYMBOLS:
-        item = GLOBAL_INDEX_SYMBOLS[asset_code]
+    item = _global_symbol_item(asset_code)
+    if item:
         return SimpleNamespace(
             code=item["code"],
-            name=item["name"],
-            market=item["market"],
-            asset_type=item.get("asset_type", "index"),
-            yahoo_symbol=item.get("yahoo_symbol", ""),
+            name=_global_symbol_display_name(item),
+            market=item.get("market", "US"),
+            asset_type=item.get("asset_type", "us-stock"),
+            yahoo_symbol=item.get("yahoo_symbol", item.get("code", "")),
+            price_unit=item.get("price_unit", "USD"),
         )
 
     code = _clean_code(asset_code or code)
+    etf_item = _get_krx_etf_payload_by_code(code)
+    if etf_item:
+        return SimpleNamespace(code=etf_item["code"], name=etf_item["name"], market=etf_item["market"], asset_type="etf")
+
     item = FALLBACK_BY_CODE.get(code)
 
     if item:
@@ -345,14 +799,18 @@ def _fallback_stock(code):
 def _get_stock(code):
     asset_code = _normalize_asset_code(code)
 
-    if asset_code in GLOBAL_INDEX_SYMBOLS:
+    if asset_code and _global_symbol_item(asset_code):
         return _fallback_stock(asset_code)
 
     code = _clean_code(asset_code or code)
-    obj = StockSymbol.objects.filter(code=code).first()
+    obj = StockSymbol.objects.only("code", "name", "market").filter(code=code).first()
 
     if obj:
         return obj
+
+    etf_item = _get_krx_etf_payload_by_code(code)
+    if etf_item:
+        return SimpleNamespace(code=etf_item["code"], name=etf_item["name"], market=etf_item["market"], asset_type="etf")
 
     return _fallback_stock(code)
 
@@ -370,19 +828,19 @@ def _safe_reverse_stock_detail(code):
 def _stock_to_payload(stock_obj):
     code = _normalize_asset_code(getattr(stock_obj, "code", ""))
 
-    if code in GLOBAL_INDEX_SYMBOLS:
-        item = GLOBAL_INDEX_SYMBOLS[code]
+    global_item = _global_symbol_item(code)
+    if global_item:
         return {
-            "code": item["code"],
-            "name": item["name"],
-            "market": item["market"],
-            "aliases": item.get("aliases", []),
-            "href": _safe_reverse_stock_detail(item["code"]),
-            "search_rank": item.get("search_rank", 0),
-            "is_derivative": bool(item.get("is_derivative") or item.get("asset_type") == "future"),
-            "asset_type": item.get("asset_type", "index"),
-            "yahoo_symbol": item.get("yahoo_symbol", ""),
-            "price_unit": item.get("price_unit", "pt"),
+            "code": global_item["code"],
+            "name": _global_symbol_display_name(global_item),
+            "market": global_item.get("market", "US"),
+            "aliases": global_item.get("aliases", []),
+            "href": _safe_reverse_stock_detail(global_item["code"]),
+            "search_rank": global_item.get("search_rank", 0),
+            "is_derivative": bool(global_item.get("is_derivative") or global_item.get("asset_type") in {"future", "us-etf"}),
+            "asset_type": global_item.get("asset_type", "us-stock"),
+            "yahoo_symbol": global_item.get("yahoo_symbol", ""),
+            "price_unit": global_item.get("price_unit", "USD"),
         }
 
     code = _clean_code(code)
@@ -414,7 +872,10 @@ def _fallback_payloads():
                 "aliases": item.get("aliases", []),
                 "href": _safe_reverse_stock_detail(item["code"]),
                 "search_rank": item.get("search_rank", 0),
-                "is_derivative": _is_derivative_name(item["name"]),
+                "is_derivative": bool(item.get("is_derivative") or _is_derivative_name(item["name"])),
+                "asset_type": item.get("asset_type", "stock"),
+                "yahoo_symbol": item.get("yahoo_symbol", ""),
+                "price_unit": item.get("price_unit", "원"),
             }
         )
 
@@ -427,7 +888,7 @@ def _get_all_stocks_payload():
     필요할 때만 사용하고, 기본 홈 렌더링에서는 인기/기본 종목만 내려준다.
     """
     payload = _global_fallback_payloads()
-    qs = StockSymbol.objects.all().order_by("market", "name", "code")
+    qs = StockSymbol.objects.only("code", "name", "market").all().order_by("market", "name", "code")
 
     for stock_obj in qs.iterator(chunk_size=1000):
         item = _stock_to_payload(stock_obj)
@@ -437,9 +898,15 @@ def _get_all_stocks_payload():
 
     existing_codes = {item["code"] for item in payload}
 
+    for item in _get_krx_etf_payloads():
+        if item["code"] not in existing_codes:
+            payload.append(item)
+            existing_codes.add(item["code"])
+
     for item in _fallback_payloads():
         if item["code"] not in existing_codes:
             payload.append(item)
+            existing_codes.add(item["code"])
 
     return payload
 
@@ -452,7 +919,7 @@ def _get_total_stock_count_cached():
         return cached
 
     try:
-        value = StockSymbol.objects.count()
+        value = StockSymbol.objects.count() + len(_get_krx_etf_payloads()) + len(_global_fallback_payloads())
     except Exception:
         value = 0
 
@@ -491,10 +958,18 @@ def _query_fallback_payloads(q):
             + " "
             + item["code"]
             + " "
+            + str(item.get("market", "")).lower().replace(" ", "")
+            + " "
+            + str(item.get("asset_type", "")).lower().replace(" ", "")
+            + " "
             + " ".join(item.get("aliases", [])).lower().replace(" ", "")
         )
 
         if q in target or (q_digits and q_digits in item["code"]):
+            matched.append(item)
+
+    for item in _query_krx_etf_payloads(q, limit=80):
+        if item.get("code") not in {x.get("code") for x in matched}:
             matched.append(item)
 
     matched.sort(key=lambda item: int(item.get("search_rank") or 0), reverse=True)
@@ -524,7 +999,7 @@ def _search_stocks_payload(q, limit=30):
     seen_codes = set()
 
     try:
-        qs = StockSymbol.objects.filter(filters).order_by("market", "name", "code")[:limit]
+        qs = StockSymbol.objects.only("code", "name", "market").filter(filters).order_by("market", "name", "code")[:limit]
         for stock_obj in qs:
             item = _stock_to_payload(stock_obj)
             if item["code"] and item["code"] not in seen_codes:
@@ -532,6 +1007,13 @@ def _search_stocks_payload(q, limit=30):
                 seen_codes.add(item["code"])
     except Exception:
         pass
+
+    for item in _query_krx_etf_payloads(q, limit=limit):
+        if item["code"] not in seen_codes:
+            payload.append(item)
+            seen_codes.add(item["code"])
+        if len(payload) >= limit:
+            break
 
     for item in _query_fallback_payloads(q):
         if item["code"] not in seen_codes:
@@ -543,16 +1025,18 @@ def _search_stocks_payload(q, limit=30):
     def score(item):
         text = _normalize_search_text(item.get("name"))
         code = str(item.get("code") or "")
+        alias_text = _normalize_search_text(" ".join(item.get("aliases") or []))
+        market_text = _normalize_search_text(item.get("market"))
         query = _normalize_search_text(q)
         rank = int(item.get("search_rank") or 0)
 
-        if code == q_digits or text == query:
+        if code.upper() == str(q or "").strip().upper() or code == q_digits or text == query:
             return 100000 + rank
-        if code.startswith(q_digits) and q_digits:
+        if q_digits and code.startswith(q_digits):
             return 80000 + rank
-        if text.startswith(query):
+        if text.startswith(query) or alias_text.startswith(query):
             return 70000 + rank
-        if query in text:
+        if query and (query in text or query in alias_text or query in market_text):
             return 50000 + rank
         return rank
 
@@ -583,15 +1067,17 @@ def stock_search(request):
     return render(
         request,
         "stocks/stock_search.html",
-        {
-            "q": q,
-            "stocks": stocks,
-            "total_stock_count": total_stock_count,
-            "all_stocks_payload": initial_payload,
-            "stock_search_api_url": "/stocks/api/search/",
-            "market_temperature_lazy": True,
-            "lite": lite,
-        },
+        _premium_template_context(
+            request,
+            q=q,
+            stocks=stocks,
+            total_stock_count=total_stock_count,
+            all_stocks_payload=initial_payload,
+            stock_search_api_url="/stocks/api/search/",
+            market_temperature_lazy=True,
+            lite=lite,
+            is_quant_master=_is_quant_master_user(request.user),
+        ),
     )
 
 
@@ -1859,7 +2345,7 @@ def _fetch_krx_index_daily_by_asset(asset_code, range_key):
 
 def _make_global_symbol_payload(code, range_key, interval):
     asset_code = _normalize_asset_code(code)
-    item = GLOBAL_INDEX_SYMBOLS.get(asset_code)
+    item = _global_symbol_item(asset_code)
 
     if not item:
         return None
@@ -1880,14 +2366,14 @@ def _make_global_symbol_payload(code, range_key, interval):
         source = f"pykrx-index:{item['krx_index_code']}"
         provider = "pykrx-index"
     else:
-        base_df = _fetch_yahoo_chart_ohlcv(item["yahoo_symbol"], effective_range_key, interval, item=item)
+        base_df = _fetch_yahoo_chart_ohlcv(item.get("yahoo_symbol") or item.get("code"), effective_range_key, interval, item=item)
         if intraday_requested:
             chart_df = _aggregate_intraday_interval(base_df, interval)
             intraday_source_used = not chart_df.empty
         else:
             daily_interval = _daily_interval_from_display_interval(interval)
             chart_df = _aggregate_interval(base_df, daily_interval)
-        source = f"Yahoo Finance chart API:{item['yahoo_symbol']}"
+        source = f"Yahoo Finance chart API:{item.get('yahoo_symbol') or item.get('code')}"
         provider = "yahoo-finance"
 
     chart_df = _apply_visible_range(chart_df, effective_range_key)
@@ -1895,10 +2381,10 @@ def _make_global_symbol_payload(code, range_key, interval):
     if chart_df.empty:
         return {
             "ok": False,
-            "message": f"{item['name']} 데이터를 불러오지 못했습니다. pykrx/Yahoo Finance 응답을 확인하세요.",
+            "message": f"{_global_symbol_display_name(item)} 데이터를 불러오지 못했습니다. pykrx/Yahoo Finance 응답을 확인하세요.",
             "code": item["code"],
-            "name": item["name"],
-            "market": item["market"],
+            "name": _global_symbol_display_name(item),
+            "market": item.get("market", "US"),
             "asset_type": item.get("asset_type", "index"),
             "price_unit": item.get("price_unit", "pt"),
             "price_precision": 2,
@@ -1964,8 +2450,8 @@ def _make_global_symbol_payload(code, range_key, interval):
         "source": source,
         "message": "",
         "code": item["code"],
-        "name": item["name"],
-        "market": item["market"],
+        "name": _global_symbol_display_name(item),
+        "market": item.get("market", "US"),
         "asset_type": item.get("asset_type", "index"),
         "yahoo_symbol": item.get("yahoo_symbol", ""),
         "price_unit": item.get("price_unit", "pt"),
@@ -2025,7 +2511,7 @@ def _make_payload(code, range_key, interval):
     interval = _normalize_interval(interval)
     range_key = _normalize_range(range_key)
 
-    if code in GLOBAL_INDEX_SYMBOLS:
+    if code and _global_symbol_item(code):
         return _make_global_symbol_payload(code, range_key, interval)
 
     code = _clean_code(code)
@@ -2172,323 +2658,141 @@ def _chart_payload_cache_timeout(code, interval):
     asset_code = _normalize_asset_code(code)
     intraday = _is_intraday_interval(interval)
 
-    if asset_code in GLOBAL_INDEX_SYMBOLS:
-        # 대표지수는 외부 Yahoo/pykrx 호출이 체감 병목입니다.
-        # 사용자가 차트를 열 때마다 새로 받지 않도록 일반 종목보다 길게 캐시합니다.
+    if asset_code and _global_symbol_item(asset_code):
+        # 대표지수/해외주식/해외ETF는 외부 Yahoo 호출이 체감 병목입니다.
         if intraday:
-            return 60 * 20     # 지수 시간봉: 20분 캐시
-        return 60 * 60 * 4     # 지수 일/주/월봉: 4시간 캐시
+            return 60 * 20
+        return 60 * 60 * 4
 
     if intraday:
         return 60 * 10         # 국내 개별종목 시간봉: 10분 캐시
     return 60 * 30             # 국내 개별종목 일/주/월봉: 30분 캐시
 
 
-@require_GET
-def api_ohlcv(request, code):
-    display_interval = request.GET.get("display_interval")
-    interval = _normalize_interval(display_interval or request.GET.get("interval", "1d"))
-    range_value = request.GET.get("range")
-    pages_value = request.GET.get("pages")
 
-    if range_value:
-        range_key = _normalize_range(range_value)
-    elif pages_value:
-        range_key = "all"
-    else:
-        range_key = "all"
+def _request_chart_params(request, default_code=""):
+    """프론트 차트 요청 파라미터를 한 곳에서 정리합니다."""
+    code = (
+        request.GET.get("code")
+        or request.GET.get("symbol")
+        or request.GET.get("stock_code")
+        or default_code
+        or ""
+    )
+    code = _normalize_asset_code(code)
 
-    asset_code = _normalize_asset_code(code)
-    cache_key = f"stocks:chart-payload:v17:{asset_code}:{range_key}:{interval}"
+    range_key = (
+        request.GET.get("range")
+        or request.GET.get("period")
+        or request.GET.get("duration")
+        or "all"
+    )
+    interval = (
+        request.GET.get("interval")
+        or request.GET.get("timeframe")
+        or request.GET.get("tf")
+        or "1d"
+    )
 
-    if request.GET.get("refresh") != "1":
-        cached = cache.get(cache_key)
-        if cached is not None:
-            payload = dict(cached)
-            payload["cache_hit"] = True
-            payload["cache_backend"] = "django-cache"
-            return JsonResponse(payload, status=200, json_dumps_params={"ensure_ascii": False})
-
-    payload = _make_payload(code, range_key, interval)
-    payload["cache_hit"] = False
-    payload["cache_backend"] = "django-cache"
-
-    if payload.get("ok"):
-        cache.set(cache_key, payload, _chart_payload_cache_timeout(code, interval))
-
-    return JsonResponse(payload, status=200, json_dumps_params={"ensure_ascii": False})
-
-
-@require_GET
-def api_chart(request):
-    """
-    bitgak_chart_core.js의 apiUrl이 /stocks/api/chart/로 잡혀 있어도 동작하게 하는 호환 엔드포인트.
-    code는 ?code=005930 또는 ?symbol=005930로 받는다.
-    """
-    code = request.GET.get("code") or request.GET.get("symbol") or request.GET.get("ticker") or "005930"
-    return api_ohlcv(request, code)
-
-
-def _clamp(value, min_value=0, max_value=100):
-    try:
-        value = float(value)
-    except (TypeError, ValueError):
-        value = min_value
-
-    return max(min_value, min(max_value, value))
-
-
-def _format_number(value, decimals=2):
-    try:
-        value = float(value)
-    except (TypeError, ValueError):
-        return ""
-
-    return f"{value:,.{decimals}f}"
-
-
-def _format_signed_percent(value):
-    try:
-        value = float(value)
-    except (TypeError, ValueError):
-        return ""
-
-    return f"{value:+.2f}%"
-
-
-def _fetch_index_ohlcv(index_code, naver_symbol, days=430):
-    today = datetime.today().date()
-    fromdate = (today - timedelta(days=days)).strftime("%Y%m%d")
-
-    # 1차: pykrx 지수 API. get_market_ticker_list/name 계열은 절대 쓰지 않는다.
-    for back in range(0, 40):
-        end_date = today - timedelta(days=back)
-        todate = end_date.strftime("%Y%m%d")
-
-        try:
-            df = krx_stock.get_index_ohlcv_by_date(fromdate, todate, index_code)
-            result = _standardize_krx_df(df)
-
-            if not result.empty:
-                return result
-        except Exception:
-            continue
-
-    # 2차: Naver Finance 지수 일봉 fallback
-    naver_df = _naver_sise_json(naver_symbol, fromdate, today.strftime("%Y%m%d"))
-
-    if not naver_df.empty:
-        return naver_df
-
-    return _empty_ohlcv()
-
-
-def _index_metrics(df):
-    if df is None or df.empty:
-        return None
-
-    close = pd.to_numeric(df["close"], errors="coerce").dropna()
-
-    if close.empty:
-        return None
-
-    last = float(close.iloc[-1])
-    prev = float(close.iloc[-2]) if len(close) >= 2 else last
-    change = last - prev
-    change_rate = (change / prev) * 100 if prev else 0
-
-    window_52 = close.tail(252) if len(close) >= 30 else close
-    high_52 = float(window_52.max())
-    low_52 = float(window_52.min())
-    position_52 = ((last - low_52) / (high_52 - low_52) * 100) if high_52 != low_52 else 50
-
-    ma20 = float(close.tail(20).mean()) if len(close) >= 20 else last
-    ma60 = float(close.tail(60).mean()) if len(close) >= 60 else ma20
-    distance_20 = ((last - ma20) / ma20 * 100) if ma20 else 0
-    distance_60 = ((last - ma60) / ma60 * 100) if ma60 else 0
-
-    before_20 = float(close.iloc[-21]) if len(close) >= 21 else float(close.iloc[0])
-    momentum_20 = ((last - before_20) / before_20 * 100) if before_20 else 0
-
-    returns = close.pct_change().dropna()
-    volatility_20 = float(returns.tail(20).std() * (252 ** 0.5) * 100) if len(returns) >= 5 else 0
-
-    return {
-        "last": last,
-        "prev": prev,
-        "change": change,
-        "change_rate": change_rate,
-        "position_52": _clamp(position_52),
-        "high_52": high_52,
-        "low_52": low_52,
-        "ma20": ma20,
-        "ma60": ma60,
-        "distance_20": distance_20,
-        "distance_60": distance_60,
-        "momentum_20": momentum_20,
-        "volatility_20": max(0, volatility_20),
-        "date": df["date"].iloc[-1].strftime("%Y-%m-%d") if "date" in df.columns else "",
+    refresh = str(request.GET.get("refresh") or request.GET.get("_refresh") or "").strip().lower() in {
+        "1", "true", "yes", "y", "on"
     }
 
-
-def _timing_label(score):
-    score = _clamp(score)
-
-    if score >= 78:
-        return "분할매수 유리"
-    if score >= 62:
-        return "관심 구간"
-    if score >= 46:
-        return "중립"
-    if score >= 30:
-        return "보수적 관망"
-    return "위험 관리"
+    return code, _normalize_range(range_key), _normalize_interval(interval), refresh
 
 
-def _fear_label(score):
-    score = _clamp(score)
+def _chart_json_response(code, range_key, interval, refresh=False):
+    """_make_payload() 결과를 짧게 캐시해 JsonResponse로 반환합니다."""
+    code = _normalize_asset_code(code)
 
-    if score >= 80:
-        return "Extreme Greed"
-    if score >= 62:
-        return "Greed"
-    if score >= 43:
-        return "Neutral"
-    if score >= 25:
-        return "Fear"
-    return "Extreme Fear"
+    if not code:
+        return JsonResponse(
+            {
+                "ok": False,
+                "message": "종목 코드가 없습니다.",
+                "code": "",
+                "range": _normalize_range(range_key),
+                "interval": _normalize_interval(interval),
+                "results": [],
+                "rows": [],
+                "ohlc": [],
+                "volume": [],
+            },
+            status=400,
+            json_dumps_params={"ensure_ascii": False},
+        )
 
+    range_key = _normalize_range(range_key)
+    interval = _normalize_interval(interval)
+    cache_key = f"stocks:chart-payload:v12:{code}:{range_key}:{interval}"
 
-def _overheat_label(score):
-    score = _clamp(score)
-
-    if score >= 82:
-        return "강한 과열"
-    if score >= 68:
-        return "과열 주의"
-    if score >= 48:
-        return "중립"
-    if score >= 30:
-        return "안정"
-    return "저온"
-
-
-def _default_market_temperature_payload(message="시장 데이터를 불러오지 못했습니다."):
-    return {
-        "ok": False,
-        "source": "BASIC",
-        "message": message,
-        "market_timing_score": 52,
-        "fear_greed_score": 55,
-        "overheat_score": 64,
-        "timing_label": "중립",
-        "fear_label": "Neutral",
-        "overheat_label": "약간 과열",
-        "vix_value": "",
-        "kospi_position": "",
-        "kospi_change": "",
-        "kospi_price": "",
-        "kosdaq_change": "",
-        "kosdaq_price": "",
-        "distance_20": "",
-        "decision": "관망",
-        "decision_sub": message,
-        "base_date": "",
-    }
-
-
-@require_GET
-def api_market_temperature(request):
-    cache_key = "stocks:market_temperature:v10"
-
-    if request.GET.get("refresh") != "1":
+    if not refresh:
         cached = cache.get(cache_key)
         if cached is not None:
             return JsonResponse(cached, json_dumps_params={"ensure_ascii": False})
 
-    try:
-        kospi_df = _fetch_index_ohlcv("1001", "KOSPI", days=320)
-        kosdaq_df = _fetch_index_ohlcv("2001", "KOSDAQ", days=320)
+    payload = _make_payload(code, range_key, interval)
 
-        kospi = _index_metrics(kospi_df)
-        kosdaq = _index_metrics(kosdaq_df)
-
-        if not kospi and not kosdaq:
-            payload = _default_market_temperature_payload("KOSPI/KOSDAQ 데이터를 모두 불러오지 못했습니다.")
-            cache.set(cache_key, payload, 60 * 2)
-            return JsonResponse(payload, json_dumps_params={"ensure_ascii": False})
-
-        if not kospi:
-            kospi = kosdaq
-        if not kosdaq:
-            kosdaq = kospi
-
-        momentum_score = _clamp(50 + kospi["momentum_20"] * 2.0 + kosdaq["momentum_20"] * 1.0)
-        volatility_score = _clamp(100 - kospi["volatility_20"] * 2.4)
-        position_score = _clamp(kospi["position_52"])
-
-        fear_score = _clamp(momentum_score * 0.48 + volatility_score * 0.32 + position_score * 0.20)
-
-        overheat_score = _clamp(
-            18
-            + kospi["position_52"] * 0.46
-            + max(kospi["distance_20"], 0) * 3.0
-            + max(kospi["momentum_20"], 0) * 1.7
-            + max(kosdaq["distance_20"], 0) * 1.0
-        )
-
-        position_attractive = 100 - kospi["position_52"]
-        stable_fear_score = 100 - abs(fear_score - 45) * 1.35
-        timing_score = _clamp(
-            position_attractive * 0.42
-            + (100 - overheat_score) * 0.36
-            + stable_fear_score * 0.22
-            - max(kospi["volatility_20"] - 28, 0) * 0.8
-        )
-
-        decision = _timing_label(timing_score)
-
-        if overheat_score >= 75:
-            decision_sub = "추격매수보다 현금 비중과 분할 진입 우선"
-        elif timing_score >= 62:
-            decision_sub = "하락 분할매수 후보를 정리하기 좋은 구간"
-        elif timing_score <= 35:
-            decision_sub = "손절선과 비중 관리가 더 중요한 구간"
-        else:
-            decision_sub = "무리한 신규매수보다 관찰 우선"
-
-        base_date = kospi.get("date") or kosdaq.get("date") or ""
-
+    if not isinstance(payload, dict):
         payload = {
-            "ok": True,
-            "source": "pykrx/naver",
-            "market_timing_score": round(timing_score, 1),
-            "fear_greed_score": round(fear_score, 1),
-            "overheat_score": round(overheat_score, 1),
-            "timing_label": decision,
-            "fear_label": _fear_label(fear_score),
-            "overheat_label": _overheat_label(overheat_score),
-            "vix_value": f"{kospi['volatility_20']:.1f}%",
-            "kospi_position": f"{kospi['position_52']:.0f}%",
-            "kospi_change": _format_signed_percent(kospi["change_rate"]),
-            "kospi_price": _format_number(kospi["last"], 2),
-            "kosdaq_change": _format_signed_percent(kosdaq["change_rate"]),
-            "kosdaq_price": _format_number(kosdaq["last"], 2),
-            "distance_20": _format_signed_percent(kospi["distance_20"]),
-            "decision": decision,
-            "decision_sub": decision_sub,
-            "base_date": base_date,
-            "indicators": {"kospi": kospi, "kosdaq": kosdaq},
+            "ok": False,
+            "message": "차트 데이터를 만들지 못했습니다.",
+            "code": code,
+            "range": range_key,
+            "interval": interval,
+            "results": [],
+            "rows": [],
+            "ohlc": [],
+            "volume": [],
         }
 
-        cache.set(cache_key, payload, 60 * 10)
-        return JsonResponse(payload, json_dumps_params={"ensure_ascii": False})
+    payload.setdefault("code", code)
+    payload.setdefault("range", range_key)
+    payload.setdefault("interval", interval)
+    payload.setdefault("requested_interval", interval)
+    payload.setdefault("results", payload.get("rows", []))
+    payload.setdefault("rows", payload.get("results", []))
+    payload.setdefault("ohlc", [])
+    payload.setdefault("volume", [])
 
+    timeout = _chart_payload_cache_timeout(code, interval)
+    if payload.get("ok") and timeout > 0:
+        cache.set(cache_key, payload, timeout)
+
+    return JsonResponse(payload, json_dumps_params={"ensure_ascii": False})
+
+
+@require_GET
+def api_ohlcv(request, code):
+    """종목 상세 화면의 기본 OHLCV 데이터 API."""
+    stock_code, range_key, interval, refresh = _request_chart_params(request, default_code=code)
+    return _chart_json_response(stock_code, range_key, interval, refresh=refresh)
+
+
+@require_GET
+def api_chart(request):
+    """검색/인사이트/외부 컴포넌트에서 code 쿼리로 호출하는 차트 데이터 API."""
+    code, range_key, interval, refresh = _request_chart_params(request)
+    return _chart_json_response(code, range_key, interval, refresh=refresh)
+
+
+@require_GET
+def api_market_temperature(request):
+    """이전 프론트가 호출하던 시장지표 경로를 global_market_temperature_api로 연결합니다."""
+    try:
+        from .global_market_api import global_market_temperature_api
+        return global_market_temperature_api(request)
     except Exception as exc:
-        payload = _default_market_temperature_payload(str(exc))
-        cache.set(cache_key, payload, 60 * 2)
-        return JsonResponse(payload, json_dumps_params={"ensure_ascii": False})
-
+        return JsonResponse(
+            {
+                "ok": False,
+                "message": f"시장지표 데이터를 불러오지 못했습니다: {exc}",
+                "results": [],
+                "data": [],
+            },
+            status=200,
+            json_dumps_params={"ensure_ascii": False},
+        )
 
 
 # -----------------------------------------------------------------------------
@@ -2884,9 +3188,10 @@ def features_view(request):
 
 
 def pricing_view(request):
-    return render(request, "stocks/pricing.html", {
-        "active_nav": "pricing",
-    })
+    return render(request, "stocks/pricing.html", _premium_template_context(
+        request,
+        active_nav="pricing",
+    ))
 
 # -----------------------------------------------------------------------------
 # 로그인 사용자별 차트 지표 서버 저장 API
@@ -2900,7 +3205,7 @@ def _normalize_chart_indicators(indicators):
     if not isinstance(indicators, list):
         return []
 
-    allowed_types = {"ma_pack", "volume", "rsi", "macd", "stoch", "boll", "ichimoku"}
+    allowed_types = {"ma_pack", "volume", "rsi", "macd", "stoch", "boll", "ichimoku", "fvg", "ma_cross"}
     normalized = []
 
     for index, raw in enumerate(indicators[:80]):
@@ -2921,6 +3226,8 @@ def _normalize_chart_indicators(indicators):
             "dColor", "backgroundColor", "signalColor", "histUpColor", "histDownColor",
             "levelColor", "conversionColor", "baseColor", "spanAColor", "spanBColor",
             "laggingColor", "cloudUpColor", "cloudDownColor",
+            "aggregation", "direction", "metric", "startDate", "endDate", "positiveColor", "negativeColor",
+            "highColor", "lowColor", "buyColor", "sellColor", "neutralColor", "signalMode", "timeframe", "strategyMode", "statusFilter", "gapType", "maType", "bullColor", "bearColor", "filledColor", "bullBorderColor", "bearBorderColor",
         ]:
             if key in item:
                 item[key] = str(item.get(key) or "")[:120]
@@ -2928,6 +3235,7 @@ def _normalize_chart_indicators(indicators):
         for key in [
             "period", "width", "fast", "slow", "signal", "maPeriod", "upper", "middle", "lower",
             "rsiPeriod", "conversion", "base", "spanB", "displacement", "kSmoothing", "dSmoothing",
+            "rightBars", "maxSignals", "maFast", "maSlow", "turtleEntry", "turtleExit", "maxExtensionPct", "minGapPct", "maxBoxes", "fastPeriod", "slowPeriod",
         ]:
             if key in item:
                 try:
@@ -2940,9 +3248,15 @@ def _normalize_chart_indicators(indicators):
             "showRsi", "showRsiMa", "showUpper", "showMiddle", "showLower", "showK", "showD",
             "showBackground", "showHistogram", "showMacd", "showSignal", "showLevels",
             "showConversion", "showBase", "showSpanA", "showSpanB", "showLagging", "showCloudFill",
+            "showStructure", "showSignals", "showLastState", "repeatSignals", "useMAFilter", "useStructureFilter", "useTurtleExit", "showBoxes", "showRetestSignals", "showLabels", "showBullish", "showBearish", "showLines",
         ]:
             if key in item:
-                item[key] = bool(item[key])
+                raw_bool = item[key]
+                if isinstance(raw_bool, str):
+                    item[key] = raw_bool.strip().lower() not in {"false", "0", "no", "off", ""}
+                else:
+                    item[key] = bool(raw_bool)
+
 
         if item["type"] == "ma_pack":
             lines = item.get("lines") if isinstance(item.get("lines"), list) else []

@@ -131,6 +131,9 @@ urlpatterns = [
 
     # tools
     path("tools/youtube-keyword/", include("apps.youtube_keyword.urls")),
+
+    path("tools/stock-screener/", include("apps.stock_screener.urls")),
+
 ]
 
 if settings.DEBUG:

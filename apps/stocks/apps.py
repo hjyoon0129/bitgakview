@@ -5,3 +5,4 @@ class StocksConfig(AppConfig):
     default_auto_field = "django.db.models.BigAutoField"
     name = "apps.stocks"
     label = "stocks"
+    verbose_name = "주식/차트"

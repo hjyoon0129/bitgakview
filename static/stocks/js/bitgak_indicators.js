@@ -47,6 +47,31 @@
   ];
   const FAVORITE_KEY = "bitgak_indicator_favorites_v1";
 
+
+  const CHART_API_URL = app && app.dataset
+    ? (app.dataset.apiUrl || ("/stocks/api/ohlcv/" + encodeURIComponent(CURRENT_STOCK_CODE) + "/"))
+    : ("/stocks/api/ohlcv/" + encodeURIComponent(CURRENT_STOCK_CODE) + "/");
+
+  const STRATEGY_TIMEFRAME_OPTIONS = [
+    { value: "current", label: "현재 차트 기준" },
+    { value: "4h", label: "4시간봉 기준" },
+    { value: "1d", label: "일봉 기준" },
+    { value: "1w", label: "주봉 기준" },
+    { value: "1mo", label: "월봉 기준" },
+  ];
+
+  // 과거 저장값 호환용 별칭입니다. HH/LL 지표 자체는 더 이상 카탈로그에 노출하지 않습니다.
+  const HHLL_TIMEFRAME_OPTIONS = STRATEGY_TIMEFRAME_OPTIONS;
+  const HHLL_SIGNAL_MODE_OPTIONS = [];
+  const TOTAL_STRATEGY_MODE_OPTIONS = [];
+
+  const FVG_STATUS_OPTIONS = [
+    { value: "open", label: "미체결 갭만 표시" },
+    { value: "all", label: "전체 갭 표시" },
+    { value: "filled", label: "채워진 갭만 표시" },
+  ];
+
+
   // v7 서버 저장 모드: stock_detail의 지표 상태는 localStorage가 아니라
   // 로그인 사용자 + 종목코드 기준 서버 API에 저장한다.
   // 인사이트 iframe은 부모 페이지의 chart_snapshot 서버 저장 흐름을 사용한다.
@@ -237,6 +262,24 @@
       color: "#64748b",
     },
     {
+      type: "fvg",
+      name: "FVG 갭 전략",
+      shortName: "FVG",
+      desc: "3개 캔들 사이의 Fair Value Gap 불균형 구간을 박스로 표시합니다. 미체결 갭, 채워진 갭, 리테스트 신호를 설정할 수 있습니다.",
+      keywords: "fvg fair value gap ict imbalance order block 갭전략 불균형 페어밸류갭 매수 매도 리테스트",
+      defaultPeriod: 3,
+      color: "#06b6d4",
+    },
+    {
+      type: "ma_cross",
+      name: "이평선 크로스 전략",
+      shortName: "CROSS",
+      desc: "빠른 이평선과 느린 이평선의 골든크로스·데드크로스를 BUY/SELL 신호로 표시합니다. 기본값은 112/224입니다.",
+      keywords: "ma cross moving average golden cross death cross 112 224 이평선 골든크로스 데드크로스 buy sell 매수 매도",
+      defaultPeriod: 112,
+      color: "#22c55e",
+    },
+    {
       type: "rsi",
       name: "RSI",
       shortName: "RSI",
@@ -302,6 +345,10 @@
     if (value === "ich" || value === "ichimoku_cloud" || value === "일목구름") return "ichimoku";
     if (value === "stoch" || value === "stochastic" || value === "stocastic" || value === "스토캐스틱") return "stoch";
     if (value === "macdrsi" || value === "macd+rsi" || value === "macd_rsi" || value === "macd_rsi_combo") return "macd";
+    if (["fvg", "fairvaluegap", "fair_value_gap", "gap", "ict", "imbalance", "불균형", "페어밸류갭", "갭전략"].includes(value)) return "fvg";
+    if (["ma_cross", "macross", "cross", "goldencross", "golden_cross", "deathcross", "death_cross", "이평선크로스", "골든크로스", "데드크로스", "112224"].includes(value)) return "ma_cross";
+    // 과거 버전 저장값은 복원하지 않습니다. 요청에 따라 투자자 수급과 HH/LL 계열은 지표 목록에서 제거합니다.
+    if (["investor", "investor_flow", "investorflow", "수급", "투자자수급", "hhll", "hh_ll", "hh-ll", "higherhigh", "higher_high", "lowerlow", "lower_low", "marketstructure", "market_structure", "구조", "구조전략", "고점저점", "추세전환", "total", "total_strategy", "토탈", "토탈전략", "터틀", "turtle"].includes(value)) return "";
     return value || "ma_pack";
   }
 
@@ -330,16 +377,24 @@
     }) || null;
   }
 
+  function isCatalogIndicatorType(type) {
+    const fixed = fixType(type);
+    return catalog.some(function (item) { return item.type === fixed; });
+  }
+
   function readFavoriteTypes() {
     try {
       const saved = JSON.parse(localStorage.getItem(FAVORITE_KEY));
-      if (Array.isArray(saved)) return saved.map(fixType).filter(Boolean);
+      if (Array.isArray(saved)) {
+        const filtered = saved.map(fixType).filter(function (type) { return type && isCatalogIndicatorType(type); });
+        if (filtered.length) return Array.from(new Set(filtered));
+      }
     } catch (e) {}
-    return ["volume", "macd"];
+    return ["volume", "macd", "ma_cross"];
   }
 
   function saveFavoriteTypes() {
-    localStorage.setItem(FAVORITE_KEY, JSON.stringify(Array.from(new Set(favoriteTypes.map(fixType)))));
+    localStorage.setItem(FAVORITE_KEY, JSON.stringify(Array.from(new Set(favoriteTypes.map(fixType).filter(isCatalogIndicatorType)))));
   }
 
   let insightIndicatorNotifyTimer = null;
@@ -481,12 +536,14 @@
     return typeof value === "string" && value.trim() ? value.trim() : fallback;
   }
 
+
   function normalizeIndicator(raw) {
     if (!raw) return null;
 
     const legacyId = raw.id || raw.uid;
     const originalType = raw.type || legacyId;
     const type = fixType(originalType);
+    if (!isCatalogIndicatorType(type)) return null;
     const meta = getMeta(type);
     const settings = raw.settings || {};
 
@@ -545,6 +602,50 @@
       signal: clampNumber(raw.signal || settings.signal || 9, 1, 500, 9),
       series: [],
     };
+
+
+    if (type === "fvg") {
+      return Object.assign(base, {
+        type: "fvg",
+        source: "price",
+        timeframe: normalizeHHLLTimeframe(raw.timeframe || settings.timeframe || "current"),
+        minGapPct: clampNumber(raw.minGapPct || settings.minGapPct || 0.3, 0, 50, 0.3),
+        maxZones: clampNumber(raw.maxZones || settings.maxZones || 30, 1, 300, 30),
+        statusFilter: ["open", "all", "filled"].includes(String(raw.statusFilter || settings.statusFilter || "open")) ? String(raw.statusFilter || settings.statusFilter || "open") : "open",
+        extendBars: clampNumber(raw.extendBars || settings.extendBars || 80, 5, 1000, 80),
+        showBullish: normalizeBool(raw.showBullish ?? settings.showBullish, true),
+        showBearish: normalizeBool(raw.showBearish ?? settings.showBearish, true),
+        showLabels: normalizeBool(raw.showLabels ?? settings.showLabels, true),
+        showRetestSignals: normalizeBool(raw.showRetestSignals ?? settings.showRetestSignals, true),
+        bullColor: normalizeColor(raw.bullColor || settings.bullColor, "rgba(20, 184, 166, 0.24)"),
+        bearColor: normalizeColor(raw.bearColor || settings.bearColor, "rgba(239, 68, 68, 0.24)"),
+        bullBorderColor: normalizeColor(raw.bullBorderColor || settings.bullBorderColor, "#14b8a6"),
+        bearBorderColor: normalizeColor(raw.bearBorderColor || settings.bearBorderColor, "#ef4444"),
+        buyColor: normalizeColor(raw.buyColor || settings.buyColor, "#16a34a"),
+        sellColor: normalizeColor(raw.sellColor || settings.sellColor, "#ef4444"),
+      });
+    }
+
+    if (type === "ma_cross") {
+      const fast = clampNumber(raw.fastPeriod || raw.fast || settings.fastPeriod || settings.fast || 112, 1, 2000, 112);
+      const slow = clampNumber(raw.slowPeriod || raw.slow || settings.slowPeriod || settings.slow || 224, 2, 3000, 224);
+      return Object.assign(base, {
+        type: "ma_cross",
+        source: raw.source || settings.source || "close",
+        timeframe: normalizeHHLLTimeframe(raw.timeframe || settings.timeframe || "current"),
+        fastPeriod: fast,
+        slowPeriod: slow <= fast ? fast + 1 : slow,
+        method: METHOD_OPTIONS.some(function (x) { return x.value === String(raw.method || settings.method || "sma").toLowerCase(); }) ? String(raw.method || settings.method || "sma").toLowerCase() : "sma",
+        maxSignals: clampNumber(raw.maxSignals || settings.maxSignals || 80, 5, 1000, 80),
+        showLines: normalizeBool(raw.showLines ?? settings.showLines, true),
+        showSignals: normalizeBool(raw.showSignals ?? settings.showSignals, true),
+        showLastState: normalizeBool(raw.showLastState ?? settings.showLastState, true),
+        fastColor: normalizeColor(raw.fastColor || settings.fastColor, "#3b82f6"),
+        slowColor: normalizeColor(raw.slowColor || settings.slowColor, "#f97316"),
+        buyColor: normalizeColor(raw.buyColor || settings.buyColor, "#16a34a"),
+        sellColor: normalizeColor(raw.sellColor || settings.sellColor, "#ef4444"),
+      });
+    }
 
     if (type === "boll") {
       return Object.assign(base, {
@@ -1090,6 +1191,22 @@
   }
 
 
+  function chartDateKeyFromRow(row) {
+    const raw = String((row && (row.display_time || row.date || row.datetime || row.time)) || "");
+    const match = raw.match(/^(\d{4}-\d{2}-\d{2})/);
+    return match ? match[1] : raw;
+  }
+
+  function buildChartDateToTimeMap() {
+    const map = new Map();
+    const rows = api.getRows ? api.getRows() : [];
+    (rows || []).forEach(function (row) {
+      const key = chartDateKeyFromRow(row);
+      if (key && !map.has(key)) map.set(key, row.time);
+    });
+    return map;
+  }
+
   function formatCompactNumber(value) {
     const n = Number(value || 0);
     if (!Number.isFinite(n)) return "-";
@@ -1255,6 +1372,7 @@
         color: kColor,
       };
     }
+
 
     return null;
   }
@@ -1779,12 +1897,978 @@
   }
 
 
+
+  function normalizeHHLLTimeframe(value) {
+    const raw = String(value || "current").trim().toLowerCase();
+    const map = {
+      "chart": "current", "현재": "current", "현재차트": "current", "current": "current",
+      "4h": "4h", "240": "4h", "4시간": "4h", "4시간봉": "4h",
+      "d": "1d", "1d": "1d", "day": "1d", "daily": "1d", "일": "1d", "일봉": "1d",
+      "w": "1w", "1w": "1w", "week": "1w", "weekly": "1w", "주": "1w", "주봉": "1w",
+      "m": "1mo", "1m": "1mo", "1mo": "1mo", "month": "1mo", "monthly": "1mo", "월": "1mo", "월봉": "1mo"
+    };
+    return map[raw] || "current";
+  }
+
+  function normalizeHHLLSignalMode(value) {
+    const raw = String(value || "pullback").trim().toLowerCase();
+    if (["break", "breakout", "돌파", "돌파확인", "structure"].includes(raw)) return "breakout";
+    if (["both", "all", "둘다", "전체"].includes(raw)) return "both";
+    return "pullback";
+  }
+
+  function normalizeTotalStrategyMode(value) {
+    const raw = String(value || "total").trim().toLowerCase();
+    if (["ma", "ma_cross", "cross", "golden", "golden_cross", "골든", "골든크로스"].includes(raw)) return "ma_cross";
+    if (["turtle", "터틀", "donchian", "breakout"].includes(raw)) return "turtle";
+    if (["structure", "hhll", "hh_ll", "구조", "구조만"].includes(raw)) return "structure";
+    return "total";
+  }
+
+  function totalStrategyModeLabel(value) {
+    const found = TOTAL_STRATEGY_MODE_OPTIONS.find(function (item) { return item.value === normalizeTotalStrategyMode(value); });
+    return found ? found.label.split(" · ")[0] : "토탈 기본";
+  }
+
+  function hhllTimeframeLabel(value) {
+    const found = HHLL_TIMEFRAME_OPTIONS.find(function (item) { return item.value === normalizeHHLLTimeframe(value); });
+    return found ? found.label.replace(" 기준", "") : "현재 차트";
+  }
+
+  function hhllSignalModeLabel(value) {
+    const found = HHLL_SIGNAL_MODE_OPTIONS.find(function (item) { return item.value === normalizeHHLLSignalMode(value); });
+    return found ? found.label.split(" · ")[0] : "눌림 확인형";
+  }
+
+  function hhllLabelColor(label, indicator) {
+    if (label === "HH" || label === "LH") return indicator.highColor || "#38bdf8";
+    if (label === "HL" || label === "LL") return indicator.lowColor || "#facc15";
+    return indicator.neutralColor || "#64748b";
+  }
+
+  function hhllRowDateKey(row) {
+    return chartDateKeyFromRow(row);
+  }
+
+  function getCurrentChartDateEntries() {
+    const rows = api.getRows ? api.getRows() : [];
+    return (rows || []).map(function (row, index) {
+      return {
+        index,
+        date: hhllRowDateKey(row),
+        time: row.time,
+        row,
+      };
+    }).filter(function (item) { return item.date; });
+  }
+
+  function alignHHLLTimeToCurrentChart(row) {
+    const dateKey = hhllRowDateKey(row);
+    if (!dateKey) return row.time;
+
+    const entries = getCurrentChartDateEntries();
+    if (!entries.length) return row.time || dateKey;
+
+    for (let i = 0; i < entries.length; i++) {
+      if (entries[i].date === dateKey) return entries[i].time;
+    }
+
+    // 주봉/월봉 신호 날짜가 현재 차트의 휴장일·월말과 정확히 맞지 않을 수 있어 가장 가까운 이전 봉에 붙인다.
+    let candidate = null;
+    for (let i = 0; i < entries.length; i++) {
+      if (entries[i].date <= dateKey) candidate = entries[i];
+      else break;
+    }
+    return candidate ? candidate.time : (row.time || dateKey);
+  }
+
+  function alignHHLLStructureToCurrentChart(structure) {
+    if (!structure) return structure;
+
+    function alignItem(item) {
+      if (!item) return item;
+      const row = item.row || {};
+      const alignedTime = alignHHLLTimeToCurrentChart(row);
+      return Object.assign({}, item, { time: alignedTime });
+    }
+
+    const pivots = (structure.pivots || []).map(alignItem);
+    const signals = (structure.signals || []).map(alignItem);
+    const lastSignal = signals.length ? signals[signals.length - 1] : null;
+    return Object.assign({}, structure, { pivots, signals, lastSignal });
+  }
+
+  function normalizeHHLLRowsFromPayload(data) {
+    const rawRows = Array.isArray(data && data.rows) ? data.rows : [];
+    return rawRows.map(function (row) {
+      const time = row.time || row.datetime || row.date || row.display_time;
+      const display = row.display_time || row.datetime || row.date || row.time || "";
+      return {
+        time: time,
+        display_time: display,
+        date: String(display || time || "").slice(0, 10),
+        open: Number(row.open),
+        high: Number(row.high),
+        low: Number(row.low),
+        close: Number(row.close),
+        volume: Number(row.volume || 0),
+      };
+    }).filter(function (row) {
+      return row.time !== undefined && row.time !== null && Number.isFinite(row.high) && Number.isFinite(row.low) && Number.isFinite(row.close);
+    });
+  }
+
+  function hhllFetchUrl(interval) {
+    const url = new URL(CHART_API_URL, window.location.origin);
+    url.searchParams.set("code", CURRENT_STOCK_CODE);
+    url.searchParams.set("symbol", CURRENT_STOCK_CODE);
+    url.searchParams.set("interval", interval);
+    url.searchParams.set("display_interval", interval);
+    url.searchParams.set("resolution", interval);
+    url.searchParams.set("range", interval === "4h" ? "120d" : "all");
+    url.searchParams.set("timeframe", interval === "4h" ? "intraday" : "daily");
+    return url.toString();
+  }
+
+  async function fetchHHLLRows(indicator) {
+    const timeframe = normalizeHHLLTimeframe(indicator.timeframe || "1d");
+    if (timeframe === "current") return api.getRows ? api.getRows() : [];
+
+    const url = hhllFetchUrl(timeframe);
+    if (indicator.__hhllRowsPayload && indicator.__hhllRowsCacheKey === url) {
+      return indicator.__hhllRowsPayload;
+    }
+
+    const res = await fetch(url, {
+      method: "GET",
+      headers: { "Accept": "application/json", "X-Requested-With": "XMLHttpRequest" },
+      credentials: "same-origin",
+      cache: "no-store",
+    });
+    const data = await res.json().catch(function () { return {}; });
+    if (!res.ok || data.ok === false) throw new Error((data && data.message) || "HH/LL 기준 차트 데이터를 불러오지 못했습니다.");
+    const rows = normalizeHHLLRowsFromPayload(data);
+    indicator.__hhllRowsCacheKey = url;
+    indicator.__hhllRowsPayload = rows;
+    return rows;
+  }
+
+  function calculateHHLLStructure(rows, indicator) {
+    rows = Array.isArray(rows) ? rows : [];
+    const left = Math.max(1, Number(indicator.period || 4));
+    const right = Math.max(1, Number(indicator.rightBars || 3));
+    const maxItems = Math.max(20, Number(indicator.maxSignals || 90));
+    const signalMode = normalizeHHLLSignalMode(indicator.signalMode || "pullback");
+    const strategyMode = normalizeTotalStrategyMode(indicator.strategyMode || "total");
+    const repeatSignals = normalizeBool(indicator.repeatSignals, false);
+    const useMAFilter = normalizeBool(indicator.useMAFilter, true);
+    const useStructureFilter = normalizeBool(indicator.useStructureFilter, true);
+    const useTurtleExit = normalizeBool(indicator.useTurtleExit, true);
+    const fastPeriod = Math.max(5, Number(indicator.maFast || 112));
+    const slowPeriod = Math.max(fastPeriod + 1, Number(indicator.maSlow || 224));
+    const turtleEntry = Math.max(5, Number(indicator.turtleEntry || 20));
+    const turtleExit = Math.max(2, Number(indicator.turtleExit || 10));
+    const maxExtensionPct = Math.max(0, Number(indicator.maxExtensionPct || 15));
+    const pivots = [];
+
+    if (rows.length < left + right + 3) {
+      return { pivots: [], signals: [], state: "NEUTRAL", lastSignal: null };
+    }
+
+    function finiteHigh(row) {
+      const v = Number(row && row.high);
+      return Number.isFinite(v) ? v : null;
+    }
+    function finiteLow(row) {
+      const v = Number(row && row.low);
+      return Number.isFinite(v) ? v : null;
+    }
+    function finiteClose(row) {
+      const v = Number(row && row.close);
+      return Number.isFinite(v) ? v : null;
+    }
+
+    function smaAt(index, period) {
+      if (index < period - 1) return null;
+      let sum = 0;
+      for (let i = index - period + 1; i <= index; i++) {
+        const close = finiteClose(rows[i]);
+        if (close === null) return null;
+        sum += close;
+      }
+      return sum / period;
+    }
+
+    const maFast = rows.map(function (_, index) { return smaAt(index, fastPeriod); });
+    const maSlow = rows.map(function (_, index) { return smaAt(index, slowPeriod); });
+
+    function highestHighBefore(index, lookback) {
+      if (index < lookback) return null;
+      let value = -Infinity;
+      for (let i = index - lookback; i < index; i++) {
+        const h = finiteHigh(rows[i]);
+        if (h === null) return null;
+        value = Math.max(value, h);
+      }
+      return value === -Infinity ? null : value;
+    }
+
+    function lowestLowBefore(index, lookback) {
+      if (index < lookback) return null;
+      let value = Infinity;
+      for (let i = index - lookback; i < index; i++) {
+        const l = finiteLow(rows[i]);
+        if (l === null) return null;
+        value = Math.min(value, l);
+      }
+      return value === Infinity ? null : value;
+    }
+
+    for (let i = left; i < rows.length - right; i++) {
+      const h = finiteHigh(rows[i]);
+      const l = finiteLow(rows[i]);
+      if (h === null || l === null) continue;
+
+      let isHigh = true;
+      let isLow = true;
+
+      for (let j = i - left; j <= i + right; j++) {
+        if (j === i) continue;
+        const otherHigh = finiteHigh(rows[j]);
+        const otherLow = finiteLow(rows[j]);
+        if (otherHigh !== null && otherHigh >= h) isHigh = false;
+        if (otherLow !== null && otherLow <= l) isLow = false;
+        if (!isHigh && !isLow) break;
+      }
+
+      if (isHigh) pivots.push({ kind: "high", index: i, time: rows[i].time, price: h, row: rows[i] });
+      if (isLow) pivots.push({ kind: "low", index: i, time: rows[i].time, price: l, row: rows[i] });
+    }
+
+    pivots.sort(function (a, b) {
+      if (a.index !== b.index) return a.index - b.index;
+      return a.kind === "low" ? -1 : 1;
+    });
+
+    let prevHigh = null;
+    let prevLow = null;
+    let lastHighLabel = "";
+    let lastLowLabel = "";
+    let structureState = "NEUTRAL";
+    const pivotsByIndex = new Map();
+
+    pivots.forEach(function (pivot) {
+      if (pivot.kind === "high") {
+        pivot.label = prevHigh === null ? "H" : (pivot.price > prevHigh.price ? "HH" : "LH");
+        prevHigh = pivot;
+        lastHighLabel = pivot.label;
+      } else {
+        pivot.label = prevLow === null ? "L" : (pivot.price > prevLow.price ? "HL" : "LL");
+        prevLow = pivot;
+        lastLowLabel = pivot.label;
+      }
+
+      pivot.structureSignal = "";
+      if (pivot.kind === "low" && pivot.label === "HL" && lastHighLabel === "HH") {
+        structureState = "BULL";
+        pivot.structureSignal = "BUY_PULLBACK";
+      } else if (pivot.kind === "high" && pivot.label === "HH" && lastLowLabel === "HL") {
+        if (structureState !== "BULL") structureState = "BULL_OBSERVE";
+        pivot.structureSignal = "BUY_BREAKOUT";
+      } else if (pivot.kind === "high" && pivot.label === "LH" && lastLowLabel === "LL") {
+        structureState = "BEAR";
+        pivot.structureSignal = "SELL_PULLBACK";
+      } else if (pivot.kind === "low" && pivot.label === "LL" && lastHighLabel === "LH") {
+        if (structureState !== "BEAR") structureState = "BEAR_OBSERVE";
+        pivot.structureSignal = "SELL_BREAKOUT";
+      }
+
+      if (!pivotsByIndex.has(pivot.index)) pivotsByIndex.set(pivot.index, []);
+      pivotsByIndex.get(pivot.index).push(pivot);
+    });
+
+    const signals = [];
+    let liveStructureState = "NEUTRAL";
+    let lastSignalType = "";
+
+    function maTrendAt(index) {
+      const fast = maFast[index];
+      const slow = maSlow[index];
+      const prevFast = maFast[index - 1];
+      const prevSlow = maSlow[index - 1];
+      const close = finiteClose(rows[index]);
+      const maReady = Number.isFinite(fast) && Number.isFinite(slow);
+      const maBull = maReady ? fast > slow : true;
+      const maBear = maReady ? fast < slow : false;
+      const goldenCross = maReady && Number.isFinite(prevFast) && Number.isFinite(prevSlow) && prevFast <= prevSlow && fast > slow;
+      const deathCross = maReady && Number.isFinite(prevFast) && Number.isFinite(prevSlow) && prevFast >= prevSlow && fast < slow;
+      const extensionPct = maReady && close !== null && fast ? ((close - fast) / fast) * 100 : 0;
+      const overExtended = maReady && close !== null && maxExtensionPct > 0 ? extensionPct > maxExtensionPct : false;
+      const aboveFast = !maReady || close === null ? true : close >= fast;
+      const belowFast = maReady && close !== null ? close < fast : false;
+      return { fast, slow, maReady, maBull, maBear, goldenCross, deathCross, extensionPct, overExtended, aboveFast, belowFast };
+    }
+
+    function turtleAt(index) {
+      const close = finiteClose(rows[index]);
+      const highBreak = highestHighBefore(index, turtleEntry);
+      const lowExit = lowestLowBefore(index, turtleExit);
+      return {
+        entry: close !== null && highBreak !== null && close > highBreak,
+        exit: close !== null && lowExit !== null && close < lowExit,
+      };
+    }
+
+    function canPush(type) {
+      return repeatSignals || lastSignalType !== type;
+    }
+
+    function pushSignal(type, index, pivot, reason) {
+      if (!rows[index] || !canPush(type)) return;
+      lastSignalType = type;
+      const isBuy = type === "BUY";
+      const row = rows[index];
+      signals.push({
+        type,
+        index,
+        time: pivot ? pivot.time : row.time,
+        price: pivot ? pivot.price : (isBuy ? Number(row.low || row.close) : Number(row.high || row.close)),
+        pivot: pivot || null,
+        row: pivot ? pivot.row : row,
+        mode: strategyMode,
+        reason: reason || "",
+      });
+    }
+
+    for (let i = 1; i < rows.length; i++) {
+      const pivotEvents = pivotsByIndex.get(i) || [];
+      pivotEvents.forEach(function (pivot) {
+        if (pivot.structureSignal === "BUY_PULLBACK") liveStructureState = "BULL";
+        else if (pivot.structureSignal === "BUY_BREAKOUT" && liveStructureState !== "BULL") liveStructureState = "BULL_OBSERVE";
+        else if (pivot.structureSignal === "SELL_PULLBACK") liveStructureState = "BEAR";
+        else if (pivot.structureSignal === "SELL_BREAKOUT" && liveStructureState !== "BEAR") liveStructureState = "BEAR_OBSERVE";
+      });
+
+      const trend = maTrendAt(i);
+      const turtle = turtleAt(i);
+      const bullStruct = !useStructureFilter || liveStructureState === "BULL" || liveStructureState === "BULL_OBSERVE";
+      const bearStruct = liveStructureState === "BEAR" || liveStructureState === "BEAR_OBSERVE";
+      const maBullOk = !useMAFilter || trend.maBull;
+      const maBearOk = useMAFilter && trend.maBear;
+      const buyAllowed = maBullOk && bullStruct && trend.aboveFast && !trend.overExtended;
+
+      const pullbackBuyPivot = pivotEvents.find(function (p) { return p.structureSignal === "BUY_PULLBACK"; }) || null;
+      const breakoutBuyPivot = pivotEvents.find(function (p) { return p.structureSignal === "BUY_BREAKOUT"; }) || null;
+      const pullbackSellPivot = pivotEvents.find(function (p) { return p.structureSignal === "SELL_PULLBACK"; }) || null;
+      const breakoutSellPivot = pivotEvents.find(function (p) { return p.structureSignal === "SELL_BREAKOUT"; }) || null;
+
+      if (strategyMode === "ma_cross") {
+        if (trend.goldenCross && !trend.overExtended && (!useStructureFilter || !bearStruct)) pushSignal("BUY", i, null, fastPeriod + "/" + slowPeriod + " 골든크로스");
+        if (trend.deathCross || (useTurtleExit && turtle.exit)) pushSignal("SELL", i, null, trend.deathCross ? fastPeriod + "/" + slowPeriod + " 데드크로스" : "터틀 이탈");
+        continue;
+      }
+
+      if (strategyMode === "turtle") {
+        if (turtle.entry && maBullOk && !trend.overExtended) pushSignal("BUY", i, null, "터틀 " + turtleEntry + "봉 돌파");
+        if (turtle.exit || maBearOk) pushSignal("SELL", i, null, turtle.exit ? "터틀 " + turtleExit + "봉 이탈" : "장기 이평 약세");
+        continue;
+      }
+
+      if (strategyMode === "structure") {
+        if ((signalMode === "pullback" || signalMode === "both") && pullbackBuyPivot && !trend.overExtended) pushSignal("BUY", i, pullbackBuyPivot, "HH 이후 HL 확인");
+        if ((signalMode === "breakout" || signalMode === "both") && breakoutBuyPivot && !trend.overExtended) pushSignal("BUY", i, breakoutBuyPivot, "HL 이후 HH 돌파");
+        if ((signalMode === "pullback" || signalMode === "both") && pullbackSellPivot) pushSignal("SELL", i, pullbackSellPivot, "LL 이후 LH 확인");
+        if ((signalMode === "breakout" || signalMode === "both") && breakoutSellPivot) pushSignal("SELL", i, breakoutSellPivot, "LH 이후 LL 이탈");
+        continue;
+      }
+
+      // 토탈 기본: 고점 추격을 막기 위해 112/224 상승추세 + 구조 확인 + 112선 대비 과열 제한을 통과해야 BUY를 표시한다.
+      // 터틀은 기본적으로 매수 추격보다 리스크 관리(이탈 SELL)에 더 강하게 사용한다.
+      if (trend.deathCross || (useTurtleExit && turtle.exit) || (bearStruct && (pullbackSellPivot || breakoutSellPivot)) || (lastSignalType === "BUY" && trend.belowFast && useTurtleExit)) {
+        pushSignal("SELL", i, pullbackSellPivot || breakoutSellPivot || null, trend.deathCross ? fastPeriod + "/" + slowPeriod + " 데드크로스" : (turtle.exit ? "터틀 이탈" : "약세 구조/112선 이탈"));
+        continue;
+      }
+
+      if (buyAllowed && pullbackBuyPivot) {
+        pushSignal("BUY", i, pullbackBuyPivot, "112/224 상승 + HH 이후 HL 눌림");
+        continue;
+      }
+
+      if (buyAllowed && trend.goldenCross) {
+        pushSignal("BUY", i, null, fastPeriod + "/" + slowPeriod + " 골든크로스");
+        continue;
+      }
+
+      if (buyAllowed && turtle.entry && liveStructureState === "BULL") {
+        pushSignal("BUY", i, null, "터틀 돌파 + 상승 구조");
+        continue;
+      }
+    }
+
+    const filteredPivots = pivots.filter(function (p) { return ["HH", "HL", "LH", "LL"].includes(p.label); }).slice(-maxItems);
+    const filteredSignals = signals.slice(-Math.max(10, Math.floor(maxItems / 2)));
+    const lastSignal = filteredSignals.length ? filteredSignals[filteredSignals.length - 1] : null;
+    const finalState = lastSignal ? (lastSignal.type === "BUY" ? "BULL" : "BEAR") : liveStructureState;
+
+    return {
+      pivots: filteredPivots,
+      signals: filteredSignals,
+      state: finalState,
+      lastSignal,
+      basisLabel: hhllTimeframeLabel(indicator.timeframe || "1d"),
+      signalModeLabel: totalStrategyModeLabel(strategyMode),
+      maFast: fastPeriod,
+      maSlow: slowPeriod,
+      turtleEntry,
+      turtleExit,
+      maxExtensionPct,
+    };
+  }
+
+  function createHHLLOverlay(indicator, structure) {
+    const wrap = (typeof api.getChartContainer === "function" ? api.getChartContainer() : null) || document.getElementById("chartWrap") || document.getElementById("tvChart");
+    const chart = api.chart || (typeof api.getChart === "function" ? api.getChart() : null);
+    const candle = api.candleSeries || api.mainSeries || null;
+    if (!wrap || !chart || !candle || !chart.timeScale || !candle.priceToCoordinate) return null;
+
+    const computed = window.getComputedStyle(wrap);
+    if (computed.position === "static") wrap.style.position = "relative";
+
+    const layer = document.createElement("div");
+    layer.className = "bitgak-hhll-layer";
+    layer.setAttribute("aria-hidden", "true");
+    layer.style.position = "absolute";
+    layer.style.inset = "0";
+    layer.style.pointerEvents = "none";
+    layer.style.zIndex = "12";
+    layer.style.overflow = "hidden";
+    wrap.appendChild(layer);
+
+    function markerHtml(text, color, x, y, isSignal, signalType) {
+      const el = document.createElement("div");
+      el.className = isSignal ? "bitgak-hhll-signal bitgak-hhll-signal-" + String(signalType || "").toLowerCase() : "bitgak-hhll-marker";
+      el.textContent = text;
+      el.style.position = "absolute";
+      el.style.left = Math.round(x) + "px";
+      el.style.top = Math.round(y) + "px";
+      el.style.transform = "translate(-50%, -50%)";
+      el.style.minWidth = isSignal ? "42px" : "28px";
+      el.style.height = isSignal ? "22px" : "20px";
+      el.style.padding = isSignal ? "0 8px" : "0 6px";
+      el.style.borderRadius = isSignal ? "999px" : "8px";
+      el.style.display = "inline-flex";
+      el.style.alignItems = "center";
+      el.style.justifyContent = "center";
+      el.style.fontSize = isSignal ? "11px" : "10px";
+      el.style.fontWeight = "1000";
+      el.style.letterSpacing = "-0.02em";
+      el.style.color = "#ffffff";
+      el.style.background = color;
+      el.style.boxShadow = "0 8px 20px rgba(15,23,42,.22), 0 0 0 1px rgba(255,255,255,.52) inset";
+      layer.appendChild(el);
+    }
+
+    function stateBadge(text, color) {
+      const el = document.createElement("div");
+      el.className = "bitgak-hhll-state";
+      el.textContent = text;
+      el.style.position = "absolute";
+      el.style.right = "12px";
+      el.style.top = "12px";
+      el.style.height = "28px";
+      el.style.padding = "0 12px";
+      el.style.borderRadius = "999px";
+      el.style.display = "inline-flex";
+      el.style.alignItems = "center";
+      el.style.justifyContent = "center";
+      el.style.fontSize = "12px";
+      el.style.fontWeight = "1000";
+      el.style.color = "#ffffff";
+      el.style.background = color;
+      el.style.boxShadow = "0 12px 24px rgba(15,23,42,.24)";
+      layer.appendChild(el);
+    }
+
+    function render() {
+      layer.innerHTML = "";
+      const timeScale = chart.timeScale();
+      const pivots = (structure && structure.pivots) || [];
+      const signals = (structure && structure.signals) || [];
+
+      if (indicator.showStructure !== false) {
+        pivots.forEach(function (pivot) {
+          const x = timeScale.timeToCoordinate(pivot.time);
+          const y0 = candle.priceToCoordinate(pivot.price);
+          if (x === null || y0 === null || !Number.isFinite(Number(x)) || !Number.isFinite(Number(y0))) return;
+          const isHigh = pivot.kind === "high";
+          const y = Number(y0) + (isHigh ? -18 : 18);
+          markerHtml(pivot.label, hhllLabelColor(pivot.label, indicator), x, y, false, "");
+        });
+      }
+
+      if (indicator.showSignals !== false) {
+        signals.forEach(function (signal) {
+          const x = timeScale.timeToCoordinate(signal.time);
+          const y0 = candle.priceToCoordinate(signal.price);
+          if (x === null || y0 === null || !Number.isFinite(Number(x)) || !Number.isFinite(Number(y0))) return;
+          const isBuy = signal.type === "BUY";
+          const y = Number(y0) + (isBuy ? 26 : -26);
+          markerHtml(signal.type, isBuy ? (indicator.buyColor || "#16a34a") : (indicator.sellColor || "#ef4444"), x, y, true, signal.type);
+        });
+      }
+
+      if (indicator.showLastState !== false) {
+        const last = structure && structure.lastSignal;
+        const state = structure && structure.state;
+        if (last) {
+          stateBadge("TOTAL " + last.type + " · " + (structure.basisLabel || "현재") + (last.reason ? " · " + last.reason : ""), last.type === "BUY" ? (indicator.buyColor || "#16a34a") : (indicator.sellColor || "#ef4444"));
+        } else if (state && state !== "NEUTRAL") {
+          stateBadge("TOTAL " + (state === "BULL" ? "BUY" : "SELL") + " · " + (structure.basisLabel || "현재"), state === "BULL" ? (indicator.buyColor || "#16a34a") : (indicator.sellColor || "#ef4444"));
+        } else {
+          stateBadge("TOTAL 관찰 · " + (structure.basisLabel || "현재"), indicator.neutralColor || "#64748b");
+        }
+      }
+    }
+
+    const schedule = function () { requestAnimationFrame(render); };
+    schedule();
+
+    let unsub = null;
+    try {
+      const ts = chart.timeScale();
+      if (ts && typeof ts.subscribeVisibleLogicalRangeChange === "function") {
+        ts.subscribeVisibleLogicalRangeChange(schedule);
+        unsub = function () { try { ts.unsubscribeVisibleLogicalRangeChange(schedule); } catch (e) {} };
+      } else if (ts && typeof ts.subscribeVisibleTimeRangeChange === "function") {
+        ts.subscribeVisibleTimeRangeChange(schedule);
+        unsub = function () { try { ts.unsubscribeVisibleTimeRangeChange(schedule); } catch (e) {} };
+      }
+    } catch (e) {}
+
+    const ro = window.ResizeObserver ? new ResizeObserver(schedule) : null;
+    try { if (ro) ro.observe(wrap); } catch (e) {}
+    window.addEventListener("resize", schedule, { passive: true });
+    document.addEventListener("scroll", schedule, { passive: true, capture: true });
+
+    return {
+      __bitgakOverlay: true,
+      update: schedule,
+      remove: function () {
+        try { if (unsub) unsub(); } catch (e) {}
+        try { if (ro) ro.disconnect(); } catch (e) {}
+        window.removeEventListener("resize", schedule);
+        document.removeEventListener("scroll", schedule, true);
+        try { layer.remove(); } catch (e) {}
+      },
+    };
+  }
+
+
+  function normalizeBasisTimeframe(value) {
+    return normalizeHHLLTimeframe(value || "current");
+  }
+
+  async function fetchBasisRows(indicator) {
+    const timeframe = normalizeBasisTimeframe(indicator.timeframe || "current");
+    if (timeframe === "current") return api.getRows ? api.getRows() : [];
+
+    const url = hhllFetchUrl(timeframe);
+    if (indicator.__basisRowsPayload && indicator.__basisRowsCacheKey === url) return indicator.__basisRowsPayload;
+
+    const res = await fetch(url, {
+      method: "GET",
+      headers: { "Accept": "application/json", "X-Requested-With": "XMLHttpRequest" },
+      credentials: "same-origin",
+      cache: "no-store",
+    });
+    const data = await res.json().catch(function () { return {}; });
+    if (!res.ok || data.ok === false) throw new Error((data && data.message) || "기준 차트 데이터를 불러오지 못했습니다.");
+    const rows = normalizeHHLLRowsFromPayload(data);
+    indicator.__basisRowsCacheKey = url;
+    indicator.__basisRowsPayload = rows;
+    return rows;
+  }
+
+  function findCurrentRowIndexByTime(time) {
+    const rows = api.getRows ? api.getRows() : [];
+    for (let i = 0; i < rows.length; i++) {
+      if (String(rows[i].time) === String(time)) return i;
+    }
+    return -1;
+  }
+
+  function alignTimeToCurrentChartByRow(row) {
+    return alignHHLLTimeToCurrentChart(row || {});
+  }
+
+  function alignBasisItem(item) {
+    if (!item) return item;
+    const row = item.row || { time: item.time, display_time: item.display_time, date: item.date };
+    return Object.assign({}, item, { time: alignTimeToCurrentChartByRow(row) });
+  }
+
+  function calculateFVGZones(rows, indicator) {
+    rows = Array.isArray(rows) ? rows : [];
+    const minGapPct = Math.max(0, Number(indicator.minGapPct || 0));
+    const maxZones = Math.max(1, Number(indicator.maxZones || 30));
+    const extendBars = Math.max(5, Number(indicator.extendBars || 80));
+    const statusFilter = String(indicator.statusFilter || "open");
+    const zones = [];
+    const signals = [];
+
+    function finite(row, key) {
+      const v = Number(row && row[key]);
+      return Number.isFinite(v) ? v : null;
+    }
+
+    for (let i = 2; i < rows.length; i++) {
+      const a = rows[i - 2];
+      const c = rows[i];
+      const mid = rows[i - 1];
+      const aHigh = finite(a, "high");
+      const aLow = finite(a, "low");
+      const cHigh = finite(c, "high");
+      const cLow = finite(c, "low");
+      const baseClose = Math.abs(finite(mid, "close") || finite(c, "close") || 0);
+      if (aHigh === null || aLow === null || cHigh === null || cLow === null || !baseClose) continue;
+
+      let zone = null;
+      if (cLow > aHigh && indicator.showBullish !== false) {
+        const low = aHigh;
+        const high = cLow;
+        const pct = ((high - low) / baseClose) * 100;
+        if (pct >= minGapPct) zone = { type: "bull", low, high, startIndex: i - 2, formIndex: i, endIndex: Math.min(rows.length - 1, i + extendBars), row: c, time: c.time, gapPct: pct, filled: false, fillIndex: null, retestIndex: null };
+      } else if (cHigh < aLow && indicator.showBearish !== false) {
+        const low = cHigh;
+        const high = aLow;
+        const pct = ((high - low) / baseClose) * 100;
+        if (pct >= minGapPct) zone = { type: "bear", low, high, startIndex: i - 2, formIndex: i, endIndex: Math.min(rows.length - 1, i + extendBars), row: c, time: c.time, gapPct: pct, filled: false, fillIndex: null, retestIndex: null };
+      }
+
+      if (!zone) continue;
+
+      for (let j = i + 1; j < rows.length; j++) {
+        const r = rows[j];
+        const low = finite(r, "low");
+        const high = finite(r, "high");
+        const close = finite(r, "close");
+        const open = finite(r, "open");
+        if (low === null || high === null || close === null || open === null) continue;
+
+        if (zone.type === "bull") {
+          if (!zone.retestIndex && low <= zone.high && high >= zone.low && close > open) {
+            zone.retestIndex = j;
+            signals.push({ type: "BUY", price: close, time: r.time, row: r, reason: "Bullish FVG retest" });
+          }
+          if (low <= zone.low) { zone.filled = true; zone.fillIndex = j; zone.endIndex = j; break; }
+        } else {
+          if (!zone.retestIndex && high >= zone.low && low <= zone.high && close < open) {
+            zone.retestIndex = j;
+            signals.push({ type: "SELL", price: close, time: r.time, row: r, reason: "Bearish FVG retest" });
+          }
+          if (high >= zone.high) { zone.filled = true; zone.fillIndex = j; zone.endIndex = j; break; }
+        }
+      }
+
+      if (statusFilter === "open" && zone.filled) continue;
+      if (statusFilter === "filled" && !zone.filled) continue;
+      zones.push(zone);
+    }
+
+    const clipped = zones.slice(-maxZones);
+    const firstIndex = clipped.length ? Math.min.apply(null, clipped.map(function (z) { return z.startIndex; })) : 0;
+    const visibleSignals = signals.filter(function (sig) {
+      const idx = rows.indexOf(sig.row);
+      return idx >= firstIndex;
+    }).slice(-maxZones);
+
+    return { zones: clipped, signals: visibleSignals, basisLabel: hhllTimeframeLabel(indicator.timeframe || "current") };
+  }
+
+  function createFVGOverlay(indicator, structure) {
+    const wrap = (typeof api.getChartContainer === "function" ? api.getChartContainer() : null) || document.getElementById("chartWrap") || document.getElementById("tvChart");
+    const chart = api.chart || (typeof api.getChart === "function" ? api.getChart() : null);
+    const candle = api.candleSeries || api.mainSeries || null;
+    const rows = api.getRows ? api.getRows() : [];
+    if (!wrap || !chart || !candle || !chart.timeScale || !candle.priceToCoordinate) return null;
+
+    const computed = window.getComputedStyle(wrap);
+    if (computed.position === "static") wrap.style.position = "relative";
+
+    const layer = document.createElement("div");
+    layer.className = "bitgak-fvg-layer";
+    layer.setAttribute("aria-hidden", "true");
+    layer.style.position = "absolute";
+    layer.style.inset = "0";
+    layer.style.pointerEvents = "none";
+    layer.style.zIndex = "11";
+    layer.style.overflow = "hidden";
+    wrap.appendChild(layer);
+
+    function timeAtIndex(index) {
+      const r = rows[Math.max(0, Math.min(rows.length - 1, Number(index) || 0))];
+      return r ? r.time : null;
+    }
+
+    function addSignal(text, color, x, y) {
+      const el = document.createElement("div");
+      el.textContent = text;
+      el.style.position = "absolute";
+      el.style.left = Math.round(x) + "px";
+      el.style.top = Math.round(y) + "px";
+      el.style.transform = "translate(-50%, -50%)";
+      el.style.height = "22px";
+      el.style.padding = "0 8px";
+      el.style.borderRadius = "999px";
+      el.style.display = "inline-flex";
+      el.style.alignItems = "center";
+      el.style.justifyContent = "center";
+      el.style.fontSize = "11px";
+      el.style.fontWeight = "1000";
+      el.style.color = "#fff";
+      el.style.background = color;
+      el.style.boxShadow = "0 10px 24px rgba(15,23,42,.22)";
+      layer.appendChild(el);
+    }
+
+    function render() {
+      layer.innerHTML = "";
+      const ts = chart.timeScale();
+      ((structure && structure.zones) || []).forEach(function (zone) {
+        const t1 = timeAtIndex(zone.startIndex) || zone.time;
+        const t2 = timeAtIndex(zone.endIndex) || (rows.length ? rows[rows.length - 1].time : zone.time);
+        const x1 = ts.timeToCoordinate(t1);
+        const x2 = ts.timeToCoordinate(t2);
+        const yHigh = candle.priceToCoordinate(zone.high);
+        const yLow = candle.priceToCoordinate(zone.low);
+        if (x1 === null || x2 === null || yHigh === null || yLow === null) return;
+        const left = Math.min(Number(x1), Number(x2));
+        const width = Math.max(4, Math.abs(Number(x2) - Number(x1)));
+        const top = Math.min(Number(yHigh), Number(yLow));
+        const height = Math.max(2, Math.abs(Number(yLow) - Number(yHigh)));
+        const box = document.createElement("div");
+        box.style.position = "absolute";
+        box.style.left = Math.round(left) + "px";
+        box.style.top = Math.round(top) + "px";
+        box.style.width = Math.round(width) + "px";
+        box.style.height = Math.round(height) + "px";
+        box.style.borderRadius = "6px";
+        box.style.background = zone.type === "bull" ? (indicator.bullColor || "rgba(20,184,166,.24)") : (indicator.bearColor || "rgba(239,68,68,.24)");
+        box.style.border = "1px solid " + (zone.type === "bull" ? (indicator.bullBorderColor || "#14b8a6") : (indicator.bearBorderColor || "#ef4444"));
+        box.style.opacity = zone.filled ? "0.55" : "1";
+        layer.appendChild(box);
+        if (indicator.showLabels !== false) {
+          const label = document.createElement("div");
+          label.textContent = (zone.type === "bull" ? "Bull FVG" : "Bear FVG") + " " + (zone.gapPct ? zone.gapPct.toFixed(1) + "%" : "");
+          label.style.position = "absolute";
+          label.style.left = Math.round(left + 6) + "px";
+          label.style.top = Math.round(top + 4) + "px";
+          label.style.fontSize = "10px";
+          label.style.fontWeight = "900";
+          label.style.color = zone.type === "bull" ? (indicator.bullBorderColor || "#14b8a6") : (indicator.bearBorderColor || "#ef4444");
+          label.style.background = "rgba(255,255,255,.72)";
+          label.style.borderRadius = "999px";
+          label.style.padding = "2px 6px";
+          layer.appendChild(label);
+        }
+      });
+
+      if (indicator.showRetestSignals !== false) {
+        ((structure && structure.signals) || []).forEach(function (signal) {
+          const x = ts.timeToCoordinate(signal.time);
+          const y0 = candle.priceToCoordinate(signal.price);
+          if (x === null || y0 === null) return;
+          const isBuy = signal.type === "BUY";
+          addSignal(isBuy ? "FVG BUY" : "FVG SELL", isBuy ? (indicator.buyColor || "#16a34a") : (indicator.sellColor || "#ef4444"), Number(x), Number(y0) + (isBuy ? 28 : -28));
+        });
+      }
+    }
+
+    const schedule = function () { requestAnimationFrame(render); };
+    schedule();
+    let unsub = null;
+    try { const ts = chart.timeScale(); if (ts && typeof ts.subscribeVisibleLogicalRangeChange === "function") { ts.subscribeVisibleLogicalRangeChange(schedule); unsub = function () { try { ts.unsubscribeVisibleLogicalRangeChange(schedule); } catch (e) {} }; } } catch (e) {}
+    const ro = window.ResizeObserver ? new ResizeObserver(schedule) : null;
+    try { if (ro) ro.observe(wrap); } catch (e) {}
+    window.addEventListener("resize", schedule, { passive: true });
+    return { __bitgakOverlay: true, update: schedule, remove: function () { try { if (unsub) unsub(); } catch (e) {} try { if (ro) ro.disconnect(); } catch (e) {} window.removeEventListener("resize", schedule); try { layer.remove(); } catch (e) {} } };
+  }
+
+  function calculateMACrossSignals(rows, indicator) {
+    rows = Array.isArray(rows) ? rows : [];
+    const fastPeriod = Math.max(1, Number(indicator.fastPeriod || 112));
+    const slowPeriod = Math.max(fastPeriod + 1, Number(indicator.slowPeriod || 224));
+    const method = String(indicator.method || "sma").toLowerCase();
+    const source = indicator.source || "close";
+    const fastData = method === "ema" ? calcEMA(rows, fastPeriod, source) : calcMA(rows, fastPeriod, source);
+    const slowData = method === "ema" ? calcEMA(rows, slowPeriod, source) : calcMA(rows, slowPeriod, source);
+    const fastMap = buildValueMap(fastData);
+    const slowMap = buildValueMap(slowData);
+    const signals = [];
+    let prevDiff = null;
+    for (let i = 0; i < rows.length; i++) {
+      const key = timeKeyOf(rows[i].time);
+      const f = fastMap.get(key);
+      const sl = slowMap.get(key);
+      if (!Number.isFinite(Number(f)) || !Number.isFinite(Number(sl))) continue;
+      const diff = Number(f) - Number(sl);
+      if (prevDiff !== null && prevDiff <= 0 && diff > 0) signals.push({ type: "BUY", time: rows[i].time, price: Number(rows[i].close), row: rows[i], reason: fastPeriod + "/" + slowPeriod + " 골든크로스" });
+      if (prevDiff !== null && prevDiff >= 0 && diff < 0) signals.push({ type: "SELL", time: rows[i].time, price: Number(rows[i].close), row: rows[i], reason: fastPeriod + "/" + slowPeriod + " 데드크로스" });
+      prevDiff = diff;
+    }
+    const maxSignals = Math.max(5, Number(indicator.maxSignals || 80));
+    return { fastData, slowData, signals: signals.slice(-maxSignals), lastSignal: signals.length ? signals[signals.length - 1] : null, basisLabel: hhllTimeframeLabel(indicator.timeframe || "current"), fastPeriod, slowPeriod, method };
+  }
+
+  function createMACrossOverlay(indicator, structure) {
+    const wrap = (typeof api.getChartContainer === "function" ? api.getChartContainer() : null) || document.getElementById("chartWrap") || document.getElementById("tvChart");
+    const chart = api.chart || (typeof api.getChart === "function" ? api.getChart() : null);
+    const candle = api.candleSeries || api.mainSeries || null;
+    if (!wrap || !chart || !candle || !chart.timeScale || !candle.priceToCoordinate) return null;
+    const computed = window.getComputedStyle(wrap);
+    if (computed.position === "static") wrap.style.position = "relative";
+    const layer = document.createElement("div");
+    layer.className = "bitgak-ma-cross-layer";
+    layer.setAttribute("aria-hidden", "true");
+    layer.style.position = "absolute";
+    layer.style.inset = "0";
+    layer.style.pointerEvents = "none";
+    layer.style.zIndex = "12";
+    layer.style.overflow = "hidden";
+    wrap.appendChild(layer);
+
+    function addBadge(text, color, x, y) {
+      const el = document.createElement("div");
+      el.textContent = text;
+      el.style.position = "absolute";
+      el.style.left = Math.round(x) + "px";
+      el.style.top = Math.round(y) + "px";
+      el.style.transform = "translate(-50%, -50%)";
+      el.style.height = "22px";
+      el.style.padding = "0 8px";
+      el.style.borderRadius = "999px";
+      el.style.display = "inline-flex";
+      el.style.alignItems = "center";
+      el.style.justifyContent = "center";
+      el.style.fontSize = "11px";
+      el.style.fontWeight = "1000";
+      el.style.color = "#fff";
+      el.style.background = color;
+      el.style.boxShadow = "0 10px 24px rgba(15,23,42,.24)";
+      layer.appendChild(el);
+    }
+    function stateBadge() {
+      if (indicator.showLastState === false) return;
+      const last = structure && structure.lastSignal;
+      const el = document.createElement("div");
+      el.textContent = last ? ("CROSS " + last.type + " · " + (structure.basisLabel || "현재")) : "CROSS 관찰 · " + (structure.basisLabel || "현재");
+      el.style.position = "absolute";
+      el.style.right = "12px";
+      el.style.top = "46px";
+      el.style.height = "28px";
+      el.style.padding = "0 12px";
+      el.style.borderRadius = "999px";
+      el.style.display = "inline-flex";
+      el.style.alignItems = "center";
+      el.style.justifyContent = "center";
+      el.style.fontSize = "12px";
+      el.style.fontWeight = "1000";
+      el.style.color = "#fff";
+      el.style.background = last && last.type === "BUY" ? (indicator.buyColor || "#16a34a") : (last && last.type === "SELL" ? (indicator.sellColor || "#ef4444") : "#64748b");
+      el.style.boxShadow = "0 12px 24px rgba(15,23,42,.24)";
+      layer.appendChild(el);
+    }
+    function render() {
+      layer.innerHTML = "";
+      const ts = chart.timeScale();
+      if (indicator.showSignals !== false) {
+        ((structure && structure.signals) || []).forEach(function (signal) {
+          const x = ts.timeToCoordinate(signal.time);
+          const y0 = candle.priceToCoordinate(signal.price);
+          if (x === null || y0 === null) return;
+          const isBuy = signal.type === "BUY";
+          addBadge(isBuy ? "BUY" : "SELL", isBuy ? (indicator.buyColor || "#16a34a") : (indicator.sellColor || "#ef4444"), Number(x), Number(y0) + (isBuy ? 30 : -30));
+        });
+      }
+      stateBadge();
+    }
+    const schedule = function () { requestAnimationFrame(render); };
+    schedule();
+    let unsub = null;
+    try { const ts = chart.timeScale(); if (ts && typeof ts.subscribeVisibleLogicalRangeChange === "function") { ts.subscribeVisibleLogicalRangeChange(schedule); unsub = function () { try { ts.unsubscribeVisibleLogicalRangeChange(schedule); } catch (e) {} }; } } catch (e) {}
+    const ro = window.ResizeObserver ? new ResizeObserver(schedule) : null;
+    try { if (ro) ro.observe(wrap); } catch (e) {}
+    window.addEventListener("resize", schedule, { passive: true });
+    return { __bitgakOverlay: true, update: schedule, remove: function () { try { if (unsub) unsub(); } catch (e) {} try { if (ro) ro.disconnect(); } catch (e) {} window.removeEventListener("resize", schedule); try { layer.remove(); } catch (e) {} } };
+  }
+
   function rebuildOne(indicator) {
     const rows = api.getRows();
     clearSeries(indicator);
 
     if (!indicator.visible) {
       if (indicator.type === "volume") api.setVolumeVisible(false);
+      return;
+    }
+
+    if (indicator.type === "fvg") {
+      const token = (indicator.__basisRequestToken || 0) + 1;
+      indicator.__basisRequestToken = token;
+      fetchBasisRows(indicator).then(function (basisRows) {
+        if (!indicator.visible || indicator.__basisRequestToken !== token) return;
+        clearSeries(indicator);
+        const structure = calculateFVGZones(basisRows, indicator);
+        if (normalizeBasisTimeframe(indicator.timeframe || "current") !== "current") {
+          const currentRows = api.getRows ? api.getRows() : [];
+          structure.zones = structure.zones.map(function (zone) {
+            const startTime = alignTimeToCurrentChartByRow(basisRows[zone.startIndex] || zone.row);
+            const endTime = alignTimeToCurrentChartByRow(basisRows[zone.endIndex] || zone.row);
+            const rawStartIndex = findCurrentRowIndexByTime(startTime);
+            const rawEndIndex = findCurrentRowIndexByTime(endTime);
+            const startIndex = rawStartIndex < 0 ? 0 : rawStartIndex;
+            const endIndex = rawEndIndex < 0 ? Math.max(startIndex, currentRows.length - 1) : Math.max(startIndex, rawEndIndex);
+            return Object.assign({}, zone, { startIndex: startIndex, endIndex: endIndex, time: startTime });
+          });
+          structure.signals = structure.signals.map(alignBasisItem);
+        }
+        const overlay = createFVGOverlay(indicator, structure);
+        indicator.__legendData = { zoneCount: structure.zones.length, signalCount: structure.signals.length, basisLabel: structure.basisLabel };
+        indicator.series = overlay ? [overlay] : [];
+        scheduleChartRelayout();
+      }).catch(function (error) {
+        indicator.__legendData = { error: String(error && error.message || error || "") };
+        try { console.warn("Bitgak FVG indicator failed:", error); } catch (e) {}
+      });
+      return;
+    }
+
+    if (indicator.type === "ma_cross") {
+      const token = (indicator.__basisRequestToken || 0) + 1;
+      indicator.__basisRequestToken = token;
+      fetchBasisRows(indicator).then(function (basisRows) {
+        if (!indicator.visible || indicator.__basisRequestToken !== token) return;
+        clearSeries(indicator);
+        let structure = calculateMACrossSignals(basisRows, indicator);
+        const created = [];
+        if (normalizeBasisTimeframe(indicator.timeframe || "current") === "current" && indicator.showLines !== false) {
+          const fastLine = addLine(indicator.fastColor || "#3b82f6", indicator.width || 2);
+          const slowLine = addLine(indicator.slowColor || "#f97316", indicator.width || 2);
+          fastLine.setData(structure.fastData);
+          slowLine.setData(structure.slowData);
+          created.push(fastLine, slowLine);
+        } else {
+          structure.signals = structure.signals.map(alignBasisItem);
+          structure.lastSignal = structure.lastSignal ? alignBasisItem(structure.lastSignal) : null;
+        }
+        const overlay = createMACrossOverlay(indicator, structure);
+        if (overlay) created.push(overlay);
+        indicator.__legendData = { lastSignal: structure.lastSignal, signalCount: structure.signals.length, basisLabel: structure.basisLabel };
+        indicator.series = created;
+        scheduleChartRelayout();
+      }).catch(function (error) {
+        indicator.__legendData = { error: String(error && error.message || error || "") };
+        try { console.warn("Bitgak MA Cross indicator failed:", error); } catch (e) {}
+      });
       return;
     }
 
@@ -1804,6 +2888,7 @@
       indicator.series = [series];
       return;
     }
+
 
     if (indicator.type === "ma_pack") {
       const created = [];
@@ -2404,7 +3489,7 @@
       return !q || haystack.includes(q);
     });
     if (!items.length) {
-      catalogEl.innerHTML = '<div class="indicator-empty">검색 결과가 없습니다. 예: 이동평균, EMA, RSI, MACD</div>';
+      catalogEl.innerHTML = '<div class="indicator-empty">검색 결과가 없습니다. 예: 이동평균, EMA, RSI, MACD, FVG, 골든크로스</div>';
       renderFavoritePanel();
       return;
     }
@@ -2536,134 +3621,55 @@
     if (activeSettingsEl) activeSettingsEl.dataset.mode = indicator.type === "ma_pack" ? "ma" : "single";
     if (indicator.type === "ma_pack") { renderMaSettings(indicator); return; }
 
-    if (indicator.type === "volume") {
-      activeSettingsEl.innerHTML = `
-        <div class="indicator-setting-grid">
-          ${selectFieldHtml("settingVisible", "표시 여부", String(indicator.visible !== false), VISIBLE_OPTIONS)}
-          ${colorFieldHtml("settingColor", "막대 색상", indicator.color || meta.color)}
-        </div>`;
-      return;
-    }
 
-    if (indicator.type === "stoch") {
+    if (indicator.type === "fvg") {
       activeSettingsEl.innerHTML = `
         <div class="indicator-setting-grid">
           ${selectFieldHtml("settingVisible", "표시 여부", String(indicator.visible !== false), VISIBLE_OPTIONS)}
-          ${selectFieldHtml("settingSource", "소스", indicator.source || "close", SOURCE_OPTIONS)}
-          ${numberFieldHtml("settingPeriod", "%K 길이", indicator.period || 14, 1, 300)}
-          ${numberFieldHtml("settingKSmoothing", "%K 스무딩", indicator.kSmoothing || 1, 1, 100)}
-          ${numberFieldHtml("settingDSmoothing", "%D 스무딩", indicator.dSmoothing || 3, 1, 100)}
-          ${selectFieldHtml("settingWidth", "선 굵기", String(indicator.width || 2), WIDTH_OPTIONS)}
-          ${numberFieldHtml("settingUpper", "상단 밴드", indicator.upper || 80, 1, 100)}
-          ${numberFieldHtml("settingMiddle", "중간 밴드", indicator.middle || 50, 0, 100)}
-          ${numberFieldHtml("settingLower", "하단 밴드", indicator.lower || 20, 0, 99)}
+          ${selectFieldHtml("settingTimeframe", "기준 봉", normalizeBasisTimeframe(indicator.timeframe || "current"), STRATEGY_TIMEFRAME_OPTIONS)}
+          ${selectFieldHtml("settingStatusFilter", "갭 상태", indicator.statusFilter || "open", FVG_STATUS_OPTIONS)}
+          ${numberFieldHtml("settingMinGapPct", "최소 갭 크기(%)", indicator.minGapPct || 0.3, 0, 50)}
+          ${numberFieldHtml("settingMaxZones", "최대 표시 개수", indicator.maxZones || 30, 1, 300)}
+          ${numberFieldHtml("settingExtendBars", "오른쪽 연장 봉수", indicator.extendBars || 80, 5, 1000)}
         </div>
         ${sectionHtml("표시 항목", `<div class="indicator-toggle-grid">
-          ${checkboxFieldHtml("settingShowK", "%K 라인", indicator.showK !== false)}
-          ${checkboxFieldHtml("settingShowD", "%D 라인", indicator.showD !== false)}
-          ${checkboxFieldHtml("settingShowUpper", "어퍼 밴드", indicator.showUpper !== false)}
-          ${checkboxFieldHtml("settingShowMiddle", "Middle Band", indicator.showMiddle !== false)}
-          ${checkboxFieldHtml("settingShowLower", "로우어 밴드", indicator.showLower !== false)}
-          ${checkboxFieldHtml("settingShowBackground", "배경", indicator.showBackground !== false)}
+          ${checkboxFieldHtml("settingShowBullish", "상승 FVG", indicator.showBullish !== false)}
+          ${checkboxFieldHtml("settingShowBearish", "하락 FVG", indicator.showBearish !== false)}
+          ${checkboxFieldHtml("settingShowLabels", "FVG 라벨", indicator.showLabels !== false)}
+          ${checkboxFieldHtml("settingShowRetestSignals", "리테스트 BUY/SELL", indicator.showRetestSignals !== false)}
         </div>`)}
         ${sectionHtml("색상", `<div class="indicator-setting-grid indicator-color-grid">
-          ${colorFieldHtml("settingColor", "%K", indicator.color || "#3b82f6")}
-          ${colorFieldHtml("settingDColor", "%D", indicator.dColor || "#fb923c")}
-          ${colorFieldHtml("settingUpperColor", "어퍼 밴드", indicator.upperColor || "rgba(100, 116, 139, 0.78)")}
-          ${colorFieldHtml("settingMiddleColor", "Middle Band", indicator.middleColor || "rgba(100, 116, 139, 0.42)")}
-          ${colorFieldHtml("settingLowerColor", "로우어 밴드", indicator.lowerColor || "rgba(100, 116, 139, 0.78)")}
-          ${colorFieldHtml("settingBackgroundColor", "배경", indicator.backgroundColor || "rgba(59, 130, 246, 0.12)")}
+          ${colorFieldHtml("settingBullBorderColor", "상승 FVG 선", indicator.bullBorderColor || "#14b8a6")}
+          ${colorFieldHtml("settingBearBorderColor", "하락 FVG 선", indicator.bearBorderColor || "#ef4444")}
+          ${colorFieldHtml("settingBuyColor", "BUY", indicator.buyColor || "#16a34a")}
+          ${colorFieldHtml("settingSellColor", "SELL", indicator.sellColor || "#ef4444")}
         </div>`)}
       `;
       return;
     }
 
-    if (indicator.type === "macd") {
+    if (indicator.type === "ma_cross") {
       activeSettingsEl.innerHTML = `
         <div class="indicator-setting-grid">
           ${selectFieldHtml("settingVisible", "표시 여부", String(indicator.visible !== false), VISIBLE_OPTIONS)}
-          ${selectFieldHtml("settingSource", "소스", indicator.source || "close", SOURCE_OPTIONS)}
-          ${numberFieldHtml("settingFast", "MACD Fast", indicator.fast || 12, 1, 300)}
-          ${numberFieldHtml("settingSlow", "MACD Slow", indicator.slow || 26, 1, 500)}
-          ${numberFieldHtml("settingSignal", "MACD Signal", indicator.signal || 9, 1, 300)}
-          ${numberFieldHtml("settingRsiPeriod", "RSI 길이", indicator.rsiPeriod || 14, 1, 300)}
-          ${selectFieldHtml("settingWidth", "선 굵기", String(indicator.width || 2), WIDTH_OPTIONS)}
-        </div>
-        ${sectionHtml("표시 항목", `<div class="indicator-toggle-grid">
-          ${checkboxFieldHtml("settingShowHistogram", "히스토그램", indicator.showHistogram !== false)}
-          ${checkboxFieldHtml("settingShowMacd", "MACD", indicator.showMacd !== false)}
-          ${checkboxFieldHtml("settingShowSignal", "시그널", indicator.showSignal !== false)}
-          ${checkboxFieldHtml("settingShowRsi", "RSI(50 중심)", indicator.showRsi !== false)}
-          ${checkboxFieldHtml("settingShowLevels", "±20 / 0 레벨", indicator.showLevels !== false)}
-        </div>`)}
-        ${sectionHtml("색상", `<div class="indicator-setting-grid indicator-color-grid">
-          ${colorFieldHtml("settingColor", "MACD", indicator.color || "#22c55e")}
-          ${colorFieldHtml("settingSignalColor", "시그널", indicator.signalColor || "#fb923c")}
-          ${colorFieldHtml("settingRsiColor", "RSI", indicator.rsiColor || "#a78bfa")}
-          ${colorFieldHtml("settingHistUpColor", "히스토그램 상승", indicator.histUpColor || "rgba(20, 184, 166, 0.64)")}
-          ${colorFieldHtml("settingHistDownColor", "히스토그램 하락", indicator.histDownColor || "rgba(248, 113, 113, 0.64)")}
-          ${colorFieldHtml("settingLevelColor", "레벨", indicator.levelColor || "rgba(148, 163, 184, 0.62)")}
-        </div>`)}
-      `;
-      return;
-    }
-
-    if (indicator.type === "rsi") {
-      activeSettingsEl.innerHTML = `
-        <div class="indicator-setting-grid">
-          ${selectFieldHtml("settingVisible", "표시 여부", String(indicator.visible !== false), VISIBLE_OPTIONS)}
+          ${selectFieldHtml("settingTimeframe", "전략 기준 봉", normalizeBasisTimeframe(indicator.timeframe || "current"), STRATEGY_TIMEFRAME_OPTIONS)}
+          ${selectFieldHtml("settingMethod", "계산 방식", indicator.method || "sma", METHOD_OPTIONS)}
           ${selectFieldHtml("settingSource", "기준가격", indicator.source || "close", SOURCE_OPTIONS)}
-          ${numberFieldHtml("settingPeriod", "RSI 기간", indicator.period || 14, 1, 300)}
-          ${numberFieldHtml("settingMaPeriod", "RSI MA 기간", indicator.maPeriod || 14, 1, 300)}
-          ${numberFieldHtml("settingUpper", "상단 레벨", indicator.upper || 70, 1, 100)}
-          ${numberFieldHtml("settingMiddle", "중간 레벨", indicator.middle || 50, 0, 100)}
-          ${numberFieldHtml("settingLower", "하단 레벨", indicator.lower || 30, 0, 99)}
+          ${numberFieldHtml("settingFastPeriod", "빠른 이평선", indicator.fastPeriod || 112, 1, 2000)}
+          ${numberFieldHtml("settingSlowPeriod", "느린 이평선", indicator.slowPeriod || 224, 2, 3000)}
+          ${numberFieldHtml("settingMaxSignals", "최대 신호 개수", indicator.maxSignals || 80, 5, 1000)}
           ${selectFieldHtml("settingWidth", "선 굵기", String(indicator.width || 2), WIDTH_OPTIONS)}
         </div>
         ${sectionHtml("표시 항목", `<div class="indicator-toggle-grid">
-          ${checkboxFieldHtml("settingShowRsi", "RSI 라인", indicator.showRsi !== false)}
-          ${checkboxFieldHtml("settingShowRsiMa", "RSI-based MA", indicator.showRsiMa !== false)}
-          ${checkboxFieldHtml("settingShowUpper", "Upper Band", indicator.showUpper !== false)}
-          ${checkboxFieldHtml("settingShowMiddle", "Middle Band", indicator.showMiddle !== false)}
-          ${checkboxFieldHtml("settingShowLower", "Lower Band", indicator.showLower !== false)}
+          ${checkboxFieldHtml("settingShowLines", "이평선 표시", indicator.showLines !== false)}
+          ${checkboxFieldHtml("settingShowSignals", "BUY/SELL 신호", indicator.showSignals !== false)}
+          ${checkboxFieldHtml("settingShowLastState", "우측 상태 배지", indicator.showLastState !== false)}
         </div>`)}
         ${sectionHtml("색상", `<div class="indicator-setting-grid indicator-color-grid">
-          ${colorFieldHtml("settingColor", "RSI", indicator.color || "#8b5cf6")}
-          ${colorFieldHtml("settingMaColor", "RSI MA", indicator.maColor || "#facc15")}
-          ${colorFieldHtml("settingUpperColor", "상단 레벨", indicator.upperColor || "rgba(148, 163, 184, 0.78)")}
-          ${colorFieldHtml("settingMiddleColor", "중간 레벨", indicator.middleColor || "rgba(148, 163, 184, 0.48)")}
-          ${colorFieldHtml("settingLowerColor", "하단 레벨", indicator.lowerColor || "rgba(148, 163, 184, 0.78)")}
-        </div>`)}
-      `;
-      return;
-    }
-
-    if (indicator.type === "ichimoku") {
-      activeSettingsEl.innerHTML = `
-        <div class="indicator-setting-grid">
-          ${selectFieldHtml("settingVisible", "표시 여부", String(indicator.visible !== false), VISIBLE_OPTIONS)}
-          ${numberFieldHtml("settingConversion", "전환선 길이", indicator.conversion || 9, 1, 300)}
-          ${numberFieldHtml("settingBase", "기준선 길이", indicator.base || 26, 1, 500)}
-          ${numberFieldHtml("settingSpanB", "선행 스팬 B 길이", indicator.spanB || 52, 1, 800)}
-          ${numberFieldHtml("settingDisplacement", "래깅/선행 스팬", indicator.displacement || 26, 0, 300)}
-          ${selectFieldHtml("settingWidth", "선 굵기", String(indicator.width || 2), WIDTH_OPTIONS)}
-        </div>
-        ${sectionHtml("표시 항목", `<div class="indicator-toggle-grid">
-          ${checkboxFieldHtml("settingShowConversion", "전환선 라인", indicator.showConversion !== false)}
-          ${checkboxFieldHtml("settingShowBase", "기준선 라인", indicator.showBase !== false)}
-          ${checkboxFieldHtml("settingShowSpanA", "선행 스팬 A", indicator.showSpanA !== false)}
-          ${checkboxFieldHtml("settingShowSpanB", "선행 스팬 B", indicator.showSpanB !== false)}
-          ${checkboxFieldHtml("settingShowLagging", "후행 스팬", indicator.showLagging !== false)}
-          ${checkboxFieldHtml("settingShowCloudFill", "구름 배경 채우기", indicator.showCloudFill !== false)}
-        </div>`)}
-        ${sectionHtml("색상", `<div class="indicator-setting-grid indicator-color-grid">
-          ${colorFieldHtml("settingConversionColor", "전환선", indicator.conversionColor || "#2563eb")}
-          ${colorFieldHtml("settingBaseColor", "기준선", indicator.baseColor || "#dc2626")}
-          ${colorFieldHtml("settingSpanAColor", "선행 스팬 A", indicator.spanAColor || "#22c55e")}
-          ${colorFieldHtml("settingSpanBColor", "선행 스팬 B", indicator.spanBColor || "#f87171")}
-          ${colorFieldHtml("settingLaggingColor", "후행 스팬", indicator.laggingColor || "#16a34a")}
-          ${colorFieldHtml("settingCloudUpColor", "상승 구름 배경", indicator.cloudUpColor || "rgba(37, 99, 235, 0.18)")}
-          ${colorFieldHtml("settingCloudDownColor", "하락 구름 배경", indicator.cloudDownColor || "rgba(239, 68, 68, 0.18)")}
+          ${colorFieldHtml("settingFastColor", "빠른선", indicator.fastColor || "#3b82f6")}
+          ${colorFieldHtml("settingSlowColor", "느린선", indicator.slowColor || "#f97316")}
+          ${colorFieldHtml("settingBuyColor", "BUY", indicator.buyColor || "#16a34a")}
+          ${colorFieldHtml("settingSellColor", "SELL", indicator.sellColor || "#ef4444")}
         </div>`)}
       `;
       return;
@@ -2703,6 +3709,47 @@
         lines: cloneDefaultMaLines(),
         series: [],
       };
+    }
+
+    if (fixedType === "fvg") {
+      return Object.assign(base, {
+        type: "fvg",
+        source: "price",
+        timeframe: "current",
+        minGapPct: 0.3,
+        maxZones: 30,
+        statusFilter: "open",
+        extendBars: 80,
+        showBullish: true,
+        showBearish: true,
+        showLabels: true,
+        showRetestSignals: true,
+        bullColor: "rgba(20, 184, 166, 0.24)",
+        bearColor: "rgba(239, 68, 68, 0.24)",
+        bullBorderColor: "#14b8a6",
+        bearBorderColor: "#ef4444",
+        buyColor: "#16a34a",
+        sellColor: "#ef4444",
+      });
+    }
+
+    if (fixedType === "ma_cross") {
+      return Object.assign(base, {
+        type: "ma_cross",
+        source: "close",
+        timeframe: "current",
+        method: "sma",
+        fastPeriod: 112,
+        slowPeriod: 224,
+        maxSignals: 80,
+        showLines: true,
+        showSignals: true,
+        showLastState: true,
+        fastColor: "#3b82f6",
+        slowColor: "#f97316",
+        buyColor: "#16a34a",
+        sellColor: "#ef4444",
+      });
     }
     if (fixedType === "rsi") {
       return Object.assign(base, {
@@ -2897,82 +3944,45 @@
     const visibleEl = document.getElementById("settingVisible");
     if (visibleEl) indicator.visible = visibleEl.value === "true";
 
-    indicator.period = getSettingNumber("settingPeriod", indicator.period || meta.defaultPeriod || 20, 1, 2000);
-    indicator.source = getSettingValue("settingSource", indicator.source || (indicator.type === "volume" ? "volume" : "close")) || "close";
-    indicator.fast = getSettingNumber("settingFast", indicator.fast || 12, 1, 500);
-    indicator.slow = getSettingNumber("settingSlow", indicator.slow || 26, 1, 800);
-    indicator.signal = getSettingNumber("settingSignal", indicator.signal || 9, 1, 500);
-    indicator.width = getSettingNumber("settingWidth", indicator.width || 2, 1, 6);
-    indicator.color = getSettingValue("settingColor", indicator.color || meta.color) || meta.color;
 
-    if (indicator.type === "rsi") {
-      indicator.maPeriod = getSettingNumber("settingMaPeriod", indicator.maPeriod || 14, 1, 300);
-      indicator.upper = getSettingNumber("settingUpper", indicator.upper || 70, 0, 100);
-      indicator.middle = getSettingNumber("settingMiddle", indicator.middle || 50, 0, 100);
-      indicator.lower = getSettingNumber("settingLower", indicator.lower || 30, 0, 100);
-      indicator.maColor = getSettingValue("settingMaColor", indicator.maColor || "#facc15");
-      indicator.upperColor = getSettingValue("settingUpperColor", indicator.upperColor || "rgba(148, 163, 184, 0.78)");
-      indicator.middleColor = getSettingValue("settingMiddleColor", indicator.middleColor || "rgba(148, 163, 184, 0.48)");
-      indicator.lowerColor = getSettingValue("settingLowerColor", indicator.lowerColor || "rgba(148, 163, 184, 0.78)");
-      indicator.showRsi = getSettingChecked("settingShowRsi", indicator.showRsi !== false);
-      indicator.showRsiMa = getSettingChecked("settingShowRsiMa", indicator.showRsiMa !== false);
-      indicator.showUpper = getSettingChecked("settingShowUpper", indicator.showUpper !== false);
-      indicator.showMiddle = getSettingChecked("settingShowMiddle", indicator.showMiddle !== false);
-      indicator.showLower = getSettingChecked("settingShowLower", indicator.showLower !== false);
+    if (indicator.type === "fvg") {
+      indicator.timeframe = normalizeBasisTimeframe(getSettingValue("settingTimeframe", indicator.timeframe || "current"));
+      indicator.statusFilter = getSettingValue("settingStatusFilter", indicator.statusFilter || "open");
+      indicator.minGapPct = getSettingNumber("settingMinGapPct", indicator.minGapPct || 0.3, 0, 50);
+      indicator.maxZones = getSettingNumber("settingMaxZones", indicator.maxZones || 30, 1, 300);
+      indicator.extendBars = getSettingNumber("settingExtendBars", indicator.extendBars || 80, 5, 1000);
+      indicator.showBullish = getSettingChecked("settingShowBullish", indicator.showBullish !== false);
+      indicator.showBearish = getSettingChecked("settingShowBearish", indicator.showBearish !== false);
+      indicator.showLabels = getSettingChecked("settingShowLabels", indicator.showLabels !== false);
+      indicator.showRetestSignals = getSettingChecked("settingShowRetestSignals", indicator.showRetestSignals !== false);
+      indicator.bullBorderColor = getSettingValue("settingBullBorderColor", indicator.bullBorderColor || "#14b8a6");
+      indicator.bearBorderColor = getSettingValue("settingBearBorderColor", indicator.bearBorderColor || "#ef4444");
+      indicator.buyColor = getSettingValue("settingBuyColor", indicator.buyColor || "#16a34a");
+      indicator.sellColor = getSettingValue("settingSellColor", indicator.sellColor || "#ef4444");
+      indicator.bullColor = indicator.bullColor || "rgba(20, 184, 166, 0.24)";
+      indicator.bearColor = indicator.bearColor || "rgba(239, 68, 68, 0.24)";
+      delete indicator.__basisRowsPayload;
+      delete indicator.__basisRowsCacheKey;
     }
 
-    if (indicator.type === "stoch") {
-      indicator.period = getSettingNumber("settingPeriod", indicator.period || 14, 1, 300);
-      indicator.kSmoothing = getSettingNumber("settingKSmoothing", indicator.kSmoothing || 1, 1, 100);
-      indicator.dSmoothing = getSettingNumber("settingDSmoothing", indicator.dSmoothing || 3, 1, 100);
-      indicator.upper = getSettingNumber("settingUpper", indicator.upper || 80, 0, 100);
-      indicator.middle = getSettingNumber("settingMiddle", indicator.middle || 50, 0, 100);
-      indicator.lower = getSettingNumber("settingLower", indicator.lower || 20, 0, 100);
-      indicator.dColor = getSettingValue("settingDColor", indicator.dColor || "#fb923c");
-      indicator.upperColor = getSettingValue("settingUpperColor", indicator.upperColor || "rgba(100, 116, 139, 0.78)");
-      indicator.middleColor = getSettingValue("settingMiddleColor", indicator.middleColor || "rgba(100, 116, 139, 0.42)");
-      indicator.lowerColor = getSettingValue("settingLowerColor", indicator.lowerColor || "rgba(100, 116, 139, 0.78)");
-      indicator.backgroundColor = getSettingValue("settingBackgroundColor", indicator.backgroundColor || "rgba(59, 130, 246, 0.12)");
-      indicator.showK = getSettingChecked("settingShowK", indicator.showK !== false);
-      indicator.showD = getSettingChecked("settingShowD", indicator.showD !== false);
-      indicator.showUpper = getSettingChecked("settingShowUpper", indicator.showUpper !== false);
-      indicator.showMiddle = getSettingChecked("settingShowMiddle", indicator.showMiddle !== false);
-      indicator.showLower = getSettingChecked("settingShowLower", indicator.showLower !== false);
-      indicator.showBackground = getSettingChecked("settingShowBackground", indicator.showBackground !== false);
-    }
-
-    if (indicator.type === "macd") {
-      indicator.rsiPeriod = getSettingNumber("settingRsiPeriod", indicator.rsiPeriod || 14, 1, 300);
-      indicator.rsiColor = getSettingValue("settingRsiColor", indicator.rsiColor || "#a78bfa");
-      indicator.signalColor = getSettingValue("settingSignalColor", indicator.signalColor || "#fb923c");
-      indicator.histUpColor = getSettingValue("settingHistUpColor", indicator.histUpColor || "rgba(20, 184, 166, 0.64)");
-      indicator.histDownColor = getSettingValue("settingHistDownColor", indicator.histDownColor || "rgba(248, 113, 113, 0.64)");
-      indicator.levelColor = getSettingValue("settingLevelColor", indicator.levelColor || "rgba(148, 163, 184, 0.62)");
-      indicator.showHistogram = getSettingChecked("settingShowHistogram", indicator.showHistogram !== false);
-      indicator.showMacd = getSettingChecked("settingShowMacd", indicator.showMacd !== false);
-      indicator.showSignal = getSettingChecked("settingShowSignal", indicator.showSignal !== false);
-      indicator.showRsi = getSettingChecked("settingShowRsi", indicator.showRsi !== false);
-      indicator.showLevels = getSettingChecked("settingShowLevels", indicator.showLevels !== false);
-    }
-
-    if (indicator.type === "ichimoku") {
-      indicator.conversion = getSettingNumber("settingConversion", indicator.conversion || 9, 1, 300);
-      indicator.base = getSettingNumber("settingBase", indicator.base || 26, 1, 500);
-      indicator.spanB = getSettingNumber("settingSpanB", indicator.spanB || 52, 1, 800);
-      indicator.displacement = getSettingNumber("settingDisplacement", indicator.displacement || 26, 0, 300);
-      indicator.conversionColor = getSettingValue("settingConversionColor", indicator.conversionColor || "#2563eb");
-      indicator.baseColor = getSettingValue("settingBaseColor", indicator.baseColor || "#dc2626");
-      indicator.spanAColor = getSettingValue("settingSpanAColor", indicator.spanAColor || "#22c55e");
-      indicator.spanBColor = getSettingValue("settingSpanBColor", indicator.spanBColor || "#f87171");
-      indicator.laggingColor = getSettingValue("settingLaggingColor", indicator.laggingColor || "#16a34a");
-      indicator.cloudUpColor = getSettingValue("settingCloudUpColor", indicator.cloudUpColor || "rgba(37, 99, 235, 0.18)");
-      indicator.cloudDownColor = getSettingValue("settingCloudDownColor", indicator.cloudDownColor || "rgba(239, 68, 68, 0.18)");
-      indicator.showConversion = getSettingChecked("settingShowConversion", indicator.showConversion !== false);
-      indicator.showBase = getSettingChecked("settingShowBase", indicator.showBase !== false);
-      indicator.showSpanA = getSettingChecked("settingShowSpanA", indicator.showSpanA !== false);
-      indicator.showSpanB = getSettingChecked("settingShowSpanB", indicator.showSpanB !== false);
-      indicator.showLagging = getSettingChecked("settingShowLagging", indicator.showLagging !== false);
-      indicator.showCloudFill = getSettingChecked("settingShowCloudFill", indicator.showCloudFill !== false);
+    if (indicator.type === "ma_cross") {
+      indicator.timeframe = normalizeBasisTimeframe(getSettingValue("settingTimeframe", indicator.timeframe || "current"));
+      indicator.method = getSettingValue("settingMethod", indicator.method || "sma") || "sma";
+      indicator.source = getSettingValue("settingSource", indicator.source || "close") || "close";
+      indicator.fastPeriod = getSettingNumber("settingFastPeriod", indicator.fastPeriod || 112, 1, 2000);
+      indicator.slowPeriod = getSettingNumber("settingSlowPeriod", indicator.slowPeriod || 224, 2, 3000);
+      if (indicator.slowPeriod <= indicator.fastPeriod) indicator.slowPeriod = indicator.fastPeriod + 1;
+      indicator.maxSignals = getSettingNumber("settingMaxSignals", indicator.maxSignals || 80, 5, 1000);
+      indicator.width = getSettingNumber("settingWidth", indicator.width || 2, 1, 6);
+      indicator.showLines = getSettingChecked("settingShowLines", indicator.showLines !== false);
+      indicator.showSignals = getSettingChecked("settingShowSignals", indicator.showSignals !== false);
+      indicator.showLastState = getSettingChecked("settingShowLastState", indicator.showLastState !== false);
+      indicator.fastColor = getSettingValue("settingFastColor", indicator.fastColor || "#3b82f6");
+      indicator.slowColor = getSettingValue("settingSlowColor", indicator.slowColor || "#f97316");
+      indicator.buyColor = getSettingValue("settingBuyColor", indicator.buyColor || "#16a34a");
+      indicator.sellColor = getSettingValue("settingSellColor", indicator.sellColor || "#ef4444");
+      delete indicator.__basisRowsPayload;
+      delete indicator.__basisRowsCacheKey;
     }
 
     if (indicator.type === "boll") {
@@ -3213,6 +4223,13 @@
       }
       const copy = { ...item };
       delete copy.series;
+      delete copy.__legendData;
+      delete copy.__hhllRowsPayload;
+      delete copy.__hhllRowsCacheKey;
+      delete copy.__hhllRequestToken;
+      delete copy.__basisRowsPayload;
+      delete copy.__basisRowsCacheKey;
+      delete copy.__basisRequestToken;
       return copy;
     });
   }

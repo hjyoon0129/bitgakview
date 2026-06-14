@@ -1,0 +1,19 @@
+{
+  "close": 2150000.0,
+  "prev_close": 2101000.0,
+  "last_high": 2304000.0,
+  "last_low": 2150000.0,
+  "ma20": 2071650.0,
+  "ma60": 1470983.33,
+  "ma112": 1175089.29,
+  "ma224": 792209.82,
+  "rsi14": 57.25,
+  "drawdown_52w_pct": -10.68,
+  "mdd_1y_pct": -26.57,
+  "momentum_3m_pct": 131.18,
+  "momentum_6m_pct": 296.68,
+  "golden_20_60": false,
+  "dead_20_60": false,
+  "golden_112_224": false,
+  "dead_112_224": false
+}
