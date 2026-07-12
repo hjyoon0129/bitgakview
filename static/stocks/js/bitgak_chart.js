@@ -1885,6 +1885,18 @@
     return rows[index] || null;
   }
 
+  // 실제 봉 범위 안의 logical 좌표만 행으로 인정한다.
+  // 기존 rowAtLogical은 미래/과거 빈 공간도 첫/마지막 봉으로 강제 보정해서
+  // 저장된 드로잉의 시간 기준점이 잘못 기록될 수 있었다.
+  function rowAtLogicalExact(logical) {
+    const rows = state.rows || [];
+    const n = Number(logical);
+    if (!rows.length || !Number.isFinite(n)) return null;
+    const index = Math.round(n);
+    if (index < 0 || index > rows.length - 1) return null;
+    return rows[index] || null;
+  }
+
   function closestRowByCoordinate(x) {
     const rows = state.rows || [];
     if (!rows.length) return null;
@@ -1973,7 +1985,8 @@
     const logical = coordinateToLogicalSafe(point.x);
     const rawTime = ts.coordinateToTime(point.x);
     let time = normalizeTime(rawTime);
-    const row = rowAtLogical(logical) || (time ? findRowByTime(time) : null) || closestRowByCoordinate(point.x);
+    const exactRow = rowAtLogicalExact(logical);
+    const row = exactRow || (time ? findRowByTime(time) : null) || closestRowByCoordinate(point.x);
 
     if (!time && logical !== null) time = nearestTimeByLogical(logical);
 
@@ -1990,6 +2003,9 @@
       display_time: displayTime,
       date_key: dateKeyFromAny(sourceTime || displayTime || time),
       logical: logical,
+      // 실제 봉 위에서 만든 점은 날짜/시간에 고정한다.
+      // 미래 빈 공간에 만든 점만 logical 좌표를 유지한다.
+      anchor_mode: exactRow ? "time" : "logical",
       interval: state.interval,
       price: Number(price),
     };
@@ -2000,8 +2016,14 @@
 
     let x = null;
     const sameInterval = !value.interval || value.interval === state.interval;
+    const anchorMode = String(value.anchor_mode || value.anchorMode || "").toLowerCase();
+    const useLogicalAnchor = anchorMode === "logical" && sameInterval && value.logical !== null && value.logical !== undefined;
 
-    if (sameInterval && value.logical !== null && value.logical !== undefined) {
+    // 핵심 수정:
+    // 과거 저장값은 logical index보다 source_time/date_key를 먼저 사용한다.
+    // 데이터가 갱신되어 앞쪽 봉 수나 전체 범위가 달라져도 드로잉이 해당 날짜의 봉과 함께 이동한다.
+    // 단, 차트의 미래 빈 공간에 의도적으로 그린 점은 anchor_mode=logical로 유지한다.
+    if (useLogicalAnchor) {
       x = logicalToCoordinateSafe(value.logical);
     }
 
@@ -2011,7 +2033,9 @@
     }
 
     if (x === null || x === undefined) x = chart.timeScale().timeToCoordinate(value.time);
-    if ((x === null || x === undefined) && value.logical !== null && value.logical !== undefined) x = logicalToCoordinateSafe(value.logical);
+    if ((x === null || x === undefined) && sameInterval && value.logical !== null && value.logical !== undefined) {
+      x = logicalToCoordinateSafe(value.logical);
+    }
 
     const y = candleSeries.priceToCoordinate(value.price);
     if (x === null || x === undefined || y === null || y === undefined) return null;
@@ -3916,6 +3940,8 @@
         next.source_time = row.source_time || row.display_time || row.time;
         next.display_time = row.display_time || normalizeTimeForDisplay(row.time);
         next.date_key = dateKeyFromAny(next.source_time || next.display_time || next.time);
+        next.logical = rowIndexByTime(row.time);
+        next.anchor_mode = "time";
         next.interval = state.interval;
       }
     }

@@ -11,6 +11,15 @@
 
   const groupsApiUrl = form.dataset.groupsApiUrl || "/stocks/api/user-groups/";
 
+  window.BitgakQuantStrategyInfo = window.BitgakQuantStrategyInfo || {
+    buy_hold: { title: "단순 보유", entry: "첫 거래 가능일 매수", exit: "종료일까지 보유" },
+    ma_cross_20_60: { title: "20/60 이평선 교차", entry: "20일선 상향 돌파", exit: "20일선 하향 돌파" },
+    ma_cross_112_224: { title: "112/224 이평선 교차", entry: "112일선 상향 돌파", exit: "112일선 하향 돌파" },
+    price_above_112: { title: "112일선 위에서만 보유", entry: "종가가 112일선 위", exit: "종가가 112일선 아래" },
+    turtle_20_10: { title: "터틀 20/10", entry: "20일 고점 돌파", exit: "10일 저점 이탈" },
+    rsi_reversion: { title: "RSI 평균회귀", entry: "RSI 35 이하", exit: "RSI 65 이상" }
+  };
+
   function getAccess() {
     return window.BITGAK_ACCESS || { is_authenticated: false, is_premium: false };
   }
@@ -19,7 +28,7 @@
     if (window.BitgakAccessLock && typeof window.BitgakAccessLock.open === "function") {
       window.BitgakAccessLock.open("login", {
         title: "로그인 후 사용할 수 있습니다",
-        message: message || "조건별 종목 찾기는 로그인 후 사용할 수 있습니다."
+        message: message || "퀀트투자의 관심그룹 저장 기능은 로그인 후 사용할 수 있습니다."
       });
       return;
     }

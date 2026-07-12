@@ -609,6 +609,7 @@
         <a class="home-nav-link" href="/stocks/pricing/">가격소개</a>
         <a class="home-nav-link" href="/stocks/#marketSection">시장지표</a>
         <a class="home-nav-link" href="{% url 'stocks:detail' '005930' %}">차트</a>
+        <a class="home-nav-link" href="/tools/stock-screener/">퀀트투자</a>
         <a class="home-nav-link active" href="{% url 'insights:list' %}">빗각관점</a>
         <a class="home-nav-link" href="/tools/youtube-keyword/">AI 도구</a>
       </div>
@@ -618,8 +619,8 @@
           <a class="home-login-btn" href="/accounts/logout/">로그아웃</a>
         {% else %}
           <a class="home-login-btn" href="/accounts/login/?next={{ request.get_full_path|urlencode }}">로그인</a>
+          <a class="home-start-btn" href="{% url 'stocks:detail' '005930' %}">무료로 시작</a>
         {% endif %}
-        <a class="home-start-btn" href="{% url 'stocks:detail' '005930' %}">무료로 시작</a>
       </div>
     </div>
   </nav>

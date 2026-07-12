@@ -1,6 +1,6 @@
 {
   "cache_version": "20260614-quant-wizard-v3",
-  "market_date": "20260614",
+  "market_date": "20260712",
   "source": "emergency-fallback-static",
   "market_counts": {
     "fallback": {
@@ -9,17 +9,17 @@
   },
   "warnings": [
     "900일 내 유효 KRX 거래일을 찾지 못했습니다.",
-    "KOSPI fundamental failed 20260614: \"None of [Index(['BPS', 'PER', 'PBR', 'EPS', 'DIV', 'DPS'], dtype='object')] are in the [columns]\"",
-    "KOSPI fundamental failed 20260614: \"None of [Index(['BPS', 'PER', 'PBR', 'EPS', 'DIV', 'DPS'], dtype='object')] are in the [columns]\"",
-    "KOSPI fundamental failed 20260613: \"None of [Index(['BPS', 'PER', 'PBR', 'EPS', 'DIV', 'DPS'], dtype='object')] are in the [columns]\"",
-    "KOSPI fundamental failed 20260612: \"None of [Index(['BPS', 'PER', 'PBR', 'EPS', 'DIV', 'DPS'], dtype='object')] are in the [columns]\"",
-    "KOSPI fundamental failed 20260611: \"None of [Index(['BPS', 'PER', 'PBR', 'EPS', 'DIV', 'DPS'], dtype='object')] are in the [columns]\"",
-    "KOSPI fundamental failed 20260610: \"None of [Index(['BPS', 'PER', 'PBR', 'EPS', 'DIV', 'DPS'], dtype='object')] are in the [columns]\"",
-    "KOSPI fundamental failed 20260609: \"None of [Index(['BPS', 'PER', 'PBR', 'EPS', 'DIV', 'DPS'], dtype='object')] are in the [columns]\"",
-    "KOSPI fundamental failed 20260608: \"None of [Index(['BPS', 'PER', 'PBR', 'EPS', 'DIV', 'DPS'], dtype='object')] are in the [columns]\"",
-    "KOSPI fundamental failed 20260607: \"None of [Index(['BPS', 'PER', 'PBR', 'EPS', 'DIV', 'DPS'], dtype='object')] are in the [columns]\"",
-    "KOSPI fundamental failed 20260606: \"None of [Index(['BPS', 'PER', 'PBR', 'EPS', 'DIV', 'DPS'], dtype='object')] are in the [columns]\"",
-    "KOSPI fundamental failed 20260605: \"None of [Index(['BPS', 'PER', 'PBR', 'EPS', 'DIV', 'DPS'], dtype='object')] are in the [columns]\"",
+    "KOSPI fundamental failed 20260712: \"None of [Index(['BPS', 'PER', 'PBR', 'EPS', 'DIV', 'DPS'], dtype='object')] are in the [columns]\"",
+    "KOSPI fundamental failed 20260712: \"None of [Index(['BPS', 'PER', 'PBR', 'EPS', 'DIV', 'DPS'], dtype='object')] are in the [columns]\"",
+    "KOSPI fundamental failed 20260711: \"None of [Index(['BPS', 'PER', 'PBR', 'EPS', 'DIV', 'DPS'], dtype='object')] are in the [columns]\"",
+    "KOSPI fundamental failed 20260710: \"None of [Index(['BPS', 'PER', 'PBR', 'EPS', 'DIV', 'DPS'], dtype='object')] are in the [columns]\"",
+    "KOSPI fundamental failed 20260709: \"None of [Index(['BPS', 'PER', 'PBR', 'EPS', 'DIV', 'DPS'], dtype='object')] are in the [columns]\"",
+    "KOSPI fundamental failed 20260708: \"None of [Index(['BPS', 'PER', 'PBR', 'EPS', 'DIV', 'DPS'], dtype='object')] are in the [columns]\"",
+    "KOSPI fundamental failed 20260707: \"None of [Index(['BPS', 'PER', 'PBR', 'EPS', 'DIV', 'DPS'], dtype='object')] are in the [columns]\"",
+    "KOSPI fundamental failed 20260706: \"None of [Index(['BPS', 'PER', 'PBR', 'EPS', 'DIV', 'DPS'], dtype='object')] are in the [columns]\"",
+    "KOSPI fundamental failed 20260705: \"None of [Index(['BPS', 'PER', 'PBR', 'EPS', 'DIV', 'DPS'], dtype='object')] are in the [columns]\"",
+    "KOSPI fundamental failed 20260704: \"None of [Index(['BPS', 'PER', 'PBR', 'EPS', 'DIV', 'DPS'], dtype='object')] are in the [columns]\"",
+    "KOSPI fundamental failed 20260703: \"None of [Index(['BPS', 'PER', 'PBR', 'EPS', 'DIV', 'DPS'], dtype='object')] are in the [columns]\"",
     "pykrx/KRX 데이터 호출 실패로 비상 후보 유니버스를 표시합니다. 로컬 날짜가 미래이면 최신 KRX 거래일 탐색 또는 pykrx 설치를 확인하세요."
   ],
   "items": [
@@ -672,5 +672,5 @@
       "dead_112_224": false
     }
   ],
-  "created_at": "2026-06-14T20:52:16"
+  "created_at": "2026-07-12T10:58:57"
 }

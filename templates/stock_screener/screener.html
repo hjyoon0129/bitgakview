@@ -4,24 +4,255 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>조건별 종목 찾기 | 빗각뷰</title>
+  <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css">
+  <title>퀀트투자 | 조건별 종목 검색·백테스트 | 빗각뷰</title>
   <style>
     :root{--bg:#06101e;--panel:#0d1b2d;--panel2:#091527;--line:#21456d;--text:#f8fbff;--muted:#9bb5d7;--cyan:#38d8ff;--green:#65e78d;--yellow:#eaff4c;--red:#ff6b7a}*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 20% 0%,rgba(56,216,255,.09),transparent 34%),var(--bg);color:var(--text);font-family:Pretendard,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-weight:800;letter-spacing:-.035em}a{color:inherit;text-decoration:none}.qs-wrap{width:min(1520px,94vw);margin:22px auto 80px}.qs-nav{position:sticky;top:10px;z-index:1000;margin-bottom:18px}.qs-nav-card{min-height:64px;padding:10px 12px;border-radius:22px;border:1px solid rgba(74,118,176,.34);background:linear-gradient(135deg,rgba(15,46,65,.94),rgba(10,21,38,.98));display:grid;grid-template-columns:240px 1fr auto;gap:14px;align-items:center;box-shadow:0 20px 55px rgba(0,0,0,.26);backdrop-filter:blur(16px)}.qs-brand{display:flex;align-items:center;gap:12px}.qs-logo{width:40px;height:40px;border-radius:14px;display:grid;place-items:center;background:linear-gradient(135deg,#2dd4bf,#60a5fa);color:#062033;font-weight:1000}.qs-brand strong{font-size:17px}.qs-brand span{display:block;color:#7dd3fc;font-size:11px;margin-top:3px}.qs-nav-links{display:flex;justify-content:center;gap:7px;overflow:auto}.qs-nav-link{height:40px;padding:0 15px;border-radius:15px;display:flex;align-items:center;white-space:nowrap;color:#dbeafe;font-weight:950;border:1px solid transparent}.qs-nav-link:hover,.qs-nav-link.active{background:rgba(37,99,235,.2);border-color:rgba(96,165,250,.28);color:#fff}.qs-auth{display:flex;justify-content:flex-end}.qs-auth a{height:42px;padding:0 16px;border-radius:15px;border:1px solid rgba(96,165,250,.35);display:flex;align-items:center}.qs-hero,.qs-card,.qs-result-card{border:1px solid rgba(96,165,250,.28);background:linear-gradient(180deg,rgba(14,29,50,.98),rgba(9,20,35,.98));border-radius:22px;box-shadow:0 22px 60px rgba(0,0,0,.22)}.qs-hero{padding:28px 32px;display:flex;justify-content:space-between;gap:20px;align-items:flex-start}.qs-hero h1{margin:0;font-size:36px;line-height:1.1}.qs-hero p{margin:10px 0 0;color:#b5d3ff;font-size:15px}.qs-badge{border:1px solid rgba(56,216,255,.25);border-radius:999px;padding:9px 13px;color:#dff7ff;background:rgba(56,216,255,.07);white-space:nowrap}.qs-card{margin-top:20px;padding:24px}.qs-steps{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:20px}.qs-step-pill{height:42px;padding:0 16px;border-radius:999px;border:1px solid rgba(96,165,250,.25);background:#091527;color:#9bb5d7;font-weight:1000;cursor:pointer}.qs-step-pill.active{background:linear-gradient(135deg,#d7ff3d,#2ed3ff);color:#06101e;border-color:transparent}.qs-step{display:none}.qs-step.active{display:block}.qs-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}.qs-grid-3{grid-template-columns:repeat(3,minmax(0,1fr))}.qs-field{display:grid;gap:7px;position:relative}.qs-field label,.qs-label{font-size:13px;color:#72dcff;font-weight:1000}.qs-input,.qs-select{height:46px;border-radius:13px;border:1px solid rgba(96,165,250,.35);background:#071224;color:#fff;padding:0 14px;font-size:15px;font-weight:900;outline:none}.qs-input:focus,.qs-select:focus{border-color:var(--cyan);box-shadow:0 0 0 4px rgba(56,216,255,.1)}.qs-input:disabled,.qs-select:disabled{opacity:.42}.qs-help{font-size:12px;color:#7d97b8;margin-top:2px;line-height:1.45}.qs-section-title{font-size:22px;margin:12px 0}.qs-sector-box,.qs-factor-box,.qs-custom-box{border:1px solid rgba(96,165,250,.18);background:rgba(4,12,24,.43);border-radius:18px;padding:18px}.qs-sector-grid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px}.qs-check{display:flex;align-items:center;gap:8px;min-height:36px;color:#dbeafe;font-size:14px}.qs-check input{width:19px;height:19px;accent-color:#38d8ff}.qs-toggle-row{display:flex;gap:10px;flex-wrap:wrap;margin:8px 0 16px}.qs-toggle{min-height:38px;border:1px solid rgba(96,165,250,.28);border-radius:999px;padding:0 12px;display:inline-flex;align-items:center;gap:8px;background:#08162a;color:#dbeafe}.qs-toggle input{accent-color:#38d8ff}.qs-factor-layout{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}.qs-factor-box h3{margin:0 0 12px;font-size:18px}.qs-mini-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.qs-actions{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:20px;flex-wrap:wrap}.qs-actions-left,.qs-actions-right{display:flex;gap:10px;flex-wrap:wrap}.qs-btn{height:48px;border-radius:15px;border:1px solid rgba(96,165,250,.34);background:#0b1b31;color:#eaf6ff;padding:0 20px;font-size:15px;font-weight:1000;cursor:pointer}.qs-btn.small{height:38px;padding:0 14px;font-size:13px}.qs-btn.primary{background:linear-gradient(135deg,#e6ff3d,#29d8ff);color:#06101e;border:0}.qs-btn.green{background:#0c6b43;color:#d6ffe8;border-color:#168a5a}.qs-btn.white{background:#fff;color:#0b1322}.qs-btn.danger{color:#ffb4bd;border-color:rgba(255,107,122,.35)}.qs-btn:hover{transform:translateY(-1px)}.qs-presets{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px}.qs-preset{height:42px;border-radius:15px;border:1px solid rgba(96,165,250,.32);background:#0b1b31;color:#eaf6ff;padding:0 16px;font-weight:1000;cursor:pointer}.qs-note{margin-top:12px;border:1px solid rgba(234,255,76,.48);background:rgba(234,255,76,.08);color:#f5ff7a;border-radius:13px;padding:13px 15px;line-height:1.55}.qs-result-card{margin-top:22px;padding:0;overflow:hidden}.qs-result-head{padding:20px 22px;border-bottom:1px solid rgba(96,165,250,.18);display:flex;justify-content:space-between;gap:16px;align-items:flex-start;flex-wrap:wrap}.qs-result-head h2{margin:0;font-size:24px}.qs-status{color:#9cc8ff;font-size:13px;margin-top:7px}.qs-table-wrap{overflow:auto;min-height:300px}.qs-table{width:100%;border-collapse:collapse;min-width:1500px}.qs-table th,.qs-table td{padding:13px 12px;border-bottom:1px solid rgba(96,165,250,.13);font-size:13px;text-align:right;white-space:nowrap}.qs-table th:first-child,.qs-table td:first-child{text-align:left}.qs-table th{color:#6be7ff;background:rgba(4,11,22,.72);position:sticky;top:0}.qs-table tr:hover{background:rgba(56,216,255,.06)}.qs-empty{height:260px;display:flex;align-items:center;justify-content:center;color:#b9d7ff}.qs-chip{display:inline-flex;height:28px;align-items:center;border-radius:999px;background:rgba(56,216,255,.1);border:1px solid rgba(56,216,255,.22);padding:0 9px;color:#c7f7ff}.qs-debug{margin:14px 20px 20px;background:#020817;border:1px solid rgba(96,165,250,.25);border-radius:12px;padding:12px;white-space:pre-wrap;color:#a9c2e3;max-height:220px;overflow:auto;font-size:12px;display:none}.qs-debug.show{display:block}.qs-suggest{position:absolute;top:73px;left:0;right:0;z-index:20;background:#06101e;border:1px solid rgba(56,216,255,.35);border-radius:14px;max-height:260px;overflow:auto;display:none}.qs-suggest.show{display:block}.qs-suggest button{width:100%;text-align:left;border:0;background:transparent;color:#eaf6ff;padding:12px 14px;font-weight:900;cursor:pointer}.qs-suggest button:hover{background:rgba(56,216,255,.08)}.qs-custom-list{display:grid;gap:8px;margin-top:12px}.qs-custom-item{display:flex;justify-content:space-between;gap:10px;align-items:center;border:1px solid rgba(96,165,250,.18);border-radius:12px;padding:10px 12px;background:rgba(255,255,255,.035)}.qs-backtest-summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-top:16px}.qs-stat{border:1px solid rgba(96,165,250,.18);border-radius:16px;padding:14px;background:rgba(4,12,24,.4)}.qs-stat span{display:block;color:#8fb7e4;font-size:12px}.qs-stat strong{display:block;margin-top:7px;font-size:21px}.qs-saved{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.qs-saved button{height:34px;border-radius:999px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);color:#dbeafe;padding:0 12px;font-weight:900}.qs-watchbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.qs-watchbar select{height:40px}.qs-error{color:#ff9aaa}.qs-muted{color:var(--muted)}
+.qs-grid-universe{grid-template-columns:repeat(3,minmax(0,1fr))}
+.qs-explain{margin-top:10px;padding:14px 16px;border:1px solid rgba(96,165,250,.18);border-radius:15px;background:rgba(4,12,24,.42);color:#b9d7ff;font-size:12px;line-height:1.65}
+.qs-explain strong{color:#fff}.qs-explain b{color:#7dd3fc}.qs-explain.warn{border-color:rgba(234,255,76,.34);background:rgba(234,255,76,.06);color:#eef7b5}
+.qs-backtest-settings{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+.qs-strategy-guide{margin-top:16px;border:1px solid rgba(56,216,255,.22);border-radius:20px;background:linear-gradient(135deg,rgba(4,12,24,.76),rgba(10,30,48,.66));padding:18px;display:grid;grid-template-columns:minmax(0,1fr) minmax(320px,.9fr);gap:18px;align-items:center}
+.qs-strategy-copy h4{margin:0;color:#fff;font-size:20px}.qs-strategy-copy p{margin:9px 0 0;color:#b9d7ff;font-size:13px;line-height:1.65}.qs-strategy-rules{margin:12px 0 0;padding:0;list-style:none;display:grid;gap:7px}.qs-strategy-rules li{font-size:12px;color:#dbeafe;line-height:1.45}.qs-strategy-rules li:before{content:'✓';margin-right:8px;color:#65e78d;font-weight:1000}
+.qs-strategy-chart{min-height:210px;border:1px solid rgba(96,165,250,.16);border-radius:17px;background:#06101e;padding:10px;display:grid;place-items:center;overflow:hidden}.qs-strategy-chart svg{width:100%;height:190px;display:block}.qs-strategy-legend{display:flex;gap:12px;flex-wrap:wrap;margin-top:10px;color:#8fb7e4;font-size:11px}.qs-strategy-legend span{display:inline-flex;align-items:center;gap:6px}.qs-strategy-legend i{width:17px;height:3px;border-radius:99px;background:#38d8ff}.qs-strategy-legend i.signal{background:#eaff4c}.qs-strategy-legend i.exit{background:#ff6b7a}
+.qs-run-meta{margin-top:12px;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}.qs-run-meta div{padding:10px 12px;border-radius:13px;border:1px solid rgba(96,165,250,.13);background:rgba(4,12,24,.38)}.qs-run-meta span{display:block;color:#7d97b8;font-size:10px}.qs-run-meta strong{display:block;margin-top:5px;color:#eaf6ff;font-size:12px;word-break:break-all}
+@media(max-width:1050px){.qs-grid-universe,.qs-backtest-settings{grid-template-columns:1fr 1fr}.qs-strategy-guide{grid-template-columns:1fr}.qs-run-meta{grid-template-columns:1fr 1fr}}
+@media(max-width:720px){.qs-grid-universe,.qs-backtest-settings{grid-template-columns:1fr}.qs-run-meta{grid-template-columns:1fr}.qs-strategy-chart{min-height:180px}.qs-strategy-chart svg{height:165px}}
     @media(max-width:1050px){.qs-nav-card{grid-template-columns:1fr}.qs-nav-links{justify-content:flex-start}.qs-grid,.qs-grid-3,.qs-factor-layout{grid-template-columns:1fr 1fr}.qs-sector-grid{grid-template-columns:repeat(3,1fr)}.qs-backtest-summary{grid-template-columns:1fr 1fr}.qs-hero{display:block}.qs-badge{display:inline-flex;margin-top:12px}}
     @media(max-width:720px){.qs-wrap{width:96vw;margin-top:12px}.qs-card,.qs-hero{padding:18px}.qs-grid,.qs-grid-3,.qs-factor-layout,.qs-mini-grid{grid-template-columns:1fr}.qs-sector-grid{grid-template-columns:1fr 1fr}.qs-hero h1{font-size:27px}.qs-actions{position:sticky;bottom:0;background:rgba(6,16,30,.92);backdrop-filter:blur(10px);padding:12px 0;z-index:10}.qs-backtest-summary{grid-template-columns:1fr}.qs-table{min-width:1300px}}
+  </style>
+
+  <style id="bitgak-home-font-nav-match">
+    html,
+    body,
+    button,
+    input,
+    select,
+    textarea {
+      font-family: Pretendard, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
+    }
+
+    body {
+      font-weight: 800;
+      letter-spacing: -0.035em;
+    }
+
+    .qs-wrap {
+      width: min(1500px, calc(100vw - 48px));
+      margin: 22px auto 80px;
+    }
+
+    .qs-nav {
+      top: 12px;
+      margin-bottom: 22px;
+    }
+
+    .qs-nav-card {
+      min-height: 66px;
+      padding: 10px 12px;
+      border-radius: 24px;
+      border: 1px solid rgba(74, 118, 176, 0.34);
+      background: linear-gradient(135deg, rgba(15, 46, 65, 0.92), rgba(10, 21, 38, 0.96) 44%, rgba(13, 26, 48, 0.94));
+      box-shadow: 0 20px 55px rgba(0, 0, 0, 0.24);
+      backdrop-filter: blur(16px);
+      display: grid;
+      grid-template-columns: 260px minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .qs-brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 0;
+      color: #eef7ff;
+      text-decoration: none;
+    }
+
+    .qs-brand > .qs-logo {
+      width: 42px;
+      height: 42px;
+      min-width: 42px;
+      margin: 0;
+      border-radius: 14px;
+      display: grid;
+      place-items: center;
+      color: #062033 !important;
+      background: linear-gradient(135deg, #2dd4bf, #60a5fa);
+      box-shadow: 0 14px 32px rgba(45, 212, 191, 0.22);
+      font-size: 16px !important;
+      font-weight: 1000;
+      line-height: 1;
+      flex: 0 0 auto;
+    }
+
+    .qs-brand > .qs-brand-text {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+      margin: 0;
+      color: inherit;
+      line-height: 1.1;
+    }
+
+    .qs-brand .qs-brand-name {
+      display: block;
+      margin: 0;
+      color: #ffffff !important;
+      font-size: 18px !important;
+      font-weight: 1000;
+      letter-spacing: -0.04em;
+      line-height: 1.1;
+      white-space: nowrap;
+    }
+
+    .qs-brand .qs-brand-sub {
+      display: block;
+      margin: 4px 0 0;
+      color: #7dd3fc !important;
+      font-size: 11px !important;
+      font-weight: 900;
+      line-height: 1.1;
+      white-space: nowrap;
+    }
+
+    .qs-nav-links {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+
+    .qs-nav-links::-webkit-scrollbar {
+      display: none;
+    }
+
+    .qs-nav-link {
+      min-height: 42px;
+      height: 42px;
+      padding: 0 18px;
+      border-radius: 16px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      color: #dbeafe;
+      text-decoration: none;
+      font-size: 15px;
+      font-weight: 950;
+      line-height: 1;
+      white-space: nowrap;
+      border: 1px solid transparent;
+      flex: 0 0 auto;
+    }
+
+    .qs-auth {
+      display: inline-flex;
+      align-items: center;
+      justify-content: flex-end;
+    }
+
+    .qs-auth a {
+      height: 46px;
+      min-height: 46px;
+      padding: 0 20px;
+      border-radius: 16px;
+      border: 1px solid rgba(96, 165, 250, 0.35);
+      background: rgba(15, 23, 42, 0.78);
+      color: #f8fbff;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      font-weight: 950;
+      line-height: 1;
+      white-space: nowrap;
+    }
+
+    .qs-hero h1,
+    .qs-section-title,
+    .qs-result-head h2,
+    .qs-factor-box h3 {
+      font-family: Pretendard, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
+      letter-spacing: -0.045em;
+    }
+
+    @media (max-width: 1120px) {
+      .qs-wrap {
+        width: min(100%, calc(100vw - 22px));
+        margin-top: 14px;
+      }
+
+      .qs-nav-card {
+        grid-template-columns: 1fr auto;
+        grid-template-areas:
+          "brand auth"
+          "links links";
+        gap: 12px;
+        padding: 14px;
+        border-radius: 20px;
+      }
+
+      .qs-brand { grid-area: brand; }
+      .qs-auth { grid-area: auth; }
+      .qs-nav-links {
+        grid-area: links;
+        width: 100%;
+        justify-content: flex-start;
+        padding-top: 2px;
+      }
+
+      .qs-nav-link {
+        min-height: 38px;
+        height: 38px;
+        padding: 0 12px;
+        border-radius: 14px;
+        font-size: 13px;
+      }
+
+      .qs-auth a {
+        height: 40px;
+        min-height: 40px;
+        padding: 0 14px;
+        border-radius: 14px;
+        font-size: 13px;
+      }
+    }
+
+    @media (max-width: 520px) {
+      .qs-brand > .qs-logo {
+        width: 36px;
+        height: 36px;
+        min-width: 36px;
+        border-radius: 12px;
+        font-size: 15px !important;
+      }
+
+      .qs-brand .qs-brand-name { font-size: 16px !important; }
+      .qs-brand .qs-brand-sub { font-size: 10px !important; }
+    }
   </style>
 </head>
 <body>
 <div class="qs-wrap">
   <nav class="qs-nav" aria-label="빗각뷰 네비게이션">
     <div class="qs-nav-card">
-      <a class="qs-brand" href="/"><span class="qs-logo">B</span><span><strong>BitgakView</strong><span>빗각뷰 · 조건검색</span></span></a>
+      <a class="qs-brand" href="/">
+        <span class="qs-logo">B</span>
+        <span class="qs-brand-text">
+          <span class="qs-brand-name">BitgakView</span>
+          <span class="qs-brand-sub">빗각뷰 · 퀀트투자</span>
+        </span>
+      </a>
       <div class="qs-nav-links">
         <a class="qs-nav-link" href="/">홈</a>
         <a class="qs-nav-link" href="/stocks/features/">소개</a>
         <a class="qs-nav-link" href="/stocks/pricing/">가격소개</a>
         <a class="qs-nav-link" href="/stocks/005930/">차트</a>
-        <a class="qs-nav-link active" href="/tools/stock-screener/">지표검색</a>
+        <a class="qs-nav-link active" href="/tools/stock-screener/">퀀트투자</a>
         <a class="qs-nav-link" href="{% url 'insights:list' %}">빗각관점</a>
         <a class="qs-nav-link" href="/tools/youtube-keyword/">AI 도구</a>
       </div>
@@ -30,8 +261,8 @@
   </nav>
 
   <section class="qs-hero">
-    <div><h1>조건별 종목 찾기</h1><p>산업 → 핵심·커스텀 필터 → 저장·백테스트 순서로 줄였습니다. 체크한 종목은 관심그룹에 바로 넣을 수 있습니다.</p></div>
-    <div class="qs-badge">{% if access_payload.is_premium %}프리미엄 · 검색 제한 없음{% elif user.is_authenticated %}남은 무료 검색 {{ remaining }}회{% else %}로컬/비로그인 테스트{% endif %}</div>
+    <div><h1>퀀트투자</h1><p>가치·퀄리티·수급·기술적 조건으로 종목을 찾고, 전략 저장과 백테스트까지 한 화면에서 확인합니다. 검색과 결과 열람은 일반 사용자도 모두 이용할 수 있습니다.</p></div>
+    <div class="qs-badge">전체 사용자 · 퀀트 검색 전체 공개</div>
   </section>
 
   <form id="screenerForm" class="qs-card" method="get" action="{% url 'stock_screener:page' %}"
@@ -54,12 +285,12 @@
 
     <section class="qs-step active" data-step="1">
       <h2 class="qs-section-title">유니버스 설정</h2>
-      <div class="qs-grid">
-        <div class="qs-field"><label>시장</label><select class="qs-select" name="market"><option value="ALL">전체</option><option value="KOSPI">KOSPI</option><option value="KOSDAQ">KOSDAQ</option></select></div>
-        <div class="qs-field"><label>종목명/코드 검색</label><input class="qs-input" id="qInput" name="q" value="{{ form_values.q }}" autocomplete="off" placeholder="예: 삼성, 005930"><div class="qs-suggest" id="suggestBox"></div><div class="qs-help">검색어가 있으면 해당 종목 중심으로 표가 줄어듭니다.</div></div>
-        <div class="qs-field"><label>정렬</label><select class="qs-select" name="sort"><option value="score_desc">종합 점수순</option><option value="per_asc">PER 낮은순</option><option value="pbr_asc">PBR 낮은순</option><option value="roe_desc">ROE 높은순</option><option value="div_desc">배당 높은순</option><option value="trading_value_desc">거래대금 높은순</option><option value="momentum_3m_desc">3개월 모멘텀순</option></select></div>
-        <div class="qs-field"><label>표시 개수</label><input class="qs-input" name="limit" type="number" value="{{ form_values.limit|default:'50' }}" min="1" max="300"></div>
+      <div class="qs-grid qs-grid-universe">
+        <div class="qs-field"><label>시장</label><select class="qs-select" name="market"><option value="ALL">전체</option><option value="KOSPI">KOSPI</option><option value="KOSDAQ">KOSDAQ</option></select><div class="qs-help">퀀트 검색 대상 시장을 선택합니다.</div></div>
+        <div class="qs-field"><label>정렬 기준</label><select class="qs-select" name="sort"><option value="score_desc">종합 점수순</option><option value="per_asc">PER 낮은순</option><option value="pbr_asc">PBR 낮은순</option><option value="roe_desc">ROE 높은순</option><option value="div_desc">배당 높은순</option><option value="trading_value_desc">거래대금 높은순</option><option value="momentum_3m_desc">3개월 모멘텀순</option></select><div class="qs-help">조건 통과 종목을 어떤 순서로 보여줄지 정합니다.</div></div>
+        <div class="qs-field"><label>최대 표시 종목 수</label><input class="qs-input" name="limit" type="number" value="{{ form_values.limit|default:'50' }}" min="1" max="300"><div class="qs-help">화면 표에 표시할 최대 개수이며, 백테스트 편입 종목 수와는 다릅니다.</div></div>
       </div>
+      <div class="qs-explain"><strong>종목명 검색은 제거했습니다.</strong> 이 화면은 특정 종목을 찾는 검색창이 아니라, 시장과 산업·재무·기술 조건으로 <b>후보군 전체를 거르는 퀀트 스크리너</b>입니다. 개별 종목 검증은 마지막 단계의 개별 종목 백테스트에서 진행합니다.</div>
       <h3 class="qs-section-title">산업 필터</h3>
       <div class="qs-sector-box"><label class="qs-check"><input type="checkbox" id="sectorAll" checked> 전체 선택</label><div class="qs-sector-grid" id="sectorGrid">{% for sector in sector_options %}<label class="qs-check"><input type="checkbox" name="sectors" value="{{ sector }}" checked> {{ sector }}</label>{% endfor %}</div></div>
       <div class="qs-actions"><div class="qs-actions-left"><button type="button" class="qs-btn" id="sectorNone">산업 선택 해제</button><button type="button" class="qs-btn" id="sectorEvery">산업 전체 선택</button></div><div class="qs-actions-right"><button type="button" class="qs-btn white" id="searchStep1">현재 조건 검색</button><button type="button" class="qs-btn primary" data-next-step="2">다음: 핵심 필터</button></div></div>
@@ -115,12 +346,38 @@
     </section>
 
     <section class="qs-step" data-step="3">
-      <h2 class="qs-section-title">전략 저장과 백테스트</h2>
-      <div class="qs-grid-3 qs-grid"><div class="qs-field"><label>전략 이름</label><input class="qs-input" id="strategyName" name="strategy_name" placeholder="예: PER20 + 112일선 아래"></div><div class="qs-field"><label>초기 투자금(만원)</label><input class="qs-input" id="initialCapital" type="number" value="1000"></div><div class="qs-field"><label>거래 수수료(%)</label><input class="qs-input" id="feePct" type="number" step="0.001" value="0.015"></div><div class="qs-field"><label>리밸런싱 기간</label><select class="qs-select" id="rebalance"><option value="monthly">매월</option><option value="quarterly">분기</option><option value="yearly">매년</option></select></div><div class="qs-field"><label>종목 수</label><input class="qs-input" id="topN" type="number" value="20" min="1" max="100"></div><div class="qs-field"><label>시작일</label><input class="qs-input" id="btStart" type="date" value="2025-01-01"></div><div class="qs-field"><label>종료일</label><input class="qs-input" id="btEnd" type="date"></div></div>
-      <div class="qs-actions"><div class="qs-actions-left"><button type="button" class="qs-btn" data-next-step="2">이전</button><button type="button" class="qs-btn green" id="saveStrategy">전략 저장</button></div><div class="qs-actions-right"><button type="button" class="qs-btn white" id="runBacktest">전략 백테스트</button><button type="button" class="qs-btn primary" id="searchStep3">서버 검색</button></div></div>
+      <h2 class="qs-section-title">전략 저장과 포트폴리오 백테스트</h2>
+      <div class="qs-backtest-settings">
+        <div class="qs-field"><label>전략 이름</label><input class="qs-input" id="strategyName" name="strategy_name" placeholder="예: 저PER·저PBR + 112일선 아래"><div class="qs-help">현재 1~2단계 필터 조건을 하나의 전략으로 저장합니다.</div></div>
+        <div class="qs-field"><label>초기 투자금(만원)</label><input class="qs-input" id="initialCapital" type="number" value="1000" min="10" step="10"><div class="qs-help">백테스트 시작 시점의 총 투자금입니다.</div></div>
+        <div class="qs-field"><label>거래 수수료(%)</label><input class="qs-input" id="feePct" type="number" step="0.001" value="0.015" min="0" max="5"><div class="qs-help">매수·매도 체결마다 적용되는 가정 수수료입니다.</div></div>
+        <div class="qs-field"><label>리밸런싱 주기</label><select class="qs-select" id="rebalance"><option value="monthly">매월</option><option value="quarterly">분기</option><option value="yearly">매년</option></select><div class="qs-help">해당 주기마다 조건을 다시 계산해 종목을 교체합니다.</div></div>
+        <div class="qs-field"><label>리밸런싱당 편입 종목 수</label><input class="qs-input" id="topN" type="number" value="10" min="1" max="50"><div class="qs-help">매 리밸런싱 시점에 정렬 상위 N개를 동일 비중으로 편입합니다. 조건 통과 종목이 N개보다 적으면 실제 편입 수는 더 적습니다.</div></div>
+        <div class="qs-field"><label>백테스트 시작일</label><input class="qs-input" id="btStart" type="date" value="2025-01-01"></div>
+        <div class="qs-field"><label>백테스트 종료일</label><input class="qs-input" id="btEnd" type="date"></div>
+      </div>
+      <div class="qs-explain warn"><strong>포트폴리오 백테스트 해석</strong><br>‘표시 종목 수’는 현재 검색 결과 표의 최대 행 수이고, ‘편입 종목 수’는 과거 각 리밸런싱 날짜마다 실제로 보유할 종목 수입니다. 두 값은 서로 다른 설정입니다. 같은 날짜·같은 데이터·같은 조건이라면 결과는 동일해야 하며, 값이 달라지면 서버의 기준일·데이터 소스·캐시 갱신 여부를 확인해야 합니다.</div>
+      <div class="qs-actions"><div class="qs-actions-left"><button type="button" class="qs-btn" data-next-step="2">이전</button><button type="button" class="qs-btn green" id="saveStrategy">전략 저장</button></div><div class="qs-actions-right"><button type="button" class="qs-btn white" id="runBacktest">포트폴리오 백테스트</button><button type="button" class="qs-btn primary" id="searchStep3">현재 조건 다시 검색</button></div></div>
       <div id="savedStrategies" class="qs-saved"></div><div id="backtestBox"></div>
-      <h3 class="qs-section-title">개별 종목 백테스트</h3>
-      <div class="qs-factor-box"><div class="qs-grid-3 qs-grid"><div class="qs-field"><label>종목명/코드</label><input class="qs-input" id="singleStockQuery" placeholder="예: 기아, 000270"></div><div class="qs-field"><label>전략</label><select class="qs-select" id="singleStrategy"><option value="buy_hold">단순 보유</option><option value="ma_cross_20_60">20/60 이평선 전략</option><option value="ma_cross_112_224">112/224 이평선 전략</option><option value="price_above_112">112일선 위에서만 보유</option><option value="turtle_20_10">터틀 20일 돌파/10일 이탈</option><option value="rsi_reversion">RSI 35매수/65청산</option></select></div><div class="qs-field"><label>&nbsp;</label><button type="button" class="qs-btn white" id="runSingleBacktest">개별 종목 백테스트</button></div></div></div><div id="singleBacktestBox"></div>
+      <h3 class="qs-section-title">개별 종목 전략 백테스트</h3>
+      <div class="qs-factor-box">
+        <div class="qs-grid-3 qs-grid">
+          <div class="qs-field"><label>종목명 또는 종목코드</label><input class="qs-input" id="singleStockQuery" placeholder="예: 기아, 000270"><div class="qs-help">여기에서만 특정 종목을 입력합니다.</div></div>
+          <div class="qs-field"><label>매매 전략</label><select class="qs-select" id="singleStrategy"><option value="buy_hold">단순 보유</option><option value="ma_cross_20_60">20/60 이평선 교차</option><option value="ma_cross_112_224">112/224 이평선 교차</option><option value="price_above_112">112일선 위에서만 보유</option><option value="turtle_20_10">터틀 20일 돌파/10일 이탈</option><option value="rsi_reversion">RSI 35 매수/65 청산</option></select><div class="qs-help">전략을 바꾸면 아래 설명과 신호 예시가 즉시 바뀝니다.</div></div>
+          <div class="qs-field"><label>&nbsp;</label><button type="button" class="qs-btn white" id="runSingleBacktest">선택 전략 백테스트</button></div>
+        </div>
+        <div class="qs-strategy-guide" id="singleStrategyGuide">
+          <div class="qs-strategy-copy">
+            <h4 id="singleStrategyTitle">단순 보유</h4>
+            <p id="singleStrategyDescription"></p>
+            <ul class="qs-strategy-rules" id="singleStrategyRules"></ul>
+            <div class="qs-strategy-legend"><span><i></i>가격/기준선</span><span><i class="signal"></i>매수 신호</span><span><i class="exit"></i>청산 신호</span></div>
+          </div>
+          <div class="qs-strategy-chart" id="singleStrategyChart" aria-label="선택 전략 신호 예시 차트"></div>
+        </div>
+        <div class="qs-explain"><strong>결과가 실행할 때마다 달라질 수 있는 경우</strong><br>종료일을 오늘로 두었거나 장중 데이터가 갱신된 경우, 백엔드가 최신 KRX 영업일을 다시 찾은 경우, 캐시와 비상 데이터 소스가 바뀐 경우에는 같은 전략도 결과가 달라질 수 있습니다. 아래 결과에 표시되는 <b>실제 데이터 기간·소스·거래 횟수</b>를 함께 비교하세요. 완전히 같은 요청인데 값만 달라지면 서버 계산의 비결정성 문제이므로 경고를 표시합니다.</div>
+      </div>
+      <div id="singleBacktestBox"></div>
     </section>
   </form>
 
@@ -164,20 +421,43 @@
   $('#addCustomFilter')?.addEventListener('click',()=>{const field=$('#customField').value,op=$('#customOp').value,value=$('#customValue').value,value2=$('#customValue2').value;if(value===''){alert('값을 입력해주세요.');return;}customFilters.push({field,op,value:Number(value),value2:value2!==''?Number(value2):null});renderCustomFilters();});
   $('#clearCustomFilters')?.addEventListener('click',()=>{customFilters=[];renderCustomFilters();}); document.addEventListener('click',e=>{const b=e.target.closest('[data-remove-custom]');if(!b)return;customFilters.splice(Number(b.dataset.removeCustom),1);renderCustomFilters();}); renderCustomFilters();
   function collectFilters(){ const fd=new FormData(form), data={}; for(const [k,v] of fd.entries()){ if(['csrfmiddlewaretoken','search','strategy_name','sectors'].includes(k)) continue; data[k]=v; } data.use_fundamental=$('#useFundamental').checked?'1':'0'; data.use_scale=$('#useScale').checked?'1':'0'; data.use_technical=$('#useTechnical').checked?'1':'0'; data.sectors=sectorValues().join(','); data.custom_filters=JSON.stringify(customFilters); return data; }
-  function collectBacktest(){return{initial_capital:Number($('#initialCapital').value||1000)*10000,fee_pct:$('#feePct').value||0,rebalance:$('#rebalance').value,top_n:$('#topN').value||20,start:$('#btStart').value,end:$('#btEnd').value||today};}
+  function collectBacktest(){return{initial_capital:Number($('#initialCapital').value||1000)*10000,fee_pct:$('#feePct').value||0,rebalance:$('#rebalance').value,top_n:$('#topN').value||10,start:$('#btStart').value,end:$('#btEnd').value||today};}
   function getJson(url,params){const qs=new URLSearchParams(params||{}).toString();return fetch(url+(url.includes('?')?'&':'?')+qs,{credentials:'same-origin'}).then(r=>r.json());}
   function postJson(url,payload){return fetch(url,{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':csrf,'X-Requested-With':'XMLHttpRequest'},credentials:'same-origin',body:JSON.stringify(payload)}).then(r=>r.json());}
   function rowHtml(r){return `<tr><td><label class="qs-check"><input type="checkbox" class="row-check" data-code="${r.code||''}" data-name="${r.name||''}" data-market="${r.market||'KRX'}"><span><strong>${r.name||'-'}</strong><br><span class="qs-chip">${r.code||''}</span></span></label></td><td>${r.sector||'-'}</td><td>${r.market||'-'}</td><td>${fmt(r.per)}</td><td>${fmt(r.pbr)}</td><td>${fmt(r.roe)}</td><td>${fmt(r.dividend_yield)}</td><td>${fmt(r.market_cap_uk,0)}</td><td>${fmt(r.trading_value_uk,0)}</td><td>${fmt(r.close,0)}</td><td>${fmt(r.ma112,0)}</td><td>${fmt(r.ma224,0)}</td><td>${fmt(r.price_to_ma112_pct)}</td><td>${fmt(r.rsi14)}</td><td>${fmt(r.score)}</td><td><a class="qs-chip" href="${r.chart_url||('/stocks/'+r.code+'/')}">보기</a></td></tr>`;}
   function renderResults(data){const rows=data?.results||data?.items||data?.rows||[]; $('#resultStatus').textContent=data?.ok?`기준일 ${data.market_date||'-'} · 전체 ${data.universe_count||0}개 · 조건 통과 ${data.count||0}개 · 표시 ${rows.length}개 · 소스 ${data.source||'-'}`:(data?.message||'검색 실패'); $('#resultBody').innerHTML=rows.length?rows.map(rowHtml).join(''):`<tr><td colspan="16"><div class="qs-empty">조건에 맞는 종목이 없습니다. 조건을 완화하거나 캐시 새로고침 검색을 눌러보세요.</div></td></tr>`; const msg=[]; if(data?.warnings?.length) msg.push(`<div class="qs-note">${data.warnings.slice(0,5).join('<br>')}</div>`); if(data?.debug?.auto_fixed?.length) msg.push(`<div class="qs-note">자동 보정: ${data.debug.auto_fixed.join(', ')}</div>`); $('#messageBox').innerHTML=msg.join(''); $('#debugBox').textContent=JSON.stringify({filters:data?.filters,debug:data?.debug,warnings:data?.warnings},null,2);}
   async function runSearch(extra={}){ $('#resultStatus').textContent='검색 중입니다...'; const data=await getJson(form.dataset.apiUrl,{...collectFilters(),...extra,search:'1'}); renderResults(data); document.querySelector('.qs-result-card').scrollIntoView({behavior:'smooth',block:'start'}); }
   $('#searchStep1')?.addEventListener('click',()=>runSearch()); $('#searchStep2')?.addEventListener('click',()=>runSearch()); $('#searchStep3')?.addEventListener('click',()=>runSearch()); $('#toggleDebug')?.addEventListener('click',()=>$('#debugBox').classList.toggle('show'));
-  let suggestTimer=null; $('#qInput')?.addEventListener('input',()=>{clearTimeout(suggestTimer);const q=$('#qInput').value.trim(); if(!q){$('#suggestBox').classList.remove('show');return;} suggestTimer=setTimeout(async()=>{const data=await getJson(form.dataset.symbolApiUrl,{q,limit:14}); const rows=data.results||[]; $('#suggestBox').innerHTML=rows.map(r=>`<button type="button" data-suggest-code="${r.code}" data-suggest-name="${r.name}">${r.name} (${r.code}) · ${r.market||''}</button>`).join('')||'<button type="button">검색 결과 없음</button>'; $('#suggestBox').classList.add('show');},230);});
-  document.addEventListener('click',e=>{const b=e.target.closest('[data-suggest-code]'); if(b){$('#qInput').value=b.dataset.suggestName||b.dataset.suggestCode; $('#singleStockQuery').value=b.dataset.suggestName||b.dataset.suggestCode; $('#suggestBox').classList.remove('show'); runSearch(); return;} if(!e.target.closest('#suggestBox')&&!e.target.closest('#qInput')) $('#suggestBox').classList.remove('show');});
   function renderSaved(list){const box=$('#savedStrategies'); box.innerHTML=list&&list.length?list.map(s=>`<button type="button" data-load-strategy='${JSON.stringify(s).replace(/'/g,'&#39;')}'>${s.name}</button>`).join(''):'<span class="qs-help">저장된 전략이 아직 없습니다.</span>';}
   $('#saveStrategy')?.addEventListener('click',async()=>{const payload={name:$('#strategyName').value||'나의 퀀트 전략',filters:collectFilters(),backtest:collectBacktest()}; const data=await postJson(form.dataset.saveUrl,payload); renderSaved(data.strategies||[]); alert(data.ok?'전략을 저장했습니다.':(data.message||'저장 실패'));});
-  document.addEventListener('click',e=>{const b=e.target.closest('[data-load-strategy]'); if(!b)return; try{const s=JSON.parse(b.dataset.loadStrategy),f=s.filters||{},bt=s.backtest||{}; Object.keys(f).forEach(k=>{if(k==='sectors'||k==='custom_filters')return; const el=form.querySelector(`[name="${k}"]`); if(el) el.value=f[k];}); if(f.sectors){const set=new Set(String(f.sectors).split(',').filter(Boolean)); $$('input[name="sectors"]').forEach(x=>x.checked=set.has(x.value));} customFilters=JSON.parse(f.custom_filters||'[]'); renderCustomFilters(); $('#strategyName').value=s.name||''; $('#initialCapital').value=Math.round((bt.initial_capital||10000000)/10000); $('#feePct').value=bt.fee_pct||0.015; $('#topN').value=bt.top_n||20; $('#btStart').value=bt.start||'2025-01-01'; $('#btEnd').value=bt.end||today; setStep(2);}catch(_){}});
-  $('#runBacktest')?.addEventListener('click',async()=>{$('#backtestBox').innerHTML='<div class="qs-note">전략 백테스트 계산 중입니다...</div>'; const data=await postJson(form.dataset.backtestUrl,{filters:collectFilters(),backtest:collectBacktest()}); if(!data.ok){$('#backtestBox').innerHTML=`<div class="qs-note qs-error">${data.message||'백테스트 실패'}</div>`;return;} $('#backtestBox').innerHTML=`<div class="qs-backtest-summary"><div class="qs-stat"><span>최종 자산</span><strong>${fmt(data.final_value,0)}원</strong></div><div class="qs-stat"><span>총수익률</span><strong>${fmt(data.total_return_pct)}%</strong></div><div class="qs-stat"><span>CAGR</span><strong>${fmt(data.cagr_pct)}%</strong></div><div class="qs-stat"><span>MDD</span><strong>${fmt(data.max_drawdown_pct)}%</strong></div></div><div class="qs-note">${data.message||''}</div>`;});
-  $('#runSingleBacktest')?.addEventListener('click',async()=>{$('#singleBacktestBox').innerHTML='<div class="qs-note">개별 종목 백테스트 계산 중입니다...</div>'; const data=await postJson(form.dataset.singleBacktestUrl,{code:$('#singleStockQuery').value||$('#qInput').value,strategy:$('#singleStrategy').value,initial_capital:Number($('#initialCapital').value||1000)*10000,fee_pct:$('#feePct').value||0.015,start:$('#btStart').value,end:$('#btEnd').value||today}); if(!data.ok){$('#singleBacktestBox').innerHTML=`<div class="qs-note qs-error">${data.message||'백테스트 실패'}</div>`;return;} $('#singleBacktestBox').innerHTML=`<div class="qs-backtest-summary"><div class="qs-stat"><span>종목</span><strong>${data.stock?.name||'-'}</strong></div><div class="qs-stat"><span>최종 자산</span><strong>${fmt(data.final_value,0)}원</strong></div><div class="qs-stat"><span>총수익률</span><strong>${fmt(data.total_return_pct)}%</strong></div><div class="qs-stat"><span>MDD</span><strong>${fmt(data.max_drawdown_pct)}%</strong></div></div>`;});
+  document.addEventListener('click',e=>{const b=e.target.closest('[data-load-strategy]');if(!b)return;try{const saved=JSON.parse(b.dataset.loadStrategy),f=saved.filters||{},bt=saved.backtest||{};Object.keys(f).forEach(k=>{if(k==='sectors'||k==='custom_filters')return;const el=form.querySelector(`[name="${k}"]`);if(!el)return;if(el.type==='checkbox')el.checked=String(f[k])!=='0'&&String(f[k])!=='false';else el.value=f[k];});if(f.sectors){const set=new Set(String(f.sectors).split(',').filter(Boolean));$$('input[name="sectors"]').forEach(x=>x.checked=set.has(x.value));$('#sectorAll').checked=$$('input[name="sectors"]').every(x=>x.checked);}try{customFilters=JSON.parse(f.custom_filters||'[]')}catch(_){customFilters=[]}renderCustomFilters();syncToggles();$('#strategyName').value=saved.name||'';$('#initialCapital').value=Math.round((bt.initial_capital||10000000)/10000);$('#feePct').value=bt.fee_pct||0.015;$('#rebalance').value=bt.rebalance||'monthly';$('#topN').value=bt.top_n||10;$('#btStart').value=bt.start||'2025-01-01';$('#btEnd').value=bt.end||today;setStep(2);}catch(error){console.error(error);alert('저장 전략을 불러오지 못했습니다.');}});
+  function metaValue(data, keys, fallback='-'){for(const key of keys){const value=key.split('.').reduce((obj,k)=>obj&&obj[k],data);if(value!==undefined&&value!==null&&value!=='')return value;}return fallback;}
+  function stableObject(value){if(Array.isArray(value))return value.map(stableObject);if(value&&typeof value==='object'){const out={};Object.keys(value).sort().forEach(k=>{out[k]=stableObject(value[k]);});return out;}return value;}function requestSignature(payload){const normalized=JSON.stringify(stableObject(payload));let hash=0;for(let i=0;i<normalized.length;i++)hash=((hash<<5)-hash)+normalized.charCodeAt(i)|0;return String(hash);}
+  let lastSingleRun=null;
+  const strategyMeta={
+    buy_hold:{title:'단순 보유',desc:'첫 거래 가능일에 한 번 매수하고 종료일까지 계속 보유하는 기준 전략입니다. 다른 전략이 실제로 단순 보유보다 나았는지 비교하는 벤치마크로 사용합니다.',rules:['첫 유효 거래일 종가 기준으로 매수','중간 매매 없이 종료일까지 보유','수수료는 최초 매수와 최종 평가/매도 가정에 따라 서버 계산식이 적용']},
+    ma_cross_20_60:{title:'20/60 이평선 교차',desc:'단기 추세선인 20일선이 60일선을 상향 돌파할 때 매수하고, 다시 하향 돌파할 때 청산하는 중기 추세 추종 전략입니다.',rules:['20일선이 60일선을 아래에서 위로 돌파하면 매수','20일선이 60일선을 위에서 아래로 돌파하면 청산','횡보장에서는 잦은 손절과 재진입이 발생할 수 있음']},
+    ma_cross_112_224:{title:'112/224 이평선 교차',desc:'약 반년·1년 추세를 비교하는 장기 추세 추종 전략입니다. 신호는 느리지만 단기 노이즈를 줄이는 대신 초기 상승 구간 일부를 놓칠 수 있습니다.',rules:['112일선이 224일선을 상향 돌파하면 매수','112일선이 224일선을 하향 돌파하면 청산','224개 미만의 거래일 데이터에서는 신호 계산이 제한될 수 있음']},
+    price_above_112:{title:'112일선 위에서만 보유',desc:'종가가 112일선 위에 있을 때만 시장에 참여하고, 종가가 112일선 아래로 내려오면 현금으로 전환하는 추세 필터 전략입니다.',rules:['종가가 112일선 위로 올라오면 매수','종가가 112일선 아래로 내려오면 청산','장기 상승 추세 방어에 초점을 둔 전략']},
+    turtle_20_10:{title:'터틀 20일 돌파 / 10일 이탈',desc:'최근 20거래일 고점을 돌파하면 추세 시작으로 보고 매수하며, 최근 10거래일 저점을 이탈하면 추세 종료로 보고 청산하는 돌파 전략입니다.',rules:['직전 20일 최고가 돌파 시 다음 계산 기준으로 매수','직전 10일 최저가 이탈 시 청산','갭 상승·하락과 체결 가격 가정에 따라 실제 수익은 달라질 수 있음']},
+    rsi_reversion:{title:'RSI 35 매수 / 65 청산',desc:'RSI가 과매도 구간으로 내려올 때 반등을 기대해 매수하고, 과열에 가까워지면 청산하는 평균회귀 전략입니다.',rules:['RSI(14) 35 이하에서 매수','RSI(14) 65 이상에서 청산','강한 하락 추세에서는 과매도 상태가 오래 지속될 수 있음']}
+  };
+  function strategySvg(key){
+    const common='<line x1="18" y1="165" x2="452" y2="165" stroke="#21456d"/><line x1="18" y1="25" x2="18" y2="165" stroke="#21456d"/>';
+    const price='<path d="M20 138 C55 130 72 110 102 118 S150 150 182 120 S228 65 270 84 S320 120 350 76 S405 35 450 55" fill="none" stroke="#38d8ff" stroke-width="4" stroke-linecap="round"/>';
+    let extra='';
+    if(key==='buy_hold') extra='<circle cx="36" cy="133" r="7" fill="#eaff4c"/><text x="48" y="128" fill="#eaff4c" font-size="12">매수</text><line x1="36" y1="145" x2="430" y2="145" stroke="#eaff4c" stroke-dasharray="6 6" opacity=".65"/>';
+    else if(key==='ma_cross_20_60'||key==='ma_cross_112_224') extra='<path d="M20 142 C90 138 140 126 190 112 S300 92 450 70" fill="none" stroke="#8fb7e4" stroke-width="3"/><path d="M20 150 C95 150 155 139 210 112 S315 70 450 78" fill="none" stroke="#eaff4c" stroke-width="3"/><circle cx="215" cy="110" r="7" fill="#eaff4c"/><circle cx="390" cy="76" r="7" fill="#ff6b7a"/><text x="225" y="102" fill="#eaff4c" font-size="11">상향 교차</text>';
+    else if(key==='price_above_112') extra='<path d="M20 130 C110 126 180 116 245 102 S360 82 450 76" fill="none" stroke="#eaff4c" stroke-width="3"/><circle cx="175" cy="125" r="7" fill="#eaff4c"/><circle cx="315" cy="103" r="7" fill="#ff6b7a"/><text x="190" y="145" fill="#b9d7ff" font-size="11">가격이 기준선 위일 때만 보유</text>';
+    else if(key==='turtle_20_10') extra='<path d="M20 98 L450 98" stroke="#eaff4c" stroke-width="2" stroke-dasharray="8 6"/><path d="M20 138 L450 138" stroke="#ff6b7a" stroke-width="2" stroke-dasharray="8 6"/><circle cx="250" cy="92" r="7" fill="#eaff4c"/><circle cx="335" cy="139" r="7" fill="#ff6b7a"/><text x="28" y="90" fill="#eaff4c" font-size="11">20일 고점</text><text x="28" y="155" fill="#ff9aaa" font-size="11">10일 저점</text>';
+    else extra='<path d="M20 130 C70 150 110 160 150 142 S230 82 270 62 S350 70 450 108" fill="none" stroke="#eaff4c" stroke-width="3"/><path d="M20 145 L450 145" stroke="#65e78d" stroke-dasharray="6 6"/><path d="M20 70 L450 70" stroke="#ff6b7a" stroke-dasharray="6 6"/><circle cx="120" cy="153" r="7" fill="#eaff4c"/><circle cx="300" cy="68" r="7" fill="#ff6b7a"/><text x="26" y="158" fill="#65e78d" font-size="10">RSI 35</text><text x="26" y="63" fill="#ff9aaa" font-size="10">RSI 65</text>';
+    return `<svg viewBox="0 0 470 185" role="img" aria-label="전략 신호 예시">${common}${price}${extra}</svg>`;
+  }
+  function renderStrategyGuide(){const key=$('#singleStrategy').value;const meta=strategyMeta[key]||strategyMeta.buy_hold;$('#singleStrategyTitle').textContent=meta.title;$('#singleStrategyDescription').textContent=meta.desc;$('#singleStrategyRules').innerHTML=meta.rules.map(x=>`<li>${x}</li>`).join('');$('#singleStrategyChart').innerHTML=strategySvg(key);}
+  $('#singleStrategy')?.addEventListener('change',renderStrategyGuide);renderStrategyGuide();
+  function renderRunMeta(data,payload){return `<div class="qs-run-meta"><div><span>실제 데이터 기간</span><strong>${metaValue(data,['actual_start','data_start','period.start'],payload.start)} ~ ${metaValue(data,['actual_end','data_end','period.end'],payload.end)}</strong></div><div><span>데이터 기준/소스</span><strong>${metaValue(data,['market_date','as_of_date','data_date'],'-')} · ${metaValue(data,['source','data_source'],'-')}</strong></div><div><span>거래 횟수</span><strong>${metaValue(data,['trade_count','trades_count','stats.trade_count'],'-')}회</strong></div><div><span>적용 수수료</span><strong>${payload.fee_pct}%</strong></div></div>`;}
+  $('#runBacktest')?.addEventListener('click',async()=>{const payload={filters:collectFilters(),backtest:collectBacktest()};$('#backtestBox').innerHTML='<div class="qs-note">포트폴리오 백테스트 계산 중입니다...</div>';const data=await postJson(form.dataset.backtestUrl,payload);if(!data.ok){$('#backtestBox').innerHTML=`<div class="qs-note qs-error">${data.message||'백테스트 실패'}</div>`;return;}const bt=payload.backtest;$('#backtestBox').innerHTML=`<div class="qs-backtest-summary"><div class="qs-stat"><span>최종 자산</span><strong>${fmt(data.final_value,0)}원</strong></div><div class="qs-stat"><span>총수익률</span><strong>${fmt(data.total_return_pct)}%</strong></div><div class="qs-stat"><span>CAGR</span><strong>${fmt(data.cagr_pct)}%</strong></div><div class="qs-stat"><span>MDD</span><strong>${fmt(data.max_drawdown_pct)}%</strong></div></div>${renderRunMeta(data,{start:bt.start,end:bt.end,fee_pct:bt.fee_pct})}<div class="qs-note">편입 목표 ${bt.top_n}개 · ${bt.rebalance==='monthly'?'매월':bt.rebalance==='quarterly'?'분기':'매년'} 리밸런싱. ${data.message||''}</div>`;});
+  $('#runSingleBacktest')?.addEventListener('click',async()=>{const code=$('#singleStockQuery').value.trim();if(!code){$('#singleBacktestBox').innerHTML='<div class="qs-note qs-error">종목명 또는 종목코드를 입력해주세요.</div>';return;}const payload={code,strategy:$('#singleStrategy').value,initial_capital:Number($('#initialCapital').value||1000)*10000,fee_pct:$('#feePct').value||0.015,start:$('#btStart').value,end:$('#btEnd').value||today};$('#singleBacktestBox').innerHTML='<div class="qs-note">개별 종목 백테스트 계산 중입니다...</div>';const data=await postJson(form.dataset.singleBacktestUrl,payload);if(!data.ok){$('#singleBacktestBox').innerHTML=`<div class="qs-note qs-error">${data.message||'백테스트 실패'}</div>`;return;}const sig=requestSignature(payload);let repeatNote='';if(lastSingleRun&&lastSingleRun.signature===sig){const changed=Math.abs(Number(lastSingleRun.final)-Number(data.final_value))>0.5||Math.abs(Number(lastSingleRun.returnPct)-Number(data.total_return_pct))>0.0001;if(changed)repeatNote='<div class="qs-note qs-error"><strong>동일 조건 재실행 결과가 달라졌습니다.</strong><br>프론트 요청값은 같으므로 백엔드의 기준일 선택, 데이터 소스, 캐시 또는 체결 계산을 확인해야 합니다.</div>';else repeatNote='<div class="qs-note">동일 조건 재실행 결과가 이전 실행과 일치합니다.</div>';}lastSingleRun={signature:sig,final:data.final_value,returnPct:data.total_return_pct};const benchmark=metaValue(data,['buy_hold_return_pct','benchmark_return_pct','benchmark.total_return_pct'],null);$('#singleBacktestBox').innerHTML=`<div class="qs-backtest-summary"><div class="qs-stat"><span>종목</span><strong>${data.stock?.name||code}</strong></div><div class="qs-stat"><span>최종 자산</span><strong>${fmt(data.final_value,0)}원</strong></div><div class="qs-stat"><span>총수익률</span><strong>${fmt(data.total_return_pct)}%</strong></div><div class="qs-stat"><span>MDD</span><strong>${fmt(data.max_drawdown_pct)}%</strong></div></div>${renderRunMeta(data,payload)}${benchmark!==null?`<div class="qs-note">단순 보유 수익률 ${fmt(benchmark)}% · 선택 전략 초과수익 ${fmt(Number(data.total_return_pct)-Number(benchmark))}%</div>`:''}${repeatNote}`;});
   async function loadGroups(){try{const res=await fetch(form.dataset.groupsApiUrl,{credentials:'same-origin',headers:{'X-Requested-With':'XMLHttpRequest'},cache:'no-store'}); const data=await res.json(); const groups=data.groups||[]; const sel=$('#watchGroupSelect'); sel.innerHTML=groups.length?groups.map(g=>`<option value="${g.id}">${g.name} (${(g.items||[]).length})</option>`).join(''):'<option value="group_default">내 관심종목</option>'; sel.dataset.groups=JSON.stringify(groups.length?groups:[{id:'group_default',name:'내 관심종목',items:[]}]); if(data.selectedGroupId) sel.value=data.selectedGroupId;}catch(e){$('#watchGroupSelect').innerHTML='<option value="">로그인 후 사용</option>';}}
   $('#selectAllRows')?.addEventListener('click',()=>{$$('.row-check').forEach(x=>x.checked=true);});
   $('#addSelectedToGroup')?.addEventListener('click',async()=>{const selected=$$('.row-check:checked').map(x=>({code:x.dataset.code,name:x.dataset.name,market:x.dataset.market||'KRX'})).filter(x=>x.code); if(!selected.length){alert('먼저 종목을 체크해주세요.');return;} const sel=$('#watchGroupSelect'); let groups=[]; try{groups=JSON.parse(sel.dataset.groups||'[]')}catch(e){} if(!groups.length){alert('로그인 후 관심그룹을 불러와주세요.');return;} let group=groups.find(g=>String(g.id)===String(sel.value))||groups[0]; group.items=Array.isArray(group.items)?group.items:[]; selected.forEach(s=>{if(!group.items.some(x=>x.code===s.code)) group.items.push(s);}); try{const res=await fetch(form.dataset.groupsApiUrl,{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json','X-CSRFToken':csrf,'X-Requested-With':'XMLHttpRequest'},body:JSON.stringify({groups,selectedGroupId:group.id})}); const data=await res.json(); if(!res.ok||data.ok===false) throw new Error(data.message||'저장 실패'); alert(`${selected.length}개 종목을 관심그룹에 반영했습니다.`); await loadGroups();}catch(e){alert('관심그룹 저장 실패: 로그인 상태 또는 API를 확인해주세요.');}});

@@ -1,0 +1,23 @@
+{
+  "close": 22350.0,
+  "prev_close": 20950.0,
+  "last_high": 22700.0,
+  "last_low": 21250.0,
+  "ma20": 24570.0,
+  "ma60": 28059.17,
+  "ma112": 28061.16,
+  "ma224": 26148.53,
+  "price_to_ma20_pct": -9.04,
+  "price_to_ma60_pct": -20.35,
+  "price_to_ma112_pct": -20.35,
+  "price_to_ma224_pct": -14.53,
+  "rsi14": 34.66,
+  "drawdown_52w_pct": -36.78,
+  "mdd_1y_pct": -39.1,
+  "momentum_3m_pct": -20.6,
+  "momentum_6m_pct": -9.88,
+  "golden_20_60": false,
+  "dead_20_60": false,
+  "golden_112_224": false,
+  "dead_112_224": false
+}

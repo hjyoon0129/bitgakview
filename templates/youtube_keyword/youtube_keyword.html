@@ -28,6 +28,7 @@
       <a href="/stocks/pricing/">가격소개</a>
       <a href="/stocks/#marketSection">시장지표</a>
       <a href="{% url 'stocks:detail' '005930' %}">차트</a>
+      <a href="/tools/stock-screener/">퀀트투자</a>
       <a href="{% url 'insights:list' %}">빗각관점</a>
       <a class="active" href="{% url 'youtube_keyword:index' %}">AI 도구</a>
     </div>
@@ -37,8 +38,8 @@
         <a class="ytk-login-btn" href="/accounts/logout/">로그아웃</a>
       {% else %}
         <a class="ytk-login-btn" href="/accounts/login/?next={{ request.get_full_path|urlencode }}">로그인</a>
+        <a class="ytk-start-btn" href="{% url 'stocks:detail' '005930' %}">무료로 시작</a>
       {% endif %}
-      <a class="ytk-start-btn" href="{% url 'stocks:detail' '005930' %}">무료로 시작</a>
     </div>
   </nav>
 
